@@ -49,6 +49,7 @@ include(":modules:api")
 include(":modules:bridge")
 include(":modules:applemusic")
 include(":modules:monochrome")
+include(":modules:natune-sources")
 include(":modules:jiosaavn")
 
 
