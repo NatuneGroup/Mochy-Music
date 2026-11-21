@@ -23,7 +23,7 @@ env:
 jobs:
   build-arm64-release:
     name: Build Signed Arm64 v8a Release
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-8vcpu-ubuntu-2404
     if: github.actor != 'dependabot[bot]'
 
     steps:
