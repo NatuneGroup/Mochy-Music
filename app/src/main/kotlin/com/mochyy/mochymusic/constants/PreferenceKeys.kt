@@ -12,6 +12,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 
+import com.mochyy.mochymusic.shared.settings.PlaybackPreferenceKeys
 import com.music.innertube.models.IpVersion
 
 val IsFirstRunKey = booleanPreferencesKey("isFirstRun")
@@ -1078,9 +1079,9 @@ enum class CanvasOrder(val sources: List<CanvasSource>) {
     SPOTIFY_TIDAL_APPLE(listOf(CanvasSource.SPOTIFY, CanvasSource.TIDAL, CanvasSource.APPLE_MUSIC)),
 }
 /** The player's format badge beside the title (OPUS, AAC, FLAC...) */
-val ShowFormatBadgeKey = booleanPreferencesKey("showFormatBadge")
+val ShowFormatBadgeKey = PlaybackPreferenceKeys.showFormatBadge
 /** The badge also says the stream's sample rate */
-val ShowFormatSampleRateKey = booleanPreferencesKey("showFormatSampleRate")
+val ShowFormatSampleRateKey = PlaybackPreferenceKeys.showSampleRate
 /** The badge also says a lossless stream's bit depth, such as 24-bit */
 val ShowFormatBitDepthKey = booleanPreferencesKey("showFormatBitDepth")
 val SwipeSensitivityKey = floatPreferencesKey("swipeSensitivity")

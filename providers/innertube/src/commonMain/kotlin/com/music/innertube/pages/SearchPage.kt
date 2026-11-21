@@ -8,7 +8,10 @@ import com.music.innertube.models.MusicResponsiveListItemRenderer
 import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.YTItem
+import com.music.innertube.models.getContinuation
+import com.music.innertube.models.getItems
 import com.music.innertube.models.oddElements
+import com.music.innertube.models.response.SearchResponse
 import com.music.innertube.models.splitBySeparator
 import com.music.innertube.utils.parseTime
 
@@ -18,6 +21,18 @@ data class SearchResult(
 )
 
 object SearchPage {
+    const val SONG_FILTER = "EgWKAQIIAWoKEAkQBRAKEAMQBA%3D%3D"
+
+    fun parse(response: SearchResponse): SearchResult {
+        val shelf = response.contents?.tabbedSearchResultsRenderer?.tabs?.firstOrNull()
+            ?.tabRenderer?.content?.sectionListRenderer?.contents
+            ?.firstNotNullOfOrNull { it.musicShelfRenderer }
+        return SearchResult(
+            items = shelf?.contents?.getItems()?.mapNotNull(::toYTItem).orEmpty(),
+            continuation = shelf?.continuations?.getContinuation(),
+        )
+    }
+
     fun toYTItem(renderer: MusicResponsiveListItemRenderer): YTItem? {
         val secondaryLine =
             renderer.flexColumns

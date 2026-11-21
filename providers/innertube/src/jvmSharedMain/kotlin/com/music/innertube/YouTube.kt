@@ -246,16 +246,7 @@ object YouTube {
 
     suspend fun search(query: String, filter: SearchFilter): Result<SearchResult> = runCatching {
         val response = innerTube.search(WEB_REMIX, query, filter.value).body<SearchResponse>()
-        val musicShelfRenderer = response.contents?.tabbedSearchResultsRenderer?.tabs?.firstOrNull()
-            ?.tabRenderer?.content?.sectionListRenderer?.contents
-            ?.mapNotNull { it.musicShelfRenderer }
-            ?.firstOrNull()
-        SearchResult(
-            items = musicShelfRenderer?.contents?.getItems()?.mapNotNull {
-                SearchPage.toYTItem(it)
-            }.orEmpty(),
-            continuation = musicShelfRenderer?.continuations?.getContinuation()
-        )
+        SearchPage.parse(response)
     }
 
     suspend fun searchContinuation(continuation: String): Result<SearchResult> = runCatching {
@@ -1540,7 +1531,7 @@ object YouTube {
     @JvmInline
     value class SearchFilter(val value: String) {
         companion object {
-            val FILTER_SONG = SearchFilter("EgWKAQIIAWoKEAkQBRAKEAMQBA%3D%3D")
+            val FILTER_SONG = SearchFilter(SearchPage.SONG_FILTER)
             val FILTER_VIDEO = SearchFilter("EgWKAQIQAWoKEAkQChAFEAMQBA%3D%3D")
             val FILTER_ALBUM = SearchFilter("EgWKAQIYAWoKEAkQChAFEAMQBA%3D%3D")
             val FILTER_ARTIST = SearchFilter("EgWKAQIgAWoKEAkQChAFEAMQBA%3D%3D")

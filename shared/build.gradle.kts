@@ -55,6 +55,7 @@ kotlin {
             api(libs.cmp.foundation)
             api(libs.cmp.ui)
             api(libs.cmp.material3)
+            api(libs.datastore)
             implementation(libs.cmp.components.resources)
             // the YouTube Music models (songs, albums, artists) every platform's screens show
             api(project(":providers:innertube"))
@@ -89,12 +90,25 @@ kotlin {
             implementation("org.bytedeco:javacpp:${libs.versions.javacpp.get()}:$ffmpegPlatform")
         }
         iosMain.dependencies {
+            implementation(libs.innertubex)
             implementation(libs.ktor.client.darwin)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.json)
+            implementation(libs.coil.network.ktor)
         }
     }
 }
 
+val prepareIosFonts = tasks.register<Sync>("prepareIosFonts") {
+    from(rootProject.layout.projectDirectory.dir("app/src/main/res/font")) {
+        include("inter_regular.ttf", "inter_semibold.ttf")
+        into("font")
+    }
+    into(layout.buildDirectory.dir("generated/iosComposeFonts"))
+}
+
 compose.resources {
+    customDirectory("iosMain", layout.dir(prepareIosFonts.map { it.destinationDir }))
     // a library does not generate Res by default; every platform's UI reads strings through it
     generateResClass = always
     publicResClass = false

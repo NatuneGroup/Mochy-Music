@@ -25,7 +25,7 @@ data class OpenedStream(
 
 /**
  * One open stream. [open] blocks while FFmpeg probes it, so call it off the UI thread. The decode loop runs
- * on its own daemon thread; every public method is safe to call from any thread.
+ * on its own daemon thread after [start].
  */
 class DesktopAudioEngine(
     private val onEnded: () -> Unit,
@@ -60,34 +60,43 @@ class DesktopAudioEngine(
                 ?.let { setOption("headers", it) }
             sampleFormat = avutil.AV_SAMPLE_FMT_S16
         }
+        var output: SourceDataLine? = null
         try {
             g.start()
-        } catch (error: Throwable) {
-            runCatching { g.release() }
-            throw error
-        }
-        val rate = g.sampleRate.takeIf { it > 0 } ?: 48_000
-        val channels = g.audioChannels.coerceIn(1, 2)
-        val format = AudioFormat(rate.toFloat(), 16, channels, true, false)
-        val l = AudioSystem.getSourceDataLine(format)
-        // about 250 ms of buffer: enough to ride out a slow frame, short enough that pause feels immediate
-        l.open(format, rate * channels * 2 / 4)
-        synchronized(lock) {
+            val rate = g.sampleRate.takeIf { it > 0 } ?: 48_000
+            val channels = g.audioChannels
+            check(channels > 0) { "No audio channel" }
+            val format = AudioFormat(rate.toFloat(), 16, channels, true, false)
+            val l = AudioSystem.getSourceDataLine(format)
+            output = l
+            // 250 ms keeps the line responsive while the decoder fetches the next frame.
+            l.open(format, rate * channels * 2 / 4)
+            val opened = OpenedStream(
+                codec = (g.audioCodecName ?: "").uppercase().ifBlank { "AUDIO" },
+                sampleRate = rate,
+                channels = channels,
+                durationMs = (g.lengthInTime / 1000L).coerceAtLeast(0L),
+            )
             grabber = g
             line = l
             sampleRate = rate
+            return opened
+        } catch (error: Throwable) {
+            runCatching { output?.close() }
+            runCatching { g.release() }
+            throw error
         }
-        val opened = OpenedStream(
-            codec = (g.audioCodecName ?: "").uppercase().ifBlank { "AUDIO" },
-            sampleRate = rate,
-            channels = channels,
-            durationMs = (g.lengthInTime / 1000L).coerceAtLeast(0L),
-        )
-        thread = Thread(::decodeLoop, "mochy-desktop-audio").apply {
-            isDaemon = true
-            start()
+    }
+
+    fun start() {
+        val worker = Thread(::decodeLoop, "mochy-desktop-audio").apply { isDaemon = true }
+        thread = worker
+        try {
+            worker.start()
+        } catch (error: Throwable) {
+            thread = null
+            throw error
         }
-        return opened
     }
 
     fun pause() {
@@ -117,13 +126,10 @@ class DesktopAudioEngine(
     fun close() {
         closed = true
         synchronized(lock) { lock.notifyAll() }
-        thread?.join(2_000)
-        synchronized(lock) {
-            line?.let { runCatching { it.stop(); it.flush(); it.close() } }
-            grabber?.let { runCatching { it.stop(); it.release() } }
-            line = null
-            grabber = null
-        }
+        // Closing the Java Sound line also unblocks a write or drain in progress.
+        runCatching { line?.close() }
+        // Once started, the decoder thread alone owns the native grabber.
+        if (thread == null) runCatching { grabber?.release() }
     }
 
     private fun decodeLoop() {
@@ -155,6 +161,9 @@ class DesktopAudioEngine(
             }
         } catch (error: Throwable) {
             if (!closed) onError(error)
+        } finally {
+            runCatching { l.close() }
+            runCatching { g.release() }
         }
     }
 

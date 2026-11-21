@@ -77,11 +77,12 @@ private val RailBreakpoint = 600.dp
 @Composable
 fun MochyShell(
     modifier: Modifier = Modifier,
+    initialTab: ShellTab = ShellTab.Home,
     /** the mini player, under every tab */
     bottomBar: @Composable () -> Unit = {},
     content: @Composable (ShellTab) -> Boolean = { false },
 ) {
-    var selected by rememberSaveable { mutableStateOf(ShellTab.Home) }
+    var selected by rememberSaveable { mutableStateOf(initialTab) }
     BoxWithConstraints(modifier.fillMaxSize().background(Color.Black)) {
         val wide = maxWidth >= RailBreakpoint
         val screen: @Composable (Modifier) -> Unit = { m ->

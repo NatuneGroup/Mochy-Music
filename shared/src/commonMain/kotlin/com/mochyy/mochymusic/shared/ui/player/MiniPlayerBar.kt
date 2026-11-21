@@ -50,7 +50,10 @@ fun MiniPlayerBar(
     state: PlayerState,
     onTogglePlay: () -> Unit,
     onSeek: (Long) -> Unit,
+    onOpen: () -> Unit,
     modifier: Modifier = Modifier,
+    showFormatBadge: Boolean = true,
+    showSampleRate: Boolean = true,
 ) {
     val song = state.song ?: return
     Column(
@@ -63,7 +66,8 @@ fun MiniPlayerBar(
         SeekLine(state, onSeek)
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+            modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen)
+                .padding(horizontal = 14.dp, vertical = 10.dp),
         ) {
             AsyncImage(
                 model = song.thumbnail,
@@ -83,7 +87,9 @@ fun MiniPlayerBar(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
                     )
-                    streamBadgeText(state.format)?.let { StreamFormatBadge(it, height = 16.dp) }
+                    if (showFormatBadge) {
+                        streamBadgeText(state.format, showSampleRate)?.let { StreamFormatBadge(it, height = 16.dp) }
+                    }
                 }
             }
             Spacer(Modifier.width(12.dp))
