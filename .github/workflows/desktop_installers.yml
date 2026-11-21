@@ -48,7 +48,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends fakeroot rpm xvfb xauth
+          sudo apt-get install -y --no-install-recommends fakeroot rpm xvfb xauth x11-utils
 
       - name: Add WiX 3 to PATH
         if: runner.os == 'Windows'
@@ -75,13 +75,31 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          launch=$(find desktopApp/build/compose/binaries/main/app -type f -path '*/bin/Mochy' -print -quit)
-          test -x "$launch"
+          archive=$(find desktopApp/build/compose/binaries/main -name '*.deb' -print -quit)
+          test -f "$archive"
+          package_root=$(mktemp -d)
+          dpkg-deb --extract "$archive" "$package_root"
+          launcher=$(find "$package_root" -type f -path '*/bin/*' -iname mochy -print -quit)
+          test -x "$launcher"
           startup_log="$RUNNER_TEMP/mochy-startup.log"
           result=0
-          timeout 18s xvfb-run -a "$launch" > "$startup_log" 2>&1 || result=$?
+          timeout 40s xvfb-run -a bash -euc '
+            "$1" > "$2" 2>&1 &
+            app_pid=$!
+            trap '''kill "$app_pid" 2>/dev/null || true''' EXIT
+            for attempt in $(seq 1 20); do
+              kill -0 "$app_pid"
+              windows=$(xwininfo -root -tree)
+              if [[ "$windows" == *\"Mochy\"* ]]; then
+                printf "%s\n" "$windows"
+                exit 0
+              fi
+              sleep 1
+            done
+            exit 1
+          ' bash "$launcher" "$startup_log" || result=$?
           cat "$startup_log"
-          test "$result" -eq 124
+          test "$result" -eq 0
 
       - name: Upload installers
         uses: actions/upload-artifact@v6
