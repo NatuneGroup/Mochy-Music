@@ -1074,6 +1074,8 @@ enum class CanvasOrder(val sources: List<CanvasSource>) {
 val ShowFormatBadgeKey = PlaybackPreferenceKeys.showFormatBadge
 /** The badge also says the stream's sample rate */
 val ShowFormatSampleRateKey = PlaybackPreferenceKeys.showSampleRate
+/** The badge also says a lossless stream's bit depth, such as 24-bit */
+val ShowFormatBitDepthKey = booleanPreferencesKey("showFormatBitDepth")
 val SwipeSensitivityKey = floatPreferencesKey("swipeSensitivity")
 
 enum class SearchSource {

@@ -5198,11 +5198,13 @@ class MusicService :
     private fun recordDecodedFormat(mediaId: String, format: androidx.media3.common.Format) {
         val codec = StreamFacts.codecOf(format.sampleMimeType, format.codecs)
         val sampleRate = format.sampleRate.takeIf { it > 0 }
+        // the pcm depth the decoder reads; only lossless streams report one
+        val bitDepth = StreamInspector.bitDepthOf(format.pcmEncoding)
         streamFacts.update { all ->
             val old = all[mediaId]
             val merged = if (old?.fromModule == true) {
-                old.copy(codec = old.codec ?: codec, sampleRate = sampleRate ?: old.sampleRate)
-            } else StreamFacts(codec = codec, sampleRate = sampleRate)
+                old.copy(codec = old.codec ?: codec, sampleRate = sampleRate ?: old.sampleRate, bitDepth = bitDepth ?: old.bitDepth)
+            } else StreamFacts(codec = codec, sampleRate = sampleRate, bitDepth = bitDepth)
             // HE-AAC's container can give its core's rate; the decoder plays it at twice that
             val facts = if (merged.codec == "HE-AAC" && (merged.sampleRate ?: 0) in 1..24_000) {
                 merged.copy(sampleRate = merged.sampleRate!! * 2)
