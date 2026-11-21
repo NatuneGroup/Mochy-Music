@@ -117,6 +117,8 @@ val EnableLrcRedKey = booleanPreferencesKey("enableLrcRed")
 val EnableUnisonKey = booleanPreferencesKey("enableUnison")
 val EnableBiniLyricsKey = booleanPreferencesKey("enableBiniLyrics")
 val EnableMegalobizKey = booleanPreferencesKey("enableMegalobiz")
+val EnableBetterLyricsPortatoKey = booleanPreferencesKey("enableBetterLyricsPortato")
+val EnableGeniusLyricsKey = booleanPreferencesKey("enableGeniusLyrics")
 val HideExplicitKey = booleanPreferencesKey("hideExplicit")
 val HideVideoSongsKey = booleanPreferencesKey("hideVideoSongs")
 // no switch for it in settings, so every reader defaults it to on and shorts stay out
