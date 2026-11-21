@@ -67,3 +67,15 @@ jobs:
             -target arm64-apple-ios17.0-simulator \
             -F "$FRAMEWORKS" \
             iosApp/*.swift
+
+      - name: Build the simulator app with Xcode
+        shell: bash
+        run: |
+          set -euo pipefail
+          derived_data="$RUNNER_TEMP/mochy-ios"
+          xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp \
+            -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$derived_data" CODE_SIGNING_ALLOWED=NO build
+          app="$derived_data/Build/Products/Debug-iphonesimulator/Mochy.app"
+          test -x "$app/Mochy"
+          test -n "$(find "$app" -name inter_regular.ttf -print -quit)"
