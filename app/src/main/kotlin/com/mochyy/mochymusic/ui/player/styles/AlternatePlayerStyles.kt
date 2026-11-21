@@ -88,6 +88,8 @@ fun AlternatePlayerStyle(
         PlayerStyle.NAMIDA -> com.mochyy.mochymusic.ui.player.namida.NamidaPlayerStyle(actions, modifier, preview)
         PlayerStyle.APPLE_MUSIC -> com.mochyy.mochymusic.ui.player.applemusic.AppleMusicPlayerStyle(actions, modifier, preview)
         PlayerStyle.TIKTOK -> com.mochyy.mochymusic.ui.player.tiktok.TikTokPlayerStyle(actions, modifier, preview)
+        PlayerStyle.METROLIST, PlayerStyle.METROLIST_VINTAGE ->
+            MetrolistPlayerStyle(actions, modifier, preview, vintage = style == PlayerStyle.METROLIST_VINTAGE)
         PlayerStyle.MODULE -> ModulePlayerStyle(actions, modifier, preview)
         PlayerStyle.FLAGSHIP, PlayerStyle.CLASSIC, PlayerStyle.TURNTABLE -> Unit
     }
