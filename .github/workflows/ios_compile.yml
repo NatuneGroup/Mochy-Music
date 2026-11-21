@@ -62,7 +62,7 @@ jobs:
           set -euo pipefail
           FRAMEWORKS="shared/build/bin/iosSimulatorArm64/debugFramework"
           test -d "$FRAMEWORKS/Shared.framework"
-          xcrun --sdk iphonesimulator swiftc -typecheck \
+          xcrun --sdk iphonesimulator swiftc -typecheck -parse-as-library \
             -swift-version 5 \
             -target arm64-apple-ios17.0-simulator \
             -F "$FRAMEWORKS" \
