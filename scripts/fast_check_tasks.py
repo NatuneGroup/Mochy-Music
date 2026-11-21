@@ -3,7 +3,7 @@
 
 Every module included in settings.gradle.kts that has tests takes part, except :app
 (whose Kotlin is compiled by the other job). A Kotlin Multiplatform module with a
-jvm() target runs `jvmTest`; an Android library module runs `testDebugUnitTest`.
+jvm() target runs `jvmTest` (`desktopTest` when the target is named desktop); an Android library module runs `testDebugUnitTest`.
 """
 
 from __future__ import annotations
@@ -28,7 +28,9 @@ def tasks() -> list[str]:
         if not build.is_file() or not any((module / d).is_dir() for d in TEST_DIRS):
             continue
         script = build.read_text(encoding="utf-8")
-        if "multiplatform" in script and "jvm(" in script:
+        if "multiplatform" in script and 'jvm("desktop")' in script:
+            out.append(f"{path}:desktopTest")
+        elif "multiplatform" in script and "jvm(" in script:
             out.append(f"{path}:jvmTest")
         elif "com.android.library" in script:
             out.append(f"{path}:testDebugUnitTest")

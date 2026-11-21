@@ -2,6 +2,10 @@
 androidGradlePlugin = "9.0.0"
 json = "20251224"
 kotlin = "2.3.10"
+# Compose Multiplatform for :shared and :desktopApp. 1.10.x pairs with the androidx compose 1.10 line above,
+# so the Android app resolves the same compose it already uses.
+composeMultiplatform = "1.10.3"
+composeMultiplatformMaterial3 = "1.10.0-alpha05"
 compose = "1.10.2"
 lifecycle = "2.10.0"
 material3 = "1.5.0-alpha18"
@@ -127,6 +131,13 @@ ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negoti
 ktor-client-encoding = { module = "io.ktor:ktor-client-encoding", version.ref = "ktor" }
 ktor-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
+ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
+kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "coroutinesGuava" }
+cmp-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "composeMultiplatform" }
+cmp-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "composeMultiplatform" }
+cmp-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMultiplatform" }
+cmp-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "composeMultiplatformMaterial3" }
+cmp-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
 okhttp-dnsoverhttps = { module = "com.squareup.okhttp3:okhttp-dnsoverhttps", version = "5.3.2" }
 
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
@@ -157,6 +168,7 @@ androidx-webkit = { group = "androidx.webkit", name = "webkit", version.ref = "w
 
 
 [plugins]
+compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 kotlin-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

@@ -17,7 +17,7 @@ env:
 
 jobs:
   compile:
-    name: Compile app Kotlin (arm64 FOSS debug)
+    name: Compile Android and desktop Kotlin
     runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || 'blacksmith-8vcpu-ubuntu-2404' }}
     steps:
       - uses: actions/checkout@v6
@@ -32,7 +32,7 @@ jobs:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
       - run: chmod +x gradlew
       - name: Compile
-        run: ./gradlew --console=plain :app:compileArm64FossDebugKotlin --warning-mode summary
+        run: ./gradlew --console=plain :app:compileArm64FossDebugKotlin :desktopApp:compileKotlinJvm --warning-mode summary
 
   unit-tests:
     name: Shared and provider unit tests
