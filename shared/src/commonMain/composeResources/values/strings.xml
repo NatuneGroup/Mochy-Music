@@ -5,6 +5,12 @@
     <string name="home">Home</string>
     <string name="search">Search</string>
     <string name="your_library">Your Library</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="search_hint">Songs, artists, albums</string>
+    <string name="search_failed">Couldn’t search. Check your connection and try again.</string>
+    <string name="search_no_results">No songs found</string>
+    <string name="playback_failed">Couldn’t play this song</string>
     <string name="shell_coming_title">Moving in</string>
     <string name="shell_coming_body">This screen is still on its way from the Android app.</string>
     <string name="shell_credit">Built on Mochy Music by realidkroo</string>

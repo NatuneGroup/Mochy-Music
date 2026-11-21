@@ -77,6 +77,8 @@ private val RailBreakpoint = 600.dp
 @Composable
 fun MochyShell(
     modifier: Modifier = Modifier,
+    /** the mini player, under every tab */
+    bottomBar: @Composable () -> Unit = {},
     content: @Composable (ShellTab) -> Boolean = { false },
 ) {
     var selected by rememberSaveable { mutableStateOf(ShellTab.Home) }
@@ -86,21 +88,25 @@ fun MochyShell(
             Box(m) { if (!content(selected)) ComingSoon(selected) }
         }
         if (wide) {
-            Row(Modifier.fillMaxSize()) {
-                Column(
-                    modifier = Modifier.fillMaxHeight().width(88.dp).padding(vertical = 24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    ShellTab.entries.forEach { tab ->
-                        TabButton(tab, tab == selected, onClick = { selected = tab })
+            Column(Modifier.fillMaxSize()) {
+                Row(Modifier.fillMaxWidth().weight(1f)) {
+                    Column(
+                        modifier = Modifier.fillMaxHeight().width(88.dp).padding(vertical = 24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        ShellTab.entries.forEach { tab ->
+                            TabButton(tab, tab == selected, onClick = { selected = tab })
+                        }
                     }
+                    screen(Modifier.weight(1f).fillMaxHeight())
                 }
-                screen(Modifier.weight(1f).fillMaxHeight())
+                bottomBar()
             }
         } else {
             Column(Modifier.fillMaxSize()) {
                 screen(Modifier.weight(1f).fillMaxWidth())
+                bottomBar()
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
