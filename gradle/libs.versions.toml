@@ -1,7 +1,9 @@
 [versions]
 androidGradlePlugin = "9.0.0"
 json = "20251224"
-kotlin = "2.3.10"
+# 2.4: kotlinx-serialization 1.12 (pulled in by Ktor 3.6) publishes iOS klibs older compilers cannot load.
+# Matches Natune and Metrolist; KSP 2.3.10 is the KSP2 line Natune pairs with it.
+kotlin = "2.4.21"
 # Compose Multiplatform for :shared and :desktopApp. 1.10.x pairs with the androidx compose 1.10 line above,
 # so the Android app resolves the same compose it already uses.
 composeMultiplatform = "1.10.3"
@@ -19,7 +21,7 @@ castFramework = "22.2.0"
 room = "2.8.4"
 hilt = "2.60.1"
 ktor = "3.6.0"
-ksp = "2.3.5"
+ksp = "2.3.10"
 jsoup = "1.22.1"
 coil = "3.3.0"
 ucrop = "2.2.11"
