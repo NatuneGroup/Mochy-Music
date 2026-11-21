@@ -44,6 +44,7 @@ enum class DensityScale(val value: Float, val label: String) {
 
 val DefaultOpenTabKey = stringPreferencesKey("defaultOpenTab")
 val SlimNavBarKey = booleanPreferencesKey("slimNavBar")
+val ShowNavTabLabelsKey = booleanPreferencesKey("showNavTabLabels")
 val GridItemsSizeKey = stringPreferencesKey("gridItemSize")
 val SliderStyleKey = stringPreferencesKey("sliderStyle")
 val SquigglySliderKey = booleanPreferencesKey("squigglySlider")
@@ -741,6 +742,8 @@ enum class PlayerStyle(val displayName: String, val selectorName: String) {
     APPLE_MUSIC("Apple Music", "Apple Music"),
     // the queue as a vertical feed with a right rail of actions, the tiktok look
     TIKTOK("TikTok", "TikTok"),
+    METROLIST("Metrolist", "Metrolist"),
+    METROLIST_VINTAGE("Metrolist Vintage", "Vintage"),
     // a look module's own player, drawn from its layout; kept last so the others keep their places, and only offered while such a module is on
     MODULE("Module", "Module");
 
@@ -756,7 +759,7 @@ enum class PlayerStyle(val displayName: String, val selectorName: String) {
     val hasFullEditor: Boolean get() = this == FLAGSHIP || this == CLASSIC
 
     // the styles whose menu has a rotate button, each with a landscape layout of its own to turn into
-    val turnable: Boolean get() = this == TURNTABLE || this == POSTER || this == TIMELINE || this == LYRICS || this == MODULE || isBedside
+    val turnable: Boolean get() = this == TURNTABLE || this == POSTER || this == TIMELINE || this == LYRICS || this == METROLIST || this == METROLIST_VINTAGE || this == MODULE || isBedside
 
     // laid out sideways until someone turns it upright, the way a phone stands on a nightstand
     val startsSideways: Boolean get() = this == BEDSIDE_TILES
@@ -789,6 +792,7 @@ enum class PlayerStyle(val displayName: String, val selectorName: String) {
             listOf(NAMIDA),
             listOf(APPLE_MUSIC),
             listOf(TIKTOK),
+            listOf(METROLIST, METROLIST_VINTAGE),
         )
     }
 }
@@ -965,6 +969,8 @@ val LyricsClickKey = booleanPreferencesKey("lyricsClick")
 val LyricsWaveAnimationKey = booleanPreferencesKey("lyricsWaveAnimation")
 
 val LyricsHighBloomKey = booleanPreferencesKey("lyricsHighBloom")
+val LyricsInterludeDotsKey = booleanPreferencesKey("lyricsInterludeDots")
+val LyricsLineBounceKey = booleanPreferencesKey("lyricsLineBounce")
 // resting lyric lines soft-lit onto the cover background instead of plain grey, on until turned off
 val LyricsSoftLightKey = booleanPreferencesKey("lyricsSoftLight")
 val LyricsScrollKey = booleanPreferencesKey("lyricsScrollKey")

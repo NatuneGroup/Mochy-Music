@@ -103,6 +103,8 @@ import com.mochyy.mochymusic.constants.AiProviderKey
 import com.mochyy.mochymusic.constants.DeeplApiKey
 import com.mochyy.mochymusic.constants.DeeplFormalityKey
 import com.mochyy.mochymusic.constants.LyricsHighBloomKey
+import com.mochyy.mochymusic.constants.LyricsInterludeDotsKey
+import com.mochyy.mochymusic.constants.LyricsLineBounceKey
 import com.mochyy.mochymusic.constants.LyricsSoftLightKey
 import com.mochyy.mochymusic.constants.OpenRouterApiKey
 import com.mochyy.mochymusic.constants.OpenRouterBaseUrlKey
@@ -326,7 +328,9 @@ fun LyricsScreen(
     // than conditionally rendering dots inside the next line's item, as before — is what stops the
     // list jumping. A gap's row grows in when the gap starts and collapses, in step with the
     // recenter scroll, when the next line takes over (see the recenter effect below).
-    val rows = remember(lines) { buildLyricRows(lines) }
+    val (interludeDots) = rememberPreference(LyricsInterludeDotsKey, defaultValue = true)
+    val (lineBounce) = rememberPreference(LyricsLineBounceKey, defaultValue = true)
+    val rows = remember(lines, interludeDots) { buildLyricRows(lines, interludeDots) }
 
     /** Lyric line index -> its row in [rows]. Gap rows sit between lines, so the two differ. */
     val rowOfLine = remember(rows, lines) {
@@ -815,6 +819,7 @@ fun LyricsScreen(
                                     alignment = lineAlignment,
                                     waveEnabled = lyricsWaveAnimation && !suppressEffects,
                                     motionStyle = motionStyle,
+                                    lineBounce = lineBounce,
                                     highBloom = lyricsHighBloom,
                                     blend = blend,
                                     onClick = {
@@ -951,7 +956,8 @@ internal sealed interface LyricRow {
     }
 }
 
-internal fun buildLyricRows(lines: List<LyricsEntry>): List<LyricRow> {
+internal fun buildLyricRows(lines: List<LyricsEntry>, showInterludes: Boolean = true): List<LyricRow> {
+    if (!showInterludes) return lines.mapIndexed { index, line -> LyricRow.Line(index, line) }
     if (lines.isEmpty()) return emptyList()
     val rows = ArrayList<LyricRow>(lines.size + 4)
 

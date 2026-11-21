@@ -37,6 +37,7 @@ import com.mochyy.mochymusic.constants.PauseSearchHistoryKey
 import com.mochyy.mochymusic.constants.ProxyEnabledKey
 import com.mochyy.mochymusic.constants.ProxyUrlKey
 import com.mochyy.mochymusic.constants.SYSTEM_DEFAULT
+import com.mochyy.mochymusic.constants.ShowNavTabLabelsKey
 import com.mochyy.mochymusic.constants.YtReportPlaysKey
 import com.mochyy.mochymusic.core.updater.saveUpdateNotificationsSetting
 import com.mochyy.mochymusic.i18n.AppLanguage
@@ -111,6 +112,7 @@ private fun generalItems(): List<SettingsItem> {
     val context = LocalContext.current
     val (noticeHidden, onNoticeHidden) = rememberPreference(HideUpdateNoticeKey, defaultValue = false)
     val (hideDescriptions, onHideDescriptions) = rememberPreference(HideSettingsDescriptionsKey, defaultValue = true)
+    val (navLabels, onNavLabelsChange) = rememberPreference(ShowNavTabLabelsKey, defaultValue = false)
     // the launch check's notification reads its own switch, so it follows this one too
     val setNoticeHidden = { hidden: Boolean ->
         onNoticeHidden(hidden)
@@ -118,6 +120,14 @@ private fun generalItems(): List<SettingsItem> {
     }
     return listOf(
         languageItem(),
+        switchItem(
+            key = "Navigation tab labels",
+            title = stringResource(R.string.settings_navigation_tab_labels),
+            description = stringResource(R.string.settings_navigation_tab_labels_desc),
+            icon = painterResource(R.drawable.tune),
+            checked = navLabels,
+            onCheckedChange = onNavLabelsChange,
+        ),
         switchItem(
             key = "Disable App Updates notice",
             title = stringResource(R.string.settings_updates_notice),
