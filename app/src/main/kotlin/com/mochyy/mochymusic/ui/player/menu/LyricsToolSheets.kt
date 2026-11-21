@@ -249,7 +249,7 @@ fun LyricsProviderSheet(onDismiss: () -> Unit) {
     val sources by viewModel.sources.collectAsState()
 
     androidx.compose.runtime.LaunchedEffect(mediaMetadata?.id) {
-        mediaMetadata?.let(viewModel::checkSources)
+        mediaMetadata?.let { viewModel.checkSources(it) }
     }
 
     // Sources with lyrics first, in the order they would be preferred; then the rest.
@@ -279,12 +279,25 @@ fun LyricsProviderSheet(onDismiss: () -> Unit) {
                 .padding(horizontal = 20.dp)
                 .padding(top = 16.dp, bottom = 24.dp)
         ) {
-            Text(
-                text = stringResource(R.string.ps_lyrics_provider_title),
-                color = Color.White,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-            )
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = stringResource(R.string.ps_lyrics_provider_title),
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                )
+                androidx.compose.material3.IconButton(
+                    enabled = mediaMetadata != null && sources.values.none { it == LyricsMenuViewModel.SourceState.Checking },
+                    onClick = { mediaMetadata?.let { viewModel.checkSources(it, refresh = true) } },
+                ) {
+                    Icon(
+                        painterResource(R.drawable.cached),
+                        contentDescription = stringResource(R.string.lyrics_refresh_sources),
+                        tint = Color.White,
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(14.dp))
 
             // your own file sits above every source and, like tapping one, takes over straight away
