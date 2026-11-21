@@ -19,6 +19,7 @@ car-app = "1.8.0-rc01"
 mediarouter = "1.8.1"
 castFramework = "22.2.0"
 room = "2.8.4"
+sqlite = "2.6.2"
 hilt = "2.60.1"
 ktor = "3.6.0"
 ksp = "2.3.10"
@@ -121,6 +122,7 @@ media3-ffmpeg = { module = "org.jellyfin.media3:media3-ffmpeg-decoder", version 
 mediarouter = { module = "androidx.mediarouter:mediarouter", version.ref = "mediarouter" }
 cast-framework = { module = "com.google.android.gms:play-services-cast-framework", version.ref = "castFramework" }
 
+sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }

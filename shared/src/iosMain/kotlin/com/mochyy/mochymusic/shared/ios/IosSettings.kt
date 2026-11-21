@@ -1,5 +1,9 @@
 package com.mochyy.mochymusic.shared.ios
 
+import androidx.room.Room
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import com.mochyy.mochymusic.shared.library.LibraryDatabase
+import com.mochyy.mochymusic.shared.library.LocalLibrary
 import com.mochyy.mochymusic.shared.settings.PlaybackSettingsFile
 import com.mochyy.mochymusic.shared.settings.playbackPreferences
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -7,16 +11,25 @@ import platform.Foundation.NSApplicationSupportDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSUserDomainMask
 
-@OptIn(ExperimentalForeignApi::class)
 internal val iosPlaybackPreferences by lazy {
-    playbackPreferences {
-        val directory = NSFileManager.defaultManager.URLForDirectory(
-            directory = NSApplicationSupportDirectory,
-            inDomain = NSUserDomainMask,
-            appropriateForURL = null,
-            create = true,
-            error = null,
-        )
-        "${checkNotNull(directory?.path)}/$PlaybackSettingsFile"
-    }
+    playbackPreferences { "${applicationSupportPath()}/$PlaybackSettingsFile" }
+}
+
+internal val iosLibrary by lazy {
+    val database = Room.databaseBuilder<LibraryDatabase>(name = "${applicationSupportPath()}/library.db")
+        .setDriver(BundledSQLiteDriver())
+        .build()
+    LocalLibrary(database.tracks())
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun applicationSupportPath(): String {
+    val directory = NSFileManager.defaultManager.URLForDirectory(
+        directory = NSApplicationSupportDirectory,
+        inDomain = NSUserDomainMask,
+        appropriateForURL = null,
+        create = true,
+        error = null,
+    )
+    return checkNotNull(directory?.path)
 }

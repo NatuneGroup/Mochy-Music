@@ -45,7 +45,7 @@ fun runDesktopApp(font: FontFamily) = application {
         state = rememberWindowState(width = 1100.dp, height = 720.dp),
     ) {
         MochySharedTheme(font = font) {
-            StandaloneMusicApp(search, player, providers, desktopPlaybackPreferences)
+            StandaloneMusicApp(search, player, providers, desktopPlaybackPreferences, desktopLibrary)
         }
     }
 }

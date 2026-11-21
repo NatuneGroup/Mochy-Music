@@ -26,4 +26,10 @@
     <string name="show_format_badge">Show codec badge</string>
     <string name="show_format_sample_rate">Show sample rate</string>
     <string name="settings_write_failed">Couldn’t save settings</string>
+    <string name="recently_played">Recently played</string>
+    <string name="recently_played_empty">Songs you play will appear here.</string>
+    <string name="library_empty">Save a song from Now playing to find it here.</string>
+    <string name="library_save">Save to library</string>
+    <string name="library_remove">Remove from library</string>
+    <string name="library_update_failed">Couldn’t update your library</string>
 </resources>
