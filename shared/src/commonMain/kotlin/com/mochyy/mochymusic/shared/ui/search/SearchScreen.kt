@@ -24,6 +24,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,12 +39,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.mochyy.mochymusic.shared.media.SearchSource
 import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.add_to_queue
 import com.mochyy.mochymusic.shared.resources.search
 import com.mochyy.mochymusic.shared.resources.search_failed
 import com.mochyy.mochymusic.shared.resources.search_hint
@@ -51,6 +55,7 @@ import com.mochyy.mochymusic.shared.resources.search_no_results
 import com.music.innertube.models.SongItem
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
@@ -65,6 +70,7 @@ private sealed interface SearchUi {
 fun SearchScreen(
     source: SearchSource,
     onPlay: (SongItem) -> Unit,
+    onQueue: (SongItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var query by remember { mutableStateOf("") }
@@ -79,7 +85,9 @@ fun SearchScreen(
         job?.cancel()
         ui = SearchUi.Loading
         job = scope.launch {
-            ui = source.searchSongs(q).fold(
+            val result = source.searchSongs(q)
+            ensureActive()
+            ui = result.fold(
                 onSuccess = { SearchUi.Results(it) },
                 // a cancelled search unwinds instead of showing "couldn't search"
                 onFailure = { if (it is CancellationException) throw it else SearchUi.Failed },
@@ -128,7 +136,18 @@ fun SearchScreen(
                     Message(stringResource(Res.string.search_no_results))
                 } else {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        items(state.songs, key = { it.id }) { song -> SongRow(song, onClick = { onPlay(song) }) }
+                        items(state.songs.distinctBy { it.id }, key = { it.id }) { song ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                SongRow(song, onClick = { onPlay(song) }, modifier = Modifier.weight(1f))
+                                val label = stringResource(Res.string.add_to_queue)
+                                IconButton(
+                                    onClick = { onQueue(song) },
+                                    modifier = Modifier.semantics { contentDescription = label },
+                                ) {
+                                    Text("+", style = MaterialTheme.typography.headlineSmall)
+                                }
+                            }
+                        }
                         item { Spacer(Modifier.height(96.dp)) }
                     }
                 }

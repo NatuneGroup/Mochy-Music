@@ -5,8 +5,6 @@
 package com.mochyy.mochymusic.shared.desktop
 
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -15,24 +13,31 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.mochyy.mochymusic.shared.desktop.media.YouTubeSearchSource
 import com.mochyy.mochymusic.shared.desktop.playback.DesktopPlayerController
+import com.mochyy.mochymusic.shared.lyrics.BiniLyricsProvider
+import com.mochyy.mochymusic.shared.lyrics.MegalobizLyricsProvider
 import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.shared.resources.app_name
 import com.mochyy.mochymusic.shared.resources.playback_failed
-import com.mochyy.mochymusic.shared.ui.player.MiniPlayerBar
-import com.mochyy.mochymusic.shared.ui.search.SearchScreen
-import com.mochyy.mochymusic.shared.ui.shell.MochyShell
-import com.mochyy.mochymusic.shared.ui.shell.ShellTab
+import com.mochyy.mochymusic.shared.ui.shell.StandaloneMusicApp
 import com.mochyy.mochymusic.shared.ui.theme.MochySharedTheme
-import kotlinx.coroutines.runBlocking
-import org.jetbrains.compose.resources.getString
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.HttpTimeout
 import org.jetbrains.compose.resources.stringResource
 
 /** Opens Mochy's main window with [font] as the app's typeface (the launcher loads Inter for it). */
 fun runDesktopApp(font: FontFamily) = application {
     val search = remember { YouTubeSearchSource() }
-    // the failure line is read when a song fails, on the player's thread, so it follows the current language
-    val player = remember { DesktopPlayerController(playbackFailedText = { runBlocking { getString(Res.string.playback_failed) } }) }
-    DisposableEffect(Unit) { onDispose { player.release() } }
+    val playbackFailed = stringResource(Res.string.playback_failed)
+    val player = remember(playbackFailed) { DesktopPlayerController(playbackFailedText = { playbackFailed }) }
+    val http = remember {
+        HttpClient(OkHttp) {
+            install(HttpTimeout) { requestTimeoutMillis = 8_000 }
+        }
+    }
+    val providers = remember(http) { listOf(BiniLyricsProvider(http), MegalobizLyricsProvider(http)) }
+    DisposableEffect(player) { onDispose { player.release() } }
+    DisposableEffect(http) { onDispose { http.close() } }
 
     Window(
         onCloseRequest = ::exitApplication,
@@ -40,18 +45,7 @@ fun runDesktopApp(font: FontFamily) = application {
         state = rememberWindowState(width = 1100.dp, height = 720.dp),
     ) {
         MochySharedTheme(font = font) {
-            val state by player.state.collectAsState()
-            MochyShell(
-                bottomBar = { MiniPlayerBar(state, onTogglePlay = player::togglePlayPause, onSeek = player::seekTo) },
-            ) { tab ->
-                when (tab) {
-                    ShellTab.Search -> {
-                        SearchScreen(source = search, onPlay = player::play)
-                        true
-                    }
-                    else -> false
-                }
-            }
+            StandaloneMusicApp(search, player, providers, desktopPlaybackPreferences)
         }
     }
 }

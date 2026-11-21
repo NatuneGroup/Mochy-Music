@@ -1,6 +1,6 @@
 // PlayerController.kt
 // What the shared UI knows about playback, on any platform. Each platform's engine implements it:
-// desktop with FFmpeg and Java Sound, iOS later with AVFoundation; Android keeps its MusicService.
+// desktop with FFmpeg and Java Sound, iOS with AVFoundation; Android keeps its MusicService.
 
 package com.mochyy.mochymusic.shared.playback
 
@@ -22,6 +22,7 @@ data class PlayerState(
     val isPlaying: Boolean = false,
     /** a stream is being resolved or opened: the play button shows progress */
     val isLoading: Boolean = false,
+    val hasEnded: Boolean = false,
     val positionMs: Long = 0L,
     val durationMs: Long = 0L,
     val format: StreamFormat? = null,

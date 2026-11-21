@@ -7,11 +7,23 @@
     <string name="your_library">Your Library</string>
     <string name="play">Play</string>
     <string name="pause">Pause</string>
-    <string name="search_hint">Songs, artists, albums</string>
+    <string name="search_hint">Search songs</string>
     <string name="search_failed">Couldn’t search. Check your connection and try again.</string>
     <string name="search_no_results">No songs found</string>
     <string name="playback_failed">Couldn’t play this song</string>
     <string name="shell_coming_title">Moving in</string>
     <string name="shell_coming_body">This screen is still on its way from the Android app.</string>
     <string name="shell_credit">Built on Mochy Music by realidkroo</string>
+    <string name="now_playing">Now playing</string>
+    <string name="lyrics">Lyrics</string>
+    <string name="lyrics_missing">Lyrics unavailable</string>
+    <string name="queue">Queue</string>
+    <string name="add_to_queue">Add to queue</string>
+    <string name="remove_from_queue">Remove from queue</string>
+    <string name="queue_empty">Your queue is empty</string>
+    <string name="skip_next">Skip to next song</string>
+    <string name="now_playing_settings">Player settings</string>
+    <string name="show_format_badge">Show codec badge</string>
+    <string name="show_format_sample_rate">Show sample rate</string>
+    <string name="settings_write_failed">Couldn’t save settings</string>
 </resources>
