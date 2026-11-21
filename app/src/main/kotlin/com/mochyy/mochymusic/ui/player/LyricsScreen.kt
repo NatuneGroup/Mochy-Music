@@ -67,6 +67,7 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import com.mochyy.mochymusic.ui.player.menu.LyricsOverflowButton
 import com.mochyy.mochymusic.ui.player.share.LyricsShareSession
 import com.mochyy.mochymusic.ui.player.share.song.LyricsSongShare
 import com.mochyy.mochymusic.ui.player.share.ShareFlightSource
@@ -567,29 +568,27 @@ fun LyricsScreen(
 
     Column(modifier = modifier.fillMaxSize()) {
 
-        if (showHeader) Row(
+        Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .stableStatusBarsPadding()
+                .then(if (showHeader) Modifier.stableStatusBarsPadding() else Modifier)
                 .padding(horizontal = LyricsHeaderArtX)
-                // Matches where the morph layer actually draws the cover, so the hitbox sits on
-                // the artwork and the menu centres against it.
-                .padding(top = LyricsHeaderArtTopFromStatusBar, bottom = 10.dp)
+                .padding(top = if (showHeader) LyricsHeaderArtTopFromStatusBar else 0.dp, bottom = 10.dp),
         ) {
-
-            Box(
-                modifier = Modifier
-                    .size(LyricsHeaderArtSize)
-                    .clip(RoundedCornerShape(10.dp))
-
-                    .clickable { if (immersive) immersive = false else onClose() }
+            if (showHeader) {
+                Box(
+                    modifier = Modifier
+                        .size(LyricsHeaderArtSize)
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable { if (immersive) immersive = false else onClose() },
+                )
+            }
+            Spacer(Modifier.weight(1f))
+            LyricsOverflowButton(
+                songId = mediaMetadata?.id,
+                enabled = !isMorphing && !isSheetDragging,
             )
-
-            Spacer(modifier = Modifier.width(18.dp))
-
-            // No menu button up here: on the lyrics page the options button takes the chevron's
-            // slot next to the seek bar (BottomSheetPlayer), within reach of the thumb.
         }
 
         val listPadding = remember { LyricsListPadding() }

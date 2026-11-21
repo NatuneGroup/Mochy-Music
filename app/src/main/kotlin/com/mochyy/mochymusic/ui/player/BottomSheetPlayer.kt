@@ -1312,8 +1312,8 @@ private fun PlayerSheet(
                 screenWidth = screenWidth,
                 // the Turntable's title is set differently, so its header title fades in over it
                 handOff = !isTurntable,
-                // the queue page's heart sits at the header's end; the title fades out before it
-                endRoom = { queuePageProgress },
+                // The lyrics menu and the queue's heart both sit at the header's end.
+                endRoom = { maxOf(lyricsPageProgress, queuePageProgress) },
             )
             // Above the title after a like, moving with it into the lyrics/queue header.
             // the crossmix flag flips at song changes; read in here it recomposes the label, not the player

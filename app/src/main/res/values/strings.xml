@@ -499,4 +499,6 @@
     <string name="work_out_genres">Work out genres</string>
     <string name="work_out_genres_on_desc">Asks Last.fm for an artist\'s genres. Only the artist name is sent.</string>
     <string name="work_out_genres_off_desc">The stats genre chart keeps to iTunes\' own answers while this is off</string>
+    <string name="lyrics_options">Lyrics options</string>
+    <string name="lyrics_refresh_sources">Refresh lyric sources</string>
 </resources>
