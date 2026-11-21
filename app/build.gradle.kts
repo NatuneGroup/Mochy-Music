@@ -458,6 +458,7 @@ dependencies {
     implementation(project(":providers:applecanvas"))
     implementation(project(":providers:paxsenixlyrics"))
     implementation(project(":providers:directlyrics"))
+    implementation(project(":shared"))
     implementation(project(":providers:musixmatch"))
     implementation(project(":providers:genius"))
     implementation(project(":providers:wikipedia"))

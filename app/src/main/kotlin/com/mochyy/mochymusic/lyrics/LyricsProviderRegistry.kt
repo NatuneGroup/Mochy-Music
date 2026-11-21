@@ -19,6 +19,8 @@ object LyricsProviderRegistry {
         "QQMusic"         to QQMusicLyricsProvider,
         "Deezer"          to DeezerLyricsProvider,
         "LrcRed"          to LrcRedLyricsProvider,
+        "BiniLyrics"      to BiniLyricsProvider,
+        "Megalobiz"       to MegalobizLyricsProvider,
         "YouTubeSubtitle" to YouTubeSubtitleLyricsProvider,
         "YouTubeMusic"    to YouTubeLyricsProvider,
         "YouTubeCaptions" to YouTubeCaptionsLyricsProvider,
@@ -57,8 +59,10 @@ object LyricsProviderRegistry {
         "YouLyPlus",
         "Paxsenix",
         "LrcRed",
+        "BiniLyrics",
         "SimpMusic",
         "LrcLib",
+        "Megalobiz",
         "Deezer",
         "YouTubeSubtitle",
         "YouTubeMusic",
@@ -92,6 +96,8 @@ object LyricsProviderRegistry {
         "QQMusic"         -> "QQ Music"
         "Deezer"          -> "Deezer"
         "LrcRed"          -> "lrc.red"
+        "BiniLyrics"      -> "BiniLyrics"
+        "Megalobiz"       -> "Megalobiz"
         "YouTubeSubtitle" -> "YouTube Subtitle"
         "YouTubeMusic"    -> "YouTube Music"
         "YouTubeCaptions" -> "YouTube Auto Captions"
@@ -116,6 +122,8 @@ object LyricsProviderRegistry {
     // lrc.red and unison require linking back wherever their lyrics are shown
     fun getWebsite(name: String): String? = when (name) {
         "LrcRed" -> LrcRed.BaseUrl
+        "BiniLyrics" -> "https://lyrics-api.binimum.org/"
+        "Megalobiz" -> "https://www.megalobiz.com/"
         "Unison" -> Unison.BaseUrl
         else     -> null
     }
