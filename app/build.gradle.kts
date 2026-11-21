@@ -465,6 +465,7 @@ dependencies {
     implementation(project(":modules:api"))
     implementation(project(":modules:applemusic"))
     implementation(project(":modules:monochrome"))
+    implementation(project(":modules:natune-sources"))
     implementation(project(":modules:jiosaavn"))
     implementation(project(":modules:bridge"))
 

@@ -68,6 +68,7 @@ import com.mochyy.mochymusic.constants.KeepScreenOn
 import com.mochyy.mochymusic.constants.PlayVideoBackgroundKey
 import com.mochyy.mochymusic.constants.VideoQuality
 import com.mochyy.mochymusic.constants.VideoQualityKey
+import com.mochyy.mochymusic.ui.player.info.ForceProviderSheet
 import com.mochyy.mochymusic.ui.menu.songedit.SongEditSheet
 import com.mochyy.mochymusic.ui.menu.songedit.VideoPickerSheet
 import com.mochyy.mochymusic.ui.player.PlayerCanvasPlayback
@@ -132,6 +133,7 @@ fun PlayerActionMenu(
     var showChoosePlaylistDialog by remember { mutableStateOf(false) }
     var showSleepTimer by remember { mutableStateOf(false) }
     var showAudioDevices by remember { mutableStateOf(false) }
+    var showPlaybackSources by remember { mutableStateOf(false) }
     var showPlaybackSpeed by remember { mutableStateOf(false) }
     var showLyricsEditor by remember { mutableStateOf(false) }
     var showLyricsProvider by remember { mutableStateOf(false) }
@@ -388,6 +390,14 @@ fun PlayerActionMenu(
                     title = stringResource(R.string.menu_change_output),
                     onClick = { showAudioDevices = true },
                 )
+                if (currentMetadata != null && currentMetadata?.localUri == null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    MenuRow(
+                        icon = R.drawable.graphic_eq,
+                        title = stringResource(R.string.pc_switch_source),
+                        onClick = { showPlaybackSources = true },
+                    )
+                }
                 // a linked tv with mochy open: play there, line it up there, or work it as a remote
                 DeviceMenuRows(onDismiss = onDismiss)
                 Spacer(modifier = Modifier.height(8.dp))
@@ -480,6 +490,13 @@ fun PlayerActionMenu(
     }
     if (showSleepTimer) {
         SleepTimerSheet(onDismiss = { showSleepTimer = false })
+    }
+    if (showPlaybackSources) {
+        val playingFrom by playerConnection.service.playingFrom.collectAsState()
+        ForceProviderSheet(
+            currentProviderId = currentMetadata?.id?.let { playingFrom[it]?.providerId },
+            onDismiss = { showPlaybackSources = false },
+        )
     }
     if (showAudioDevices) {
         DeviceOutputSheet(onDismiss = { showAudioDevices = false })

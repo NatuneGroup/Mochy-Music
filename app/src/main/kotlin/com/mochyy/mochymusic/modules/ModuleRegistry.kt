@@ -30,6 +30,8 @@ import com.mochyy.mochymusic.module.applemusic.AppleMusicModule
 import com.mochyy.mochymusic.module.bridge.BridgedModule
 import com.mochyy.mochymusic.module.jiosaavn.JioSaavnModule
 import com.mochyy.mochymusic.module.monochrome.MonochromeModule
+import com.mochyy.mochymusic.module.natune.NatuneInstanceModule
+import com.mochyy.mochymusic.module.natune.NatuneSource
 import com.mochyy.mochymusic.modules.code.CodeModules
 import com.mochyy.mochymusic.modules.local.LocalModule
 import com.mochyy.mochymusic.modules.skin.ActiveSkin
@@ -572,7 +574,8 @@ class ModuleRegistry @Inject constructor(
     // ---- loading --------------------------------------------------------------------------------
 
     private fun load(): List<Pair<MochyModule, ModuleOrigin>> {
-        val builtIn = listOf<MochyModule>(AppleMusicModule(), MonochromeModule(), JioSaavnModule()).map { it to ModuleOrigin.BuiltIn }
+        val builtIn = (listOf<MochyModule>(AppleMusicModule(), MonochromeModule(), JioSaavnModule()) +
+            NatuneSource.entries.map(::NatuneInstanceModule)).map { it to ModuleOrigin.BuiltIn }
         val apps = discover()
         val savedCode = savedCodeModules()
         CodeModules.tidy(context, savedCode.map { it.optString("folder") }.toSet())
@@ -634,7 +637,14 @@ class ModuleRegistry @Inject constructor(
             val bodiless = request.method == "GET" || request.method == "HEAD"
             builder.method(request.method, if (bodiless) null else body ?: ByteArray(0).toRequestBody())
             client.newCall(builder.build()).execute().use { response ->
-                return HttpResponse(response.code, response.body.bytes(), response.headers.associate { (name, value) -> name.lowercase() to value })
+                // A Natune source only looks at JSON metadata or at the first bytes of a stream.
+                val bytes = if (module is NatuneInstanceModule) {
+                    val limit = if ("Range" in request.headers) 16L else 524_288L
+                    response.peekBody(limit).bytes()
+                } else {
+                    response.body.bytes()
+                }
+                return HttpResponse(response.code, bytes, response.headers.associate { (name, value) -> name.lowercase() to value })
             }
         }
 
