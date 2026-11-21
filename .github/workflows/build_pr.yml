@@ -1,11 +1,13 @@
 name: Build PR
 
+# Full universal assemble + lint. Pull requests into dev use the smaller
+# Fast checks workflow; this one runs after they land, and on demand.
 on:
   pull_request:
-    branches:
-      - "**"
+    branches-ignore: [dev]
   push:
     branches: [dev]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -62,7 +64,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v6
         with:
-          name: app-universal-debug-pr-${{ github.event.number }}
+          name: app-universal-debug-${{ github.event.number || github.sha }}
           path: app/build/outputs/apk/universalFoss/debug/*.apk
           # a pr's apk is for trying it before merging, after a week it's just eating actions storage
           retention-days: 7
