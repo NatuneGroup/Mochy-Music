@@ -1,7 +1,9 @@
 [versions]
 androidGradlePlugin = "9.0.0"
 json = "20251224"
-kotlin = "2.3.10"
+# 2.4: kotlinx-serialization 1.12 (pulled in by Ktor 3.6) publishes iOS klibs older compilers cannot load.
+# Matches Natune and Metrolist; KSP 2.3.10 is the KSP2 line Natune pairs with it.
+kotlin = "2.4.21"
 # Compose Multiplatform for :shared and :desktopApp. 1.10.x pairs with the androidx compose 1.10 line above,
 # so the Android app resolves the same compose it already uses.
 composeMultiplatform = "1.10.3"
@@ -19,7 +21,7 @@ castFramework = "22.2.0"
 room = "2.8.4"
 hilt = "2.60.1"
 ktor = "3.6.0"
-ksp = "2.3.5"
+ksp = "2.3.10"
 jsoup = "1.22.1"
 coil = "3.3.0"
 ucrop = "2.2.11"
@@ -41,6 +43,9 @@ materialKolor = "4.1.1"
 kuromojiIpadic = "0.9.0"
 newpipeextractor = "v0.25.2"
 innertubex = "v0.11.6"
+# FFmpeg through JavaCV for the desktop audio engine; ffmpegDesktop must be the FFmpeg build of this javacpp release
+javacpp = "1.5.14"
+ffmpegDesktop = "8.1.2-1.5.14"
 tinypinyin = "2.0.3"
 protobuf = "4.33.5"
 protobufPlugin = "0.9.6"
@@ -154,6 +159,9 @@ timber = { module = "com.jakewharton.timber:timber", version.ref = "timber" }
 
 newpipeextractor = { module = "com.github.TeamNewPipe:NewPipeExtractor", version.ref = "newpipeextractor" }
 innertubex = { module = "com.github.MetrolistGroup.innertubex:innertubex", version.ref = "innertubex" }
+# the same InnerTubeX release, its desktop JVM artifact
+innertubex-desktop = { module = "com.github.MetrolistGroup.innertubex:innertubex-desktop", version.ref = "innertubex" }
+javacpp = { module = "org.bytedeco:javacpp", version.ref = "javacpp" }
 
 kuromoji-ipadic = { module = "com.atilika.kuromoji:kuromoji-ipadic", version.ref = "kuromojiIpadic" }
 tinypinyin = { module = "com.github.promeG:tinypinyin", version.ref = "tinypinyin" }
