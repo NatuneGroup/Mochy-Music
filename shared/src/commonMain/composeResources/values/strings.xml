@@ -17,6 +17,10 @@
     <string name="now_playing">Now playing</string>
     <string name="lyrics">Lyrics</string>
     <string name="lyrics_missing">Lyrics unavailable</string>
+    <string name="lyrics_source">Lyrics source</string>
+    <string name="lyrics_source_auto">Automatic</string>
+    <string name="lyrics_refresh">Refresh lyrics</string>
+    <string name="lyrics_refresh_failed">Couldn’t load new lyrics</string>
     <string name="queue">Queue</string>
     <string name="add_to_queue">Add to queue</string>
     <string name="remove_from_queue">Remove from queue</string>

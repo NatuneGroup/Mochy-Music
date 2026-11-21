@@ -13,8 +13,7 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.mochyy.mochymusic.shared.desktop.media.YouTubeSearchSource
 import com.mochyy.mochymusic.shared.desktop.playback.DesktopPlayerController
-import com.mochyy.mochymusic.shared.lyrics.BiniLyricsProvider
-import com.mochyy.mochymusic.shared.lyrics.MegalobizLyricsProvider
+import com.mochyy.mochymusic.shared.lyrics.playerLyricsProviders
 import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.shared.resources.app_name
 import com.mochyy.mochymusic.shared.resources.playback_failed
@@ -35,7 +34,7 @@ fun runDesktopApp(font: FontFamily) = application {
             install(HttpTimeout) { requestTimeoutMillis = 8_000 }
         }
     }
-    val providers = remember(http) { listOf(BiniLyricsProvider(http), MegalobizLyricsProvider(http)) }
+    val providers = remember(http) { playerLyricsProviders(http) }
     DisposableEffect(player) { onDispose { player.release() } }
     DisposableEffect(http) { onDispose { http.close() } }
 

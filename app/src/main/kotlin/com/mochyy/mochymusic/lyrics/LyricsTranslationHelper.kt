@@ -53,7 +53,7 @@ object LyricsTranslationHelper {
     private var translationJob: Job? = null
     private var isCompositionActive = true
 
-    private val translationCache = mutableMapOf<String, List<String>>()
+    private val translationCache = android.util.LruCache<String, List<String>>(64)
 
     private fun getCacheKey(lyricsText: String, mode: String, language: String): String =
         "${lyricsText.hashCode()}_${mode}_$language"
@@ -105,7 +105,7 @@ object LyricsTranslationHelper {
     fun getCachedTranslations(lyrics: List<LyricsEntry>, mode: String, language: String): List<String>? {
         val lyricsText = lyrics.filter { it.text.isNotBlank() }.joinToString("\n") { it.text }
         val key = getCacheKey(lyricsText, mode, language)
-        return translationCache[key]
+        return translationCache.get(key)
     }
 
     fun applyCachedTranslations(lyrics: List<LyricsEntry>, mode: String, language: String): Boolean {
@@ -185,7 +185,7 @@ object LyricsTranslationHelper {
     }
 
     fun clearCache() {
-        translationCache.clear()
+        translationCache.evictAll()
     }
 
     fun setCompositionActive(active: Boolean) {
@@ -235,7 +235,7 @@ object LyricsTranslationHelper {
 
         val lyricsText = lyrics.filter { it.text.isNotBlank() }.joinToString("\n") { it.text }
         val cacheKey = getCacheKey(lyricsText, mode, targetLanguage)
-        translationCache[cacheKey] = translatedLines
+        translationCache.put(cacheKey, translatedLines)
         _hasActiveTranslations.value = true
         return true
     }
@@ -287,7 +287,7 @@ object LyricsTranslationHelper {
                 val fullText = nonEmptyEntries.joinToString("\n") { it.second.text }
 
                 val cacheKey = getCacheKey(fullText, mode, targetLanguage)
-                val cachedTranslations = translationCache[cacheKey]
+                val cachedTranslations = translationCache.get(cacheKey)
                 if (cachedTranslations != null && cachedTranslations.size >= nonEmptyEntries.size) {
 
                     nonEmptyEntries.forEachIndexed { idx, (originalIndex, _) ->
@@ -423,7 +423,7 @@ object LyricsTranslationHelper {
                     }
 
                     val cacheKey2 = getCacheKey(fullText, mode, targetLanguage)
-                    translationCache[cacheKey2] = translatedLines
+                    translationCache.put(cacheKey2, translatedLines)
 
                     if (songId.isNotBlank() && database != null) {
                         scope.launch(Dispatchers.IO) {
@@ -543,7 +543,7 @@ object LyricsTranslationHelper {
             _status.value = TranslationStatus.Success
 
             val lyricsText = indexed.joinToString("\n") { it.second.text }
-            translationCache[getCacheKey(lyricsText, mode, languageTag(sourceLanguage, targetLanguage))] = translated
+            translationCache.put(getCacheKey(lyricsText, mode, languageTag(sourceLanguage, targetLanguage)), translated)
 
             if (songId.isNotBlank() && database != null) {
                 try {

@@ -9,8 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.ComposeUIViewController
-import com.mochyy.mochymusic.shared.lyrics.BiniLyricsProvider
-import com.mochyy.mochymusic.shared.lyrics.MegalobizLyricsProvider
+import com.mochyy.mochymusic.shared.lyrics.playerLyricsProviders
 import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.shared.resources.inter_regular
 import com.mochyy.mochymusic.shared.resources.inter_semibold
@@ -29,9 +28,7 @@ fun MainViewController(): UIViewController = ComposeUIViewController {
     val youtube = remember { IosYouTubeClient() }
     val playbackFailed = stringResource(Res.string.playback_failed)
     val player = remember(youtube, playbackFailed) { IosPlayerController(youtube) { playbackFailed } }
-    val providers = remember(youtube) {
-        listOf(BiniLyricsProvider(youtube.http), MegalobizLyricsProvider(youtube.http))
-    }
+    val providers = remember(youtube) { playerLyricsProviders(youtube.http) }
 
     DisposableEffect(player) { onDispose { player.release() } }
     DisposableEffect(youtube) {

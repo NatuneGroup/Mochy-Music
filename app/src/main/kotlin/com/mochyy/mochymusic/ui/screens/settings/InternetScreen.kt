@@ -110,7 +110,6 @@ fun InternetSettingsScreen(navController: NavController) {
         onBack = { navController.navigateUp() },
     ) {
         Column(
-            modifier = Modifier.verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             InternetWarningCard()
@@ -345,8 +344,8 @@ private fun RegionDialog(selected: String, onSelect: (String) -> Unit, onDismiss
     ) {
         Column(
             modifier = Modifier
-                .verticalScroll(rememberScrollState())
-                .height(384.dp),
+                .height(384.dp)
+                .verticalScroll(rememberScrollState()),
         ) {
             (listOf(SYSTEM_DEFAULT) + CountryCodeToName.keys.sorted()).forEach { code ->
                 Row(
