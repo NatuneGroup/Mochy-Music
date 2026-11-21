@@ -48,6 +48,7 @@ fun MainViewController(): UIViewController = ComposeUIViewController {
             player = player,
             lyricsProviders = providers,
             settings = iosPlaybackPreferences,
+            library = iosLibrary,
             modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing),
         )
     }

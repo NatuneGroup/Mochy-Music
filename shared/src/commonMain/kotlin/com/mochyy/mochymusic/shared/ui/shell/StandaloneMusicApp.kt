@@ -3,6 +3,7 @@ package com.mochyy.mochymusic.shared.ui.shell
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -34,12 +35,18 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.emptyPreferences
+import com.mochyy.mochymusic.shared.library.LocalLibrary
 import com.mochyy.mochymusic.shared.lyrics.LyricsProvider
 import com.mochyy.mochymusic.shared.lyrics.PlayerLyrics
 import com.mochyy.mochymusic.shared.lyrics.findPlayerLyrics
+import com.mochyy.mochymusic.shared.lyrics.suspendRunCatching
 import com.mochyy.mochymusic.shared.media.SearchSource
 import com.mochyy.mochymusic.shared.playback.PlayerController
 import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.library_empty
+import com.mochyy.mochymusic.shared.resources.library_remove
+import com.mochyy.mochymusic.shared.resources.library_save
+import com.mochyy.mochymusic.shared.resources.library_update_failed
 import com.mochyy.mochymusic.shared.resources.lyrics
 import com.mochyy.mochymusic.shared.resources.lyrics_missing
 import com.mochyy.mochymusic.shared.resources.now_playing
@@ -49,6 +56,10 @@ import com.mochyy.mochymusic.shared.resources.show_format_badge
 import com.mochyy.mochymusic.shared.resources.show_format_sample_rate
 import com.mochyy.mochymusic.shared.resources.queue
 import com.mochyy.mochymusic.shared.resources.queue_empty
+import com.mochyy.mochymusic.shared.resources.recently_played
+import com.mochyy.mochymusic.shared.resources.recently_played_empty
+import com.mochyy.mochymusic.shared.resources.shell_credit
+import com.mochyy.mochymusic.shared.resources.your_library
 import com.mochyy.mochymusic.shared.resources.remove_from_queue
 import com.mochyy.mochymusic.shared.resources.skip_next
 import com.mochyy.mochymusic.shared.settings.PlaybackPreferenceKeys
@@ -70,6 +81,7 @@ internal fun StandaloneMusicApp(
     player: PlayerController,
     lyricsProviders: List<LyricsProvider>,
     settings: PlaybackPreferences,
+    library: LocalLibrary,
     modifier: Modifier = Modifier,
 ) {
     val playback by player.state.collectAsState()
@@ -81,6 +93,24 @@ internal fun StandaloneMusicApp(
     val showSampleRate = preferences[PlaybackPreferenceKeys.showSampleRate] ?: false
     var settingsFailed by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val saved by library.saved.collectAsState(initial = emptyList())
+    val recent by library.recent.collectAsState(initial = emptyList())
+    var libraryUpdateFailed by remember { mutableStateOf(false) }
+    var lastRecorded by remember { mutableStateOf<String?>(null) }
+
+    fun setSaved(song: SongItem, save: Boolean) {
+        scope.launch {
+            libraryUpdateFailed = suspendRunCatching { library.setSaved(song, save) }.isFailure
+        }
+    }
+
+    val playingSong = playback.song
+    LaunchedEffect(playingSong?.id, playback.isPlaying) {
+        if (playingSong != null && playback.isPlaying && playingSong.id != lastRecorded) {
+            suspendRunCatching { library.recordPlay(playingSong) }
+                .onSuccess { lastRecorded = playingSong.id }
+        }
+    }
 
     fun setPreference(key: Preferences.Key<Boolean>, value: Boolean) {
         scope.launch {
@@ -116,8 +146,8 @@ internal fun StandaloneMusicApp(
             )
         },
     ) { tab ->
-        if (tab == ShellTab.Search) {
-            SearchScreen(
+        when (tab) {
+            ShellTab.Search -> SearchScreen(
                 source = source,
                 onPlay = ::play,
                 onQueue = { song ->
@@ -126,10 +156,23 @@ internal fun StandaloneMusicApp(
                     showPlayer = true
                 },
             )
-            true
-        } else {
-            false
+            ShellTab.Home -> LibrarySongs(
+                title = stringResource(Res.string.recently_played),
+                emptyMessage = stringResource(Res.string.recently_played_empty),
+                songs = recent,
+                onPlay = ::play,
+                credit = stringResource(Res.string.shell_credit),
+            )
+            ShellTab.Library -> LibrarySongs(
+                title = stringResource(Res.string.your_library),
+                emptyMessage = stringResource(Res.string.library_empty),
+                songs = saved,
+                onPlay = ::play,
+                onRemove = { setSaved(it, false) },
+                updateFailed = libraryUpdateFailed,
+            )
         }
+        true
     }
 
     if (showPlayer) {
@@ -141,6 +184,13 @@ internal fun StandaloneMusicApp(
                 playback.song?.let { song ->
                     Text(stringResource(Res.string.now_playing), style = MaterialTheme.typography.labelMedium)
                     Text(song.title, style = MaterialTheme.typography.headlineSmall)
+                    val isSaved = saved.any { it.id == song.id }
+                    TextButton(onClick = { setSaved(song, !isSaved) }) {
+                        Text(stringResource(if (isSaved) Res.string.library_remove else Res.string.library_save))
+                    }
+                    if (libraryUpdateFailed) {
+                        Text(stringResource(Res.string.library_update_failed), color = MaterialTheme.colorScheme.error)
+                    }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(onClick = { panel = PlayerPanel.Queue }, enabled = panel != PlayerPanel.Queue) {
@@ -184,6 +234,51 @@ internal fun StandaloneMusicApp(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun LibrarySongs(
+    title: String,
+    emptyMessage: String,
+    songs: List<SongItem>,
+    onPlay: (SongItem) -> Unit,
+    onRemove: ((SongItem) -> Unit)? = null,
+    credit: String? = null,
+    updateFailed: Boolean = false,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        item {
+            Text(title, style = MaterialTheme.typography.displaySmall, modifier = Modifier.padding(vertical = 24.dp))
+        }
+        if (updateFailed) item {
+            Text(stringResource(Res.string.library_update_failed), color = MaterialTheme.colorScheme.error)
+        }
+        if (songs.isEmpty()) item {
+            Text(emptyMessage, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        items(songs, key = { it.id }) { song ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                SongRow(song, onClick = { onPlay(song) }, modifier = Modifier.weight(1f))
+                if (onRemove != null) {
+                    val label = stringResource(Res.string.library_remove)
+                    IconButton(
+                        onClick = { onRemove(song) },
+                        modifier = Modifier.semantics { contentDescription = label },
+                    ) { Text("−", style = MaterialTheme.typography.headlineSmall) }
+                }
+            }
+        }
+        if (credit != null) item {
+            Text(
+                credit, style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 24.dp),
+            )
         }
     }
 }

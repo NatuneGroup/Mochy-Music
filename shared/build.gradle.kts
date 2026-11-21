@@ -12,6 +12,7 @@ plugins {
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.kotlin.ksp)
 }
 
 // FFmpeg's natives for the machine doing the build: each desktop installer is built on its own OS.
@@ -56,6 +57,7 @@ kotlin {
             api(libs.cmp.ui)
             api(libs.cmp.material3)
             api(libs.datastore)
+            implementation(libs.room.runtime)
             implementation(libs.cmp.components.resources)
             // the YouTube Music models (songs, albums, artists) every platform's screens show
             api(project(":providers:innertube"))
@@ -75,6 +77,7 @@ kotlin {
         }
         getByName("desktopMain").dependencies {
             implementation(compose.desktop.common)
+            implementation(libs.sqlite.bundled)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.json)
@@ -90,6 +93,7 @@ kotlin {
             implementation("org.bytedeco:javacpp:${libs.versions.javacpp.get()}:$ffmpegPlatform")
         }
         iosMain.dependencies {
+            implementation(libs.sqlite.bundled)
             implementation(libs.innertubex)
             implementation(libs.ktor.client.darwin)
             implementation(libs.ktor.client.content.negotiation)
@@ -97,6 +101,13 @@ kotlin {
             implementation(libs.coil.network.ktor)
         }
     }
+}
+
+dependencies {
+    add("kspAndroid", libs.room.compiler)
+    add("kspDesktop", libs.room.compiler)
+    add("kspIosArm64", libs.room.compiler)
+    add("kspIosSimulatorArm64", libs.room.compiler)
 }
 
 val prepareIosFonts = tasks.register<Sync>("prepareIosFonts") {
