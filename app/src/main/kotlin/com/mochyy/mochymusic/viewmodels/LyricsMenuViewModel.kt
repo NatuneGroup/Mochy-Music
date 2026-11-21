@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
@@ -123,8 +124,8 @@ constructor(
      * say which ones have lyrics before the user taps one. Results are kept for the song, so a
      * pick applies the lyrics already fetched instead of searching again.
      */
-    fun checkSources(mediaMetadata: MediaMetadata) {
-        if (sourcesFor == mediaMetadata.id && _sources.value.isNotEmpty()) return
+    fun checkSources(mediaMetadata: MediaMetadata, refresh: Boolean = false) {
+        if (!refresh && sourcesFor == mediaMetadata.id && _sources.value.isNotEmpty()) return
         sourcesJob?.cancel()
         sourcesFor = mediaMetadata.id
         _sources.value = LyricsProviderRegistry.providerNames.associateWith { SourceState.Checking }
@@ -144,7 +145,9 @@ constructor(
                             ?.let { SourceState.Available(it) }
                             ?: SourceState.Unavailable
                     }
-                    _sources.update { it + (provider.name to state) }
+                    withContext(Dispatchers.Main.immediate) {
+                        _sources.update { it + (provider.name to state) }
+                    }
                 }
             }
         }
