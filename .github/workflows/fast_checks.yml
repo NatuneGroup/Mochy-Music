@@ -1,0 +1,58 @@
+name: Fast checks
+
+# Per-PR checks that stay small: compile the app's Kotlin for one ABI/flavour and
+# run JVM unit tests of the shared and provider modules. The full assemble + lint
+# runs on pushes to dev (Build PR workflow) instead of on every pull request.
+on:
+  pull_request:
+    branches: [dev]
+  workflow_dispatch:
+
+concurrency:
+  group: fast-checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_TOOL_OPTIONS: -Djava.net.preferIPv4Stack=true
+
+jobs:
+  compile:
+    name: Compile app Kotlin (arm64 FOSS debug)
+    runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || 'blacksmith-8vcpu-ubuntu-2404' }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v5
+        with:
+          java-version: 21
+          distribution: temurin
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+      - run: chmod +x gradlew
+      - name: Compile
+        run: ./gradlew --console=plain :app:compileArm64FossDebugKotlin --warning-mode summary
+
+  unit-tests:
+    name: Shared and provider unit tests
+    runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || 'blacksmith-8vcpu-ubuntu-2404' }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v5
+        with:
+          java-version: 21
+          distribution: temurin
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+      - run: chmod +x gradlew
+      - name: Run module tests
+        # Multiplatform modules run their JVM tests; Android library modules run debug unit tests.
+        # A module added later joins automatically through scripts/fast_check_tasks.py.
+        run: |
+          tasks=$(python3 scripts/fast_check_tasks.py)
+          echo "Tasks: $tasks"
+          ./gradlew --console=plain --continue $tasks
