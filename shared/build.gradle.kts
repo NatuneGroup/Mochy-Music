@@ -14,6 +14,18 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// FFmpeg's natives for the machine doing the build: each desktop installer is built on its own OS.
+val ffmpegPlatform: String = run {
+    val os = System.getProperty("os.name").lowercase()
+    val arm = System.getProperty("os.arch").lowercase().let { it == "aarch64" || it == "arm64" }
+    when {
+        os.contains("mac") -> if (arm) "macosx-arm64" else "macosx-x86_64"
+        os.contains("win") -> "windows-x86_64"
+        else -> if (arm) "linux-arm64" else "linux-x86_64"
+    }
+}
+val ffmpegDesktop: String = libs.versions.ffmpegDesktop.get()
+
 kotlin {
     jvmToolchain(21)
 
@@ -44,6 +56,9 @@ kotlin {
             api(libs.cmp.ui)
             api(libs.cmp.material3)
             implementation(libs.cmp.components.resources)
+            // the YouTube Music models (songs, albums, artists) every platform's screens show
+            api(project(":providers:innertube"))
+            implementation(libs.coil)
             implementation(libs.kotlinx.coroutines.core)
             // Providers take an injected HttpClient; each platform picks the engine, timeouts and proxy.
             implementation(libs.ktor.client.core)
@@ -60,7 +75,18 @@ kotlin {
         getByName("desktopMain").dependencies {
             implementation(compose.desktop.common)
             implementation(libs.ktor.client.okhttp)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.json)
             implementation(libs.kotlinx.coroutines.swing)
+            implementation(libs.coil.network.okhttp)
+            // stream resolution, the same library the Android app asks first
+            implementation(libs.innertubex.desktop)
+            // decoding: JavaCV's FFmpeg grabber without the rest of JavaCV's camera and vision stack
+            implementation(libs.javacv) { isTransitive = false }
+            implementation(libs.javacpp)
+            implementation("org.bytedeco:ffmpeg:$ffmpegDesktop")
+            implementation("org.bytedeco:ffmpeg:$ffmpegDesktop:$ffmpegPlatform")
+            implementation("org.bytedeco:javacpp:${libs.versions.javacpp.get()}:$ffmpegPlatform")
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
