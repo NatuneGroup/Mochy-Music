@@ -2,6 +2,7 @@ package com.mochyy.mochymusic.shared.ui.shell
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Row
@@ -13,8 +14,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Switch
@@ -24,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -49,6 +54,10 @@ import com.mochyy.mochymusic.shared.resources.library_save
 import com.mochyy.mochymusic.shared.resources.library_update_failed
 import com.mochyy.mochymusic.shared.resources.lyrics
 import com.mochyy.mochymusic.shared.resources.lyrics_missing
+import com.mochyy.mochymusic.shared.resources.lyrics_refresh
+import com.mochyy.mochymusic.shared.resources.lyrics_refresh_failed
+import com.mochyy.mochymusic.shared.resources.lyrics_source
+import com.mochyy.mochymusic.shared.resources.lyrics_source_auto
 import com.mochyy.mochymusic.shared.resources.now_playing
 import com.mochyy.mochymusic.shared.resources.now_playing_settings
 import com.mochyy.mochymusic.shared.resources.settings_write_failed
@@ -310,16 +319,58 @@ private fun LyricsPanel(
 ) {
     var lyrics by remember(song.id) { mutableStateOf<PlayerLyrics?>(null) }
     var loading by remember(song.id) { mutableStateOf(true) }
-    LaunchedEffect(song.id, providers) {
-        lyrics = findPlayerLyrics(song, providers)
+    var failed by remember(song.id) { mutableStateOf(false) }
+    var selectedProvider by remember(song.id) { mutableStateOf<LyricsProvider?>(null) }
+    var refresh by remember(song.id) { mutableIntStateOf(0) }
+    var menuOpen by remember(song.id) { mutableStateOf(false) }
+    LaunchedEffect(song.id, providers, selectedProvider, refresh) {
+        loading = true
+        failed = false
+        val result = findPlayerLyrics(song, selectedProvider?.let { listOf(it) } ?: providers)
+        if (result != null) lyrics = result
+        failed = result == null
         loading = false
     }
     val document = lyrics
-    if (loading) {
-        CircularProgressIndicator(Modifier.padding(16.dp))
-    } else if (document == null) {
-        Text(stringResource(Res.string.lyrics_missing))
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box {
+            TextButton(onClick = { menuOpen = true }) {
+                Text(stringResource(Res.string.lyrics_source))
+            }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(Res.string.lyrics_source_auto)) },
+                    onClick = {
+                        selectedProvider = null
+                        menuOpen = false
+                    },
+                )
+                providers.forEach { provider ->
+                    DropdownMenuItem(
+                        text = { Text(provider.name) },
+                        onClick = {
+                            selectedProvider = provider
+                            menuOpen = false
+                        },
+                    )
+                }
+                DropdownMenuItem(
+                    text = { Text(stringResource(Res.string.lyrics_refresh)) },
+                    onClick = {
+                        refresh++
+                        menuOpen = false
+                    },
+                )
+            }
+        }
+        if (document != null) Text(document.provider, style = MaterialTheme.typography.labelMedium)
+    }
+    if (document == null) {
+        if (loading) CircularProgressIndicator(Modifier.padding(16.dp))
+        else Text(stringResource(Res.string.lyrics_missing))
     } else {
+        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+        if (failed) Text(stringResource(Res.string.lyrics_refresh_failed), color = MaterialTheme.colorScheme.error)
         val list = rememberLazyListState()
         val active = if (document.synced) document.lines.indexOfLast { it.time <= positionMs } else -1
         LaunchedEffect(active, document) {
