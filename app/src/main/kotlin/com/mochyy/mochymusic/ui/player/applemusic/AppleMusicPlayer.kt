@@ -67,6 +67,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.mochyy.mochymusic.LocalPlayerConnection
 import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.player.menu.LyricsOverflowButton
 import com.mochyy.mochymusic.ui.player.styles.LocalStyleInteractive
 import com.mochyy.mochymusic.ui.player.styles.StyleActions
 import com.mochyy.mochymusic.ui.player.styles.StyleFrame
@@ -255,7 +256,14 @@ fun AppleMusicPlayerStyle(actions: StyleActions, modifier: Modifier, preview: Bo
                         size = 28.dp,
                     ) { connection?.toggleLike() }
                     Spacer(Modifier.width(12.dp))
-                    AppleIconButton(R.drawable.more_horiz, size = 28.dp) { actions.onOtherMenu() }
+                    if (lyricsOpen) {
+                        LyricsOverflowButton(
+                            songId = trackInfo?.mediaId?.takeIf(String::isNotBlank),
+                            enabled = !preview,
+                        )
+                    } else {
+                        AppleIconButton(R.drawable.more_horiz, size = 28.dp) { actions.onOtherMenu() }
+                    }
                 }
 
                 Spacer(Modifier.weight(1f))
