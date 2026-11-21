@@ -33,6 +33,7 @@ import com.mochyy.mochymusic.constants.LyricsMotionStyleKey
 import com.mochyy.mochymusic.constants.LyricsRomanizeAsMainKey
 import com.mochyy.mochymusic.constants.PlayVideoBackgroundKey
 import com.mochyy.mochymusic.constants.ShowFormatBadgeKey
+import com.mochyy.mochymusic.constants.ShowFormatBitDepthKey
 import com.mochyy.mochymusic.constants.ShowFormatSampleRateKey
 import com.mochyy.mochymusic.constants.SpotifyCanvasKey
 import com.mochyy.mochymusic.constants.StudioForVideosKey
@@ -84,6 +85,7 @@ fun NowPlayingSettingsScreen(navController: NavController) {
 private fun badgeItems(): List<SettingsItem> {
     val (formatBadge, onFormatBadgeChange) = rememberPreference(ShowFormatBadgeKey, defaultValue = true)
     val (formatSampleRate, onFormatSampleRateChange) = rememberPreference(ShowFormatSampleRateKey, defaultValue = false)
+    val (formatBitDepth, onFormatBitDepthChange) = rememberPreference(ShowFormatBitDepthKey, defaultValue = false)
     return listOf(
         switchItem(
             key = "Audio format badge",
@@ -100,6 +102,15 @@ private fun badgeItems(): List<SettingsItem> {
             icon = painterResource(R.drawable.speed),
             checked = formatSampleRate,
             onCheckedChange = onFormatSampleRateChange,
+            subOptionOf = formatBadge,
+        ),
+        switchItem(
+            key = "Show bit depth",
+            title = stringResource(R.string.appearance_bit_depth),
+            description = stringResource(R.string.appearance_bit_depth_desc),
+            icon = painterResource(R.drawable.graphic_eq),
+            checked = formatBitDepth,
+            onCheckedChange = onFormatBitDepthChange,
             subOptionOf = formatBadge,
         ),
     )

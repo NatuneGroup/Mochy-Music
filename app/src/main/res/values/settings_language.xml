@@ -21,6 +21,8 @@
     <string name="appearance_format_badge_desc">What the song is playing as, beside its title</string>
     <string name="appearance_sample_rate">Show sample rate</string>
     <string name="appearance_sample_rate_desc">The stream\'s sample rate after its format</string>
+    <string name="appearance_bit_depth">Show bit depth</string>
+    <string name="appearance_bit_depth_desc">The bit depth of a lossless stream, such as 24-bit, after its format</string>
     <string name="appearance_youtube_background">Always enable Youtube background</string>
     <string name="appearance_youtube_background_desc">Stream video background on player when available</string>
     <string name="appearance_timestamp_matching">Timestamp matching</string>

@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mochyy.mochymusic.playback.StreamFacts
+import com.mochyy.mochymusic.ui.player.info.LosslessCodecs
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
 
 /**
@@ -59,11 +60,21 @@ fun StreamFormatBadge(
     }
 }
 
-/** The badge's words for [facts]: nothing until the codec is known */
-fun streamBadgeText(facts: StreamFacts?, showSampleRate: Boolean): String? {
+/**
+ * The badge's words for [facts]: nothing until the codec is known. "FLAC · 24-bit · 96,0 KHz" with
+ * the bit depth and sample rate switched on; the bit depth only ever names a lossless codec.
+ */
+fun streamBadgeText(facts: StreamFacts?, showSampleRate: Boolean, showBitDepth: Boolean = false): String? {
     val codec = facts?.codec ?: return null
-    val rate = facts.sampleRate?.takeIf { showSampleRate && it > 0 } ?: return codec
+    val bits = facts.bitDepth?.takeIf { showBitDepth && it > 0 && codec in LosslessCodecs }
+    val rate = facts.sampleRate?.takeIf { showSampleRate && it > 0 }
+    if (bits == null && rate == null) return codec
+    val parts = mutableListOf(codec)
+    bits?.let { parts += "$it-bit" }
     // written as the design writes it, "44,1 KHz", whatever the phone's language
-    val tenths = (rate + 50) / 100
-    return "$codec · ${tenths / 10},${tenths % 10} KHz"
+    rate?.let {
+        val tenths = (it + 50) / 100
+        parts += "${tenths / 10},${tenths % 10} KHz"
+    }
+    return parts.joinToString(" · ")
 }
