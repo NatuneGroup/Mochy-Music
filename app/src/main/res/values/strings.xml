@@ -333,7 +333,6 @@
     <string name="content_language">Default content language</string>
     <string name="content_country">Default content country</string>
     <string name="system_default">System default</string>
-    <string name="enable_proxy">Enable proxy</string>
     <string name="proxy_type">Proxy type</string>
     <string name="proxy_url">Proxy URL</string>
     <string name="restart_to_take_effect">Restart to take effect</string>
@@ -451,4 +450,53 @@
     <string name="eight_d_preset_chill">Chill</string>
     <string name="eight_d_preset_balanced">Balanced</string>
     <string name="eight_d_preset_extreme">Extreme</string>
+
+    <!-- namida player style -->
+    <string name="namida_jump_current">Jump to what\'s playing</string>
+
+    <!-- Internet settings page, ported from the screenshots' design -->
+    <string name="internet">Internet</string>
+    <string name="internet_warning_title">Security &amp; Usage Warning</string>
+    <string name="internet_warning_doh">DNS over HTTPS only works if your country blocks YouTube. If YouTube actively blocks your region, consider using a Proxy or VPN.</string>
+    <string name="internet_warning_proxy">Please only use Proxies that you are sure are safe. Free Proxies are convenient but not always safe, so be careful. You have been warned, and we are not responsible for your security.</string>
+    <string name="youtube_music_region">YouTube Music region</string>
+    <string name="youtube_music_region_desc">Spoof your country for the home feed, search and radio. Also bypasses geo-blocks.</string>
+    <string name="youtube_music_region_restarting">Applying new region… restarting app</string>
+    <string name="on_wifi">On Wi-Fi</string>
+    <string name="on_mobile_data">On mobile data</string>
+    <string name="in_use">In use</string>
+    <string name="dns_over_https">DNS over HTTPS</string>
+    <string name="dns_over_https_desc">Use DNS over HTTPS (DoH) to resolve hostnames</string>
+    <string name="dns_provider">DNS Provider</string>
+    <string name="dns_custom_url">Custom DNS DoH URL</string>
+    <string name="enable_proxy">Enable proxy</string>
+    <string name="proxy_settings">Proxy settings</string>
+    <string name="proxy_settings_desc">Address, type and sign-in for the proxy</string>
+    <string name="audio_quality_lossless">Lossless</string>
+    <string name="audio_quality_hi_res">Hi-Res Lossless</string>
+    <string name="audio_quality_dolby">Dolby Atmos</string>
+
+    <!-- ListenBrainz and scrobbling timing, from the Integrations page -->
+    <string name="integration_listenbrainz_desc">Scrobble your listens with a user token</string>
+    <string name="listenbrainz_connected">ListenBrainz token</string>
+    <string name="listenbrainz_connected_desc">A token is set; listens are scrobbled while the switch is on</string>
+    <string name="listenbrainz_enter_token">Enter a token to enable</string>
+    <string name="listenbrainz_enter_token_desc">Paste your ListenBrainz user token to scrobble</string>
+    <string name="listenbrainz_token_title">ListenBrainz token</string>
+    <string name="listenbrainz_token_placeholder">User token</string>
+    <string name="scrobble_listening_desc">Every song that counts is scrobbled</string>
+    <string name="scrobble_paused_desc">Scrobbling paused; the account is kept</string>
+    <string name="scrobble_primary_artist_only">Only scrobble primary artist</string>
+    <string name="scrobble_primary_artist_only_subtitle">Use the first artist when a track credits multiple artists</string>
+    <string name="scrobble_timing">Scrobble timing</string>
+    <string name="scrobble_min_duration">Minimum song duration</string>
+    <string name="scrobble_min_duration_subtitle">Shorter songs will not scrobble</string>
+    <string name="scrobble_delay">Scrobble delay</string>
+    <string name="scrobble_delay_subtitle">How far into a song to scrobble it</string>
+    <string name="scrobble_max_delay">Maximum delay</string>
+    <string name="scrobble_max_delay_subtitle">Maximum scrobble delay in seconds</string>
+    <string name="scrobble_seconds_value">%1$d s</string>
+    <string name="work_out_genres">Work out genres</string>
+    <string name="work_out_genres_on_desc">Asks Last.fm for an artist\'s genres. Only the artist name is sent.</string>
+    <string name="work_out_genres_off_desc">The stats genre chart keeps to iTunes\' own answers while this is off</string>
 </resources>

@@ -94,3 +94,57 @@ internal fun IntegrationRow(
         }
     }
 }
+
+/** one row with a switch instead of a page: the integrations list's own toggle rows */
+@Composable
+internal fun IntegrationSwitchRow(
+    name: String,
+    description: String,
+    @DrawableRes icon: Int,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 64.dp)
+            .clip(CardShape)
+            .background(CardColor)
+            .clickable { onCheckedChange(!checked) }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Image(
+            painter = painterResource(icon),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(34.dp)
+                .clip(IconShape),
+        )
+        Column(
+            Modifier
+                .padding(start = 12.dp)
+                .weight(1f),
+        ) {
+            Text(
+                text = name,
+                color = Color.White,
+                fontSize = 15.sp,
+                lineHeight = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = description,
+                color = Color.White.copy(alpha = 0.55f),
+                fontSize = 11.sp,
+                lineHeight = 14.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        com.mochyy.mochymusic.ui.component.AppSwitch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}

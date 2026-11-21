@@ -94,3 +94,6 @@ app/persistent-debug.keystore
 output-metadata.json
 vcs.xml
 lint/
+
+# the release signing key, decoded from CI secrets; never committed
+app/keystore/

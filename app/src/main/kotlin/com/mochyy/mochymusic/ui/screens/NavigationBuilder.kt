@@ -432,6 +432,9 @@ fun NavGraphBuilder.navigationBuilder(
         com.mochyy.mochymusic.ui.screens.settings.integrations.spotify.SpotifyScreen(navController = navController)
     }
 
+    composable(com.mochyy.mochymusic.ui.screens.settings.integrations.ListenBrainzRoute) {
+        com.mochyy.mochymusic.ui.screens.settings.integrations.ListenBrainzScreen(navController = navController)
+    }
     composable(com.mochyy.mochymusic.ui.screens.settings.integrations.discord.DiscordRoute) {
         com.mochyy.mochymusic.ui.screens.settings.integrations.discord.DiscordScreen(navController = navController)
     }
@@ -450,6 +453,9 @@ fun NavGraphBuilder.navigationBuilder(
         com.mochyy.mochymusic.ui.screens.settings.integrations.ScrobbleServiceScreen(navController = navController, site = site)
     }
 
+    composable(com.mochyy.mochymusic.ui.screens.settings.InternetSettingsRoute) {
+        com.mochyy.mochymusic.ui.screens.settings.InternetSettingsScreen(navController = navController)
+    }
     composable(com.mochyy.mochymusic.ui.screens.settings.ProxySettingsRoute) {
         com.mochyy.mochymusic.ui.screens.settings.ProxySettingsScreen(navController = navController)
     }

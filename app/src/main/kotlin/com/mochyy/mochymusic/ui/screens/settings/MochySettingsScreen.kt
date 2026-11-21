@@ -181,6 +181,10 @@ private val SettingsIndex = listOf(
     SettingsEntry("Disable description on settings", "App behaviour", "general_settings", "hide subtitle text rows titles only"),
     SettingsEntry("Offline mode", "App behaviour", "general_settings", "play downloaded cache offline"),
     SettingsEntry("Data saver", "App behaviour", "general_settings", "data saver mobile metered cellular bandwidth lower quality canvas video"),
+    SettingsEntry("Internet", "App behaviour", com.mochyy.mochymusic.ui.screens.settings.InternetSettingsRoute, "internet region country dns doh proxy wifi cellular quality blocked spoof"),
+    SettingsEntry("YouTube Music region", "App behaviour", com.mochyy.mochymusic.ui.screens.settings.InternetSettingsRoute, "region country geo block spoof youtube music"),
+    SettingsEntry("DNS over HTTPS", "App behaviour", com.mochyy.mochymusic.ui.screens.settings.InternetSettingsRoute, "dns doh https cloudflare google adguard quad9 resolver"),
+    SettingsEntry("Audio quality on Wi-Fi", "App behaviour", com.mochyy.mochymusic.ui.screens.settings.InternetSettingsRoute, "quality wifi ceiling stream mobile data cellular"),
     SettingsEntry("Proxy", "App behaviour", ProxySettingsRoute, "proxy socks http server vpn network region country blocked bot sign in"),
     SettingsEntry("Albums from liked songs", "App behaviour", "general_settings", "albums library liked songs old way apple music"),
     SettingsEntry("Local song auto metadata", "App behaviour", "general_settings", "match tags id3 covers lyrics"),
@@ -506,6 +510,13 @@ fun MochySettingsScreen(navController: NavController, pane: SettingsPane? = null
                             iconRes = R.drawable.storage,
                             selected = selected == "storage_settings",
                             onClick = { open("storage_settings") }
+                        )
+
+                        CategoryBubble(
+                            title = stringResource(R.string.internet),
+                            iconRes = R.drawable.language,
+                            selected = selected == com.mochyy.mochymusic.ui.screens.settings.InternetSettingsRoute,
+                            onClick = { open(com.mochyy.mochymusic.ui.screens.settings.InternetSettingsRoute) }
                         )
 
                         CategoryBubble(

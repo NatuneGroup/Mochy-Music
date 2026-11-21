@@ -10,6 +10,7 @@ import com.mochyy.mochymusic.constants.DiscordAccessTokenKey
 import com.mochyy.mochymusic.constants.DiscordRefreshTokenKey
 import com.mochyy.mochymusic.constants.InnerTubeCookieKey
 import com.mochyy.mochymusic.constants.LastFMSessionKey
+import com.mochyy.mochymusic.constants.ListenBrainzTokenKey
 import com.mochyy.mochymusic.constants.LibreFmSessionKey
 import com.mochyy.mochymusic.constants.MonochromePlaybackApiTokenKey
 import com.mochyy.mochymusic.constants.OpenRouterApiKey
@@ -45,6 +46,7 @@ class SecretPreferences(private val raw: DataStore<Preferences>) : DataStore<Pre
             DiscordAccessTokenKey,
             DiscordRefreshTokenKey,
             LastFMSessionKey,
+            ListenBrainzTokenKey,
             LibreFmSessionKey,
             OpenRouterApiKey,
             DeeplApiKey,

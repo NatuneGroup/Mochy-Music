@@ -470,6 +470,7 @@ dependencies {
 
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.okhttp)
+    implementation(libs.okhttp.dnsoverhttps)
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.serialization.json)
     // finds song streams first, with mochy's own client walk as the backup (YTPlayerUtils)

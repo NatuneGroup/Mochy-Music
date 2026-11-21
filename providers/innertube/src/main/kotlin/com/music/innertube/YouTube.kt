@@ -73,6 +73,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import java.net.Proxy
+import okhttp3.Dns
 import kotlin.random.Random
 
 object YouTube {
@@ -102,6 +103,13 @@ object YouTube {
         get() = innerTube.proxy
         set(value) {
             innerTube.proxy = value
+        }
+
+    /** where hostnames resolve before the ip version filter; the app's DoH choice rides this */
+    var dns: Dns
+        get() = innerTube.dns
+        set(value) {
+            innerTube.dns = value
         }
 
     var proxyAuth: String?

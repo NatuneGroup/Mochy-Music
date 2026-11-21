@@ -3,8 +3,10 @@
 package com.mochyy.mochymusic.utils
 
 import android.content.Context
+import com.mochyy.mochymusic.constants.WorkOutGenresKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,9 +33,12 @@ object ArtistGenres {
 
     suspend fun load(context: Context): Map<String, String> = withContext(Dispatchers.IO) { mutex.withLock { loaded(context) } }
 
-    // asks itunes about the artists it doesn't know yet, in the order given, and returns everything known after
+    // asks the work-out-genres source about the artists it doesn't know yet, in the order given,
+    // and returns everything known after: Last.fm's own tags while the Integrations page's switch
+    // is on, iTunes' genre otherwise, Last.fm's answer kept when both could say
     suspend fun lookUp(context: Context, artistNames: List<String>): Map<String, String> = withContext(Dispatchers.IO) {
         mutex.withLock {
+            val workOutGenres = context.dataStore.data.first()[WorkOutGenresKey] != false
             val known = HashMap(loaded(context))
             var asked = 0
             for (name in artistNames) {
@@ -42,7 +47,12 @@ object ArtistGenres {
                 if (asked >= MaxLookupsPerCall) break
                 if (asked > 0) delay(220)
                 asked++
-                known[key] = ListeningGenres.itunesGenre(name) ?: continue
+                val genre = if (workOutGenres) {
+                    ListeningGenres.lastFmGenre(name) ?: ListeningGenres.itunesGenre(name)
+                } else {
+                    ListeningGenres.itunesGenre(name)
+                }
+                known[key] = genre ?: continue
             }
             if (known.size != cache.value?.size) {
                 writeFile(context, known)

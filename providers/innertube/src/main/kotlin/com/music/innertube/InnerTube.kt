@@ -57,6 +57,13 @@ class InnerTube {
             httpClient = createClient()
         }
 
+    /**
+     * Where hostnames are resolved before the ip version filter: the system resolver unless the
+     * app hands over its own (its DNS over HTTPS choice). Read at lookup time, so the app's
+     * holder may swap underneath without rebuilding this client.
+     */
+    var dns: Dns = Dns.SYSTEM
+
     var proxyAuth: String? = null
 
     var ipVersion: IpVersion = IpVersion.AUTO
@@ -117,7 +124,7 @@ class InnerTube {
 
                 dns(object : Dns {
                     override fun lookup(hostname: String): List<InetAddress> {
-                        val addresses = Dns.SYSTEM.lookup(hostname)
+                        val addresses = this@InnerTube.dns.lookup(hostname)
                         return when (this@InnerTube.ipVersion) {
                             IpVersion.IPV4 -> addresses.filter { it is Inet4Address }.ifEmpty { addresses }
                             IpVersion.IPV6 -> addresses.filter { it is Inet6Address }.ifEmpty { addresses }

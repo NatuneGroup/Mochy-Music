@@ -7,12 +7,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.WorkOutGenresKey
+import com.mochyy.mochymusic.utils.rememberPreference
 import com.mochyy.mochymusic.scrobble.ScrobbleSite
 import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
 import com.mochyy.mochymusic.ui.screens.settings.importsync.YouTubeSyncRoute
@@ -51,6 +55,24 @@ fun IntegrationsScreen(navController: NavController) {
                 description = stringResource(R.string.integration_scrobbling_desc, ScrobbleSite.LIBREFM.label),
                 icon = R.drawable.integration_librefm,
                 onClick = { navController.navigate(scrobbleServiceRoute(ScrobbleSite.LIBREFM)) },
+            )
+            IntegrationRow(
+                name = "ListenBrainz",
+                description = stringResource(R.string.integration_listenbrainz_desc),
+                icon = R.drawable.integration_librefm,
+                onClick = { navController.navigate(ListenBrainzRoute) },
+            )
+            // the genres the stats page shows are asked of Last.fm, artist names only; the
+            // switch travels with the scrobbling services that share its account
+            var workOutGenres by rememberPreference(WorkOutGenresKey, defaultValue = true)
+            IntegrationSwitchRow(
+                name = stringResource(R.string.work_out_genres),
+                description = stringResource(
+                    if (workOutGenres) R.string.work_out_genres_on_desc else R.string.work_out_genres_off_desc,
+                ),
+                icon = R.drawable.music_note,
+                checked = workOutGenres,
+                onCheckedChange = { workOutGenres = it },
             )
             IntegrationRow(
                 name = stringResource(R.string.module_youtube_name),

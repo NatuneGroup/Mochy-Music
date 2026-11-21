@@ -208,7 +208,11 @@ class App : Application(), SingletonImageLoader.Factory {
             KuGou.useTraditionalChinese = true
         }
 
-        // before anything asks youtube, so the first requests already go through the proxy
+        // before anything asks youtube, so the first requests already go through the proxy and
+        // resolve through the Internet page's DoH choice
+        com.mochyy.mochymusic.utils.AppDns.configure(settings)
+        YouTube.dns = okhttp3.Dns { host -> com.mochyy.mochymusic.utils.AppDns.current.lookup(host) }
+        com.mochyy.mochymusic.utils.NetMetered.start(this)
         AppProxy.apply(AppProxy.configFrom(settings))
 
         YouTube.useLoginForBrowse = settings[UseLoginForBrowse] ?: true
@@ -275,6 +279,15 @@ class App : Application(), SingletonImageLoader.Factory {
                         Timber.e(e, "Could not parse cookie. Clearing existing cookie.")
                         forgetAccount(this@App)
                     }
+                }
+        }
+
+        applicationScope.launch(Dispatchers.IO) {
+            dataStore.data
+                .map { Triple(it[DnsOverHttpsEnabledKey] == true, it[DnsOverHttpsProviderKey], it[DnsOverHttpsCustomUrlKey]) }
+                .distinctUntilChanged()
+                .collect { (enabled, provider, customUrl) ->
+                    com.mochyy.mochymusic.utils.AppDns.update(enabled, provider, customUrl)
                 }
         }
 

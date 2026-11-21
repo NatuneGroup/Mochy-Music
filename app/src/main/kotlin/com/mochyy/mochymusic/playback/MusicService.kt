@@ -907,7 +907,8 @@ class MusicService :
 
         audioManager.registerAudioDeviceCallback(audioDeviceCallback, null)
 
-        audioQuality = dataStore.get(AudioQualityKey).toEnum(com.mochyy.mochymusic.constants.AudioQuality.AUTO)
+        com.mochyy.mochymusic.utils.NetMetered.start(this)
+        audioQuality = com.mochyy.mochymusic.utils.NetMetered.effectiveAudioQuality(com.mochyy.mochymusic.utils.PreferencesCache.current(dataStore))
         ipVersion = dataStore.get(IpVersionKey).toEnum(IpVersion.AUTO)
         // a saved volume of (next to) nothing is almost always left over from the old saving bug
         // (the live volume saved while muted or mid-fade, and copied back into this setting): it
@@ -961,10 +962,10 @@ class MusicService :
 
         var isFirstQualityEmit = true
         scope.launch {
-            dataStore.data
-                .map { it[AudioQualityKey]?.let { value ->
-                    com.mochyy.mochymusic.constants.AudioQuality.entries.find { it.name == value }
-                } ?: com.mochyy.mochymusic.constants.AudioQuality.AUTO }
+            combine(
+                dataStore.data,
+                com.mochyy.mochymusic.utils.NetMetered.metered,
+            ) { prefs, _ -> com.mochyy.mochymusic.utils.NetMetered.effectiveAudioQuality(prefs) }
                 .distinctUntilChanged()
                 .collect { newQuality ->
                     val oldQuality = audioQuality
@@ -3082,11 +3083,23 @@ class MusicService :
         setupLoudnessEnhancer()
         updateEightDReverb(audioLab.eightD.value)
 
+        // ListenBrainz hears the change first: whether the last song ran to its end is the
+        // transition's own reason, gone once the timer below moves on
+        com.mochyy.mochymusic.scrobble.ListenBrainz.onSongChanged(
+            this,
+            ended = reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT,
+        )
         scrobbleTimer.onSongStop()
         playReporter.onSongStop()
         if (player.playWhenReady && player.playbackState == Player.STATE_READY) {
             scrobbleTimer.onSongStart(player.currentMetadata, player.duration)
             playReporter.onSongStart(player.currentMetadata, player.duration)
+            com.mochyy.mochymusic.scrobble.ListenBrainz.onSongStart(
+                this,
+                player.currentMetadata,
+                player.duration,
+                playing = true,
+            )
         }
 
         if (castConnectionHandler?.isCasting?.value == true &&
@@ -3150,6 +3163,9 @@ class MusicService :
         }
 
         if (playbackState == Player.STATE_IDLE || playbackState == Player.STATE_ENDED) {
+            if (playbackState == Player.STATE_ENDED) {
+                com.mochyy.mochymusic.scrobble.ListenBrainz.onPlaybackEnded(this)
+            }
             scrobbleTimer.onSongStop()
             playReporter.onSongStop()
         }
@@ -3223,6 +3239,12 @@ class MusicService :
 
         if (events.containsAny(Player.EVENT_IS_PLAYING_CHANGED, Player.EVENT_PLAYBACK_STATE_CHANGED)) {
             scrobbleTimer.onPlayingChanged(player.isPlaying, player.currentMetadata, player.duration)
+        com.mochyy.mochymusic.scrobble.ListenBrainz.onPlayingChanged(
+            this,
+            player.currentMetadata,
+            player.duration,
+            player.isPlaying,
+        )
             playReporter.onPlayingChanged(player.isPlaying, player.currentMetadata, player.duration)
             // a pause is often the last thing before the app is closed, and the timed saves only
             // run every 30 seconds while paused: save the exact place now so it comes back there
@@ -4556,6 +4578,8 @@ class MusicService :
         discordPresence.update(null)
         // sends the last stretch of the song that was playing while the player can still say where it stopped
         playReporter.onSongStop()
+        // the same for ListenBrainz, on its own scope: this one is about to be cancelled
+        com.mochyy.mochymusic.scrobble.ListenBrainz.onServiceDestroyed(this)
         connectivityObserver.unregister()
         callWatcher.stop()
         abandonAudioFocus()

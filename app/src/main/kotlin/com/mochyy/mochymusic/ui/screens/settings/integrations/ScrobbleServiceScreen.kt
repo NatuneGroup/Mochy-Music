@@ -23,6 +23,10 @@ import androidx.navigation.NavController
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.LastFMUseNowPlaying
 import com.mochyy.mochymusic.constants.LastFMUseSendLikes
+import com.mochyy.mochymusic.constants.ScrobbleDelayPercentKey
+import com.mochyy.mochymusic.constants.ScrobbleDelaySecondsKey
+import com.mochyy.mochymusic.constants.ScrobbleMinSongDurationKey
+import com.mochyy.mochymusic.scrobble.ScrobbleTimer
 import com.mochyy.mochymusic.scrobble.ScrobbleSite
 import com.mochyy.mochymusic.ui.component.AppSwitch
 import com.mochyy.mochymusic.ui.component.LocalZoomOutOverlayState
@@ -51,6 +55,9 @@ fun ScrobbleServiceScreen(
     val sendResult by viewModel.sendResult.collectAsState()
     val (nowPlaying, onNowPlayingChange) = rememberPreference(LastFMUseNowPlaying, defaultValue = true)
     val (sendLikes, onSendLikesChange) = rememberPreference(LastFMUseSendLikes, defaultValue = false)
+    val (minDuration, onMinDurationChange) = rememberPreference(ScrobbleMinSongDurationKey, defaultValue = ScrobbleTimer.DEFAULT_MIN_SONG_SECONDS)
+    val (delayPercent, onDelayPercentChange) = rememberPreference(ScrobbleDelayPercentKey, defaultValue = ScrobbleTimer.DEFAULT_PLAYED_FRACTION)
+    val (delaySeconds, onDelaySecondsChange) = rememberPreference(ScrobbleDelaySecondsKey, defaultValue = ScrobbleTimer.DEFAULT_MAX_WAIT_SECONDS)
 
     LaunchedEffect(sendResult) {
         sendResult?.let {
@@ -125,6 +132,17 @@ fun ScrobbleServiceScreen(
                     )
                 } else null,
             ),
+        )
+
+        // the rule a play must meet before it counts, Last.fm's own; ListenBrainz needs no
+        // rule but shares the page family, so its sliders live on its own page
+        ScrobbleTimingGroup(
+            minDuration = minDuration,
+            onMinDuration = onMinDurationChange,
+            delayPercent = delayPercent,
+            onDelayPercent = onDelayPercentChange,
+            delaySeconds = delaySeconds,
+            onDelaySeconds = onDelaySecondsChange,
         )
 
         Spacer(Modifier.height(140.dp))

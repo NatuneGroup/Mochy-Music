@@ -138,9 +138,10 @@ private const val ProxyAuthHeader = "Proxy-Authorization"
 // the proxy or youtube answered the check with an error code, 407 means the proxy wants a sign-in
 class ProxyRefusedException(val code: Int) : IOException("HTTP $code")
 
-/** sends this client through the proxy from settings, read on every request */
+/** sends this client through the proxy and the DNS over HTTPS choice from settings, read on every request and lookup */
 fun OkHttpClient.Builder.followAppProxy(): OkHttpClient.Builder =
-    proxySelector(AppProxy.selector)
+    followAppDns()
+        .proxySelector(AppProxy.selector)
         .proxyAuthenticator { _, response ->
             val auth = YouTube.proxyAuth
             // already sent once and still refused, asking again would only loop
