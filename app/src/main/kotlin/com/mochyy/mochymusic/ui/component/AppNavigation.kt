@@ -6,7 +6,9 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -16,6 +18,8 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
@@ -31,6 +35,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -46,6 +52,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.size
 import com.mochyy.mochymusic.LocalGlassState
+import com.mochyy.mochymusic.constants.ShowNavTabLabelsKey
+import com.mochyy.mochymusic.utils.rememberPreference
 
 @Immutable
 private data class NavItemState(
@@ -330,6 +338,7 @@ internal fun RowScope.NavTab(
     onItemClick: (Screens, Boolean) -> Unit,
     onDoubleTap: (() -> Unit)?,
 ) {
+    val (showLabel) = rememberPreference(ShowNavTabLabelsKey, defaultValue = false)
     val viewConfiguration = LocalViewConfiguration.current
     val interactionSource = remember { MutableInteractionSource() }
     val lastTap = remember { longArrayOf(0L) }
@@ -360,10 +369,28 @@ internal fun RowScope.NavTab(
             ),
         contentAlignment = Alignment.Center
     ) {
-        if (screen == Screens.Library) {
-            LibraryDownloadIcon { TabIcons(screen, unlitIcon, litIcon, iconSize) { lit.value } }
-        } else {
-            TabIcons(screen, unlitIcon, litIcon, iconSize) { lit.value }
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+            modifier = Modifier.padding(horizontal = 4.dp),
+        ) {
+            val title = stringResource(screen.titleId)
+            val iconDescription = title.takeUnless { showLabel }
+            if (screen == Screens.Library) {
+                LibraryDownloadIcon { TabIcons(iconDescription, unlitIcon, litIcon, iconSize) { lit.value } }
+            } else {
+                TabIcons(iconDescription, unlitIcon, litIcon, iconSize) { lit.value }
+            }
+            if (showLabel) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = if (isSelected) 1f else UnlitIconAlpha),
+                    fontSize = 10.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
@@ -371,7 +398,7 @@ internal fun RowScope.NavTab(
 /** a tab's two icons, the filled one fading in over the outline as the tab lights up */
 @Composable
 private fun TabIcons(
-    screen: Screens,
+    description: String?,
     unlitIcon: androidx.compose.ui.graphics.painter.Painter,
     litIcon: androidx.compose.ui.graphics.painter.Painter,
     iconSize: androidx.compose.ui.unit.Dp,
@@ -380,7 +407,7 @@ private fun TabIcons(
     Box(contentAlignment = Alignment.Center) {
         Icon(
             painter = unlitIcon,
-            contentDescription = stringResource(screen.titleId),
+            contentDescription = description,
             tint = Color.White,
             modifier = Modifier
                 .size(iconSize)

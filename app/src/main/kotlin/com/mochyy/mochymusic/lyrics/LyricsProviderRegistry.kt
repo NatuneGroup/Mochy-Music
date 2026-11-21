@@ -21,6 +21,8 @@ object LyricsProviderRegistry {
         "LrcRed"          to LrcRedLyricsProvider,
         "BiniLyrics"      to BiniLyricsProvider,
         "Megalobiz"       to MegalobizLyricsProvider,
+        "BetterLyricsPortato" to BetterLyricsPortatoProvider,
+        "Genius"          to GeniusLyricsProvider,
         "YouTubeSubtitle" to YouTubeSubtitleLyricsProvider,
         "YouTubeMusic"    to YouTubeLyricsProvider,
         "YouTubeCaptions" to YouTubeCaptionsLyricsProvider,
@@ -55,6 +57,7 @@ object LyricsProviderRegistry {
     // timing. YouTube's auto captions last of all - they are speech recognition.
     fun getDefaultProviderOrder(): List<String> = moduleProviders.keys.toList() + listOf(
         "BetterLyrics",
+        "BetterLyricsPortato",
         "Unison",
         "YouLyPlus",
         "Paxsenix",
@@ -69,6 +72,7 @@ object LyricsProviderRegistry {
         "NetEase",
         "QQMusic",
         "Kugou",
+        "Genius",
         "YouTubeCaptions",
     )
 
@@ -98,6 +102,8 @@ object LyricsProviderRegistry {
         "LrcRed"          -> "lrc.red"
         "BiniLyrics"      -> "BiniLyrics"
         "Megalobiz"       -> "Megalobiz"
+        "BetterLyricsPortato" -> "BetterLyrics Portato"
+        "Genius"          -> "Genius"
         "YouTubeSubtitle" -> "YouTube Subtitle"
         "YouTubeMusic"    -> "YouTube Music"
         "YouTubeCaptions" -> "YouTube Auto Captions"
@@ -124,6 +130,7 @@ object LyricsProviderRegistry {
         "LrcRed" -> LrcRed.BaseUrl
         "BiniLyrics" -> "https://lyrics-api.binimum.org/"
         "Megalobiz" -> "https://www.megalobiz.com/"
+        "Genius" -> "https://genius.com/"
         "Unison" -> Unison.BaseUrl
         else     -> null
     }

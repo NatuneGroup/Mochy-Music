@@ -1,5 +1,5 @@
 // SharedLyricsProviders.kt
-// BiniLyrics and Megalobiz, ported from Natune (github.com/NatuneGroup/Natune, GPL-3.0); the lookups
+// BiniLyrics, Megalobiz, BetterLyrics Portato and Genius, ported from Natune (github.com/NatuneGroup/Natune, GPL-3.0); the lookups
 // themselves live in :shared so the desktop and iOS apps can use the same code later.
 
 package com.mochyy.mochymusic.lyrics
@@ -7,9 +7,13 @@ package com.mochyy.mochymusic.lyrics
 import android.content.Context
 import androidx.datastore.preferences.core.Preferences
 import com.mochyy.mochymusic.betterlyrics.TTMLParser
+import com.mochyy.mochymusic.constants.EnableBetterLyricsPortatoKey
 import com.mochyy.mochymusic.constants.EnableBiniLyricsKey
+import com.mochyy.mochymusic.constants.EnableGeniusLyricsKey
 import com.mochyy.mochymusic.constants.EnableMegalobizKey
+import com.mochyy.mochymusic.shared.lyrics.BetterLyricsPortatoProvider as SharedBetterLyricsPortato
 import com.mochyy.mochymusic.shared.lyrics.BiniLyricsProvider as SharedBini
+import com.mochyy.mochymusic.shared.lyrics.GeniusLyricsProvider as SharedGenius
 import com.mochyy.mochymusic.shared.lyrics.LyricsPayload
 import com.mochyy.mochymusic.shared.lyrics.LyricsProvider as SharedLyricsProvider
 import com.mochyy.mochymusic.shared.lyrics.MegalobizLyricsProvider as SharedMegalobiz
@@ -42,11 +46,12 @@ internal object SharedLyricsHttp {
 open class SharedLyricsProviderAdapter(
     override val name: String,
     private val enabledKey: Preferences.Key<Boolean>,
+    private val enabledByDefault: Boolean = true,
     create: (HttpClient) -> SharedLyricsProvider,
 ) : LyricsProvider {
     private val delegate by lazy { create(SharedLyricsHttp.client) }
 
-    override fun isEnabled(context: Context): Boolean = context.dataStore[enabledKey] ?: true
+    override fun isEnabled(context: Context): Boolean = context.dataStore[enabledKey] ?: enabledByDefault
 
     override suspend fun getLyrics(
         id: String,
@@ -56,7 +61,11 @@ open class SharedLyricsProviderAdapter(
         album: String?,
     ): Result<String> = withContext(Dispatchers.IO) {
         delegate.getLyrics(id, title, artist, album, duration).mapCatching { raw ->
-            if (!LyricsPayload.isTtmlDocument(raw)) return@mapCatching raw
+            if (!LyricsPayload.isTtmlDocument(raw)) {
+                // other XML (a QRC document, an HTML error page) is not lyrics the screen can show
+                check(!raw.trimStart().startsWith("<")) { "$name answered with a document that isn't lyrics" }
+                return@mapCatching raw
+            }
             val lines = TTMLParser.parseTTML(raw)
             check(lines.isNotEmpty()) { "$name has no timed lyrics for this track" }
             TTMLParser.toLRC(lines)
@@ -74,4 +83,18 @@ object MegalobizLyricsProvider : SharedLyricsProviderAdapter(
     name = "Megalobiz",
     enabledKey = EnableMegalobizKey,
     create = ::SharedMegalobiz,
+)
+
+object BetterLyricsPortatoProvider : SharedLyricsProviderAdapter(
+    name = "BetterLyricsPortato",
+    enabledKey = EnableBetterLyricsPortatoKey,
+    create = ::SharedBetterLyricsPortato,
+)
+
+object GeniusLyricsProvider : SharedLyricsProviderAdapter(
+    name = "Genius",
+    enabledKey = EnableGeniusLyricsKey,
+    // off by default, as in Natune: Genius has plain text only, no timing
+    enabledByDefault = false,
+    create = ::SharedGenius,
 )
