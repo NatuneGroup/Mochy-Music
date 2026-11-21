@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strings for the shared (desktop and iOS) UI. The Android app keeps app/src/main/res for its own screens. -->
+<resources>
+    <string name="app_name">Mochy</string>
+    <string name="home">Home</string>
+    <string name="search">Search</string>
+    <string name="your_library">Your Library</string>
+    <string name="shell_coming_title">Moving in</string>
+    <string name="shell_coming_body">This screen is still on its way from the Android app.</string>
+    <string name="shell_credit">Built on Mochy Music by realidkroo</string>
+</resources>

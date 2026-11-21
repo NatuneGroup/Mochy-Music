@@ -19,6 +19,7 @@ dependencyResolutionManagement {
 rootProject.name = "mochy"
 include(":app")
 include(":shared")
+include(":desktopApp")
 include(":providers:canvas")
 include(":providers:innertube")
 include(":providers:kugou")

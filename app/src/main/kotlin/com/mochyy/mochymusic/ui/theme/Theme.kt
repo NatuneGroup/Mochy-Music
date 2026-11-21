@@ -8,8 +8,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
@@ -23,17 +21,14 @@ import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
 import com.materialkolor.rememberDynamicColorScheme
 import com.materialkolor.score.Score
+import com.mochyy.mochymusic.shared.ui.theme.ForceDarkTheme as SharedForceDarkTheme
+import com.mochyy.mochymusic.shared.ui.theme.mochyColorScheme
+import com.mochyy.mochymusic.shared.ui.theme.pureBlack as sharedPureBlack
 
 val DefaultThemeColor = Color(0xFF8E8E8E)
 
-/**
- * mochy renders dark-only.
- *
- * The light palette was never finished - large parts of the UI hardcode white text and dark
- * glass - so on a light-mode phone the app looked broken rather than light. Pinned here as one
- * switch instead of being decided independently at every call site.
- */
-const val ForceDarkTheme = true
+/** mochy renders dark-only; the switch and the palette live in :shared so desktop and iOS match. */
+const val ForceDarkTheme = SharedForceDarkTheme
 
 @Composable
 fun MochyTheme(
@@ -45,50 +40,11 @@ fun MochyTheme(
 
     // Dynamic (Material You) colour is deliberately not used - the app ships its own palette.
     // The branch is gone rather than dead-but-present: dynamic*ColorScheme is API 31.
-    val baseColorScheme = run {
-
-        if (darkTheme) {
-            darkColorScheme(
-                primary = Color(0xFFE0E0E0),
-                onPrimary = Color.Black,
-                primaryContainer = Color(0xFF333333),
-                onPrimaryContainer = Color.White,
-                secondary = Color(0xFFB0B0B0),
-                onSecondary = Color.Black,
-                secondaryContainer = Color(0xFF2C2C2C),
-                onSecondaryContainer = Color.White,
-                background = Color.Black,
-                onBackground = Color.White,
-                surface = Color.Black,
-                onSurface = Color.White,
-                surfaceVariant = Color(0xFF1A1A1A),
-                onSurfaceVariant = Color.White,
-                surfaceTint = Color.Black
-            )
-        } else {
-            lightColorScheme(
-                primary = Color.Black,
-                onPrimary = Color.White,
-                primaryContainer = Color(0xFFE0E0E0),
-                onPrimaryContainer = Color.Black,
-                secondary = Color(0xFF333333),
-                onSecondary = Color.White,
-                secondaryContainer = Color(0xFFCCCCCC),
-                onSecondaryContainer = Color.Black,
-                background = Color.White,
-                onBackground = Color.Black,
-                surface = Color.White,
-                onSurface = Color.Black,
-                surfaceVariant = Color(0xFFF0F0F0),
-                onSurfaceVariant = Color.Black,
-                surfaceTint = Color.White
-            )
-        }
-    }
+    val baseColorScheme = mochyColorScheme(darkTheme)
 
     val colorScheme = remember(baseColorScheme, pureBlack, darkTheme) {
         if (darkTheme && pureBlack) {
-            baseColorScheme.pureBlack(true)
+            baseColorScheme.sharedPureBlack(true)
         } else {
             baseColorScheme
         }
@@ -133,11 +89,7 @@ fun Bitmap.extractGradientColors(): List<Color> {
         listOf(Color(0xFF595959), Color(0xFF0D0D0D))
 }
 
-fun ColorScheme.pureBlack(apply: Boolean) =
-    if (apply) copy(
-        surface = Color.Black,
-        background = Color.Black
-    ) else this
+fun ColorScheme.pureBlack(apply: Boolean) = sharedPureBlack(apply)
 
 val ColorSaver = object : Saver<Color, Int> {
     override fun restore(value: Int): Color = Color(value)
