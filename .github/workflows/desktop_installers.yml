@@ -48,7 +48,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends fakeroot rpm
+          sudo apt-get install -y --no-install-recommends fakeroot rpm xvfb xauth
 
       - name: Add WiX 3 to PATH
         if: runner.os == 'Windows'
@@ -69,6 +69,19 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./gradlew.bat --console=plain "-Dorg.gradle.configureondemand=true" :desktopApp:packageMsi
+
+      - name: Smoke-test the Linux app window
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          launch=$(find desktopApp/build/compose/binaries/main/app -type f -path '*/bin/Mochy' -print -quit)
+          test -x "$launch"
+          startup_log="$RUNNER_TEMP/mochy-startup.log"
+          result=0
+          timeout 18s xvfb-run -a "$launch" > "$startup_log" 2>&1 || result=$?
+          cat "$startup_log"
+          test "$result" -eq 124
 
       - name: Upload installers
         uses: actions/upload-artifact@v6

@@ -79,3 +79,25 @@ jobs:
           app="$derived_data/Build/Products/Debug-iphonesimulator/Mochy.app"
           test -x "$app/Mochy"
           test -n "$(find "$app" -name inter_regular.ttf -print -quit)"
+
+      - name: Compile shared code for an ARM64 iPhone
+        run: ./gradlew --console=plain -Dorg.gradle.configureondemand=true :shared:compileKotlinIosArm64
+
+      - name: Install and launch the iOS simulator app
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="$RUNNER_TEMP/mochy-ios/Build/Products/Debug-iphonesimulator/Mochy.app"
+          bundle_id=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$app/Info.plist")
+          device=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; devices=[d for group in json.load(sys.stdin)["devices"].values() for d in group if d["name"].startswith("iPhone")]; print(next((d["udid"] for d in devices if d["state"] == "Booted"), devices[-1]["udid"] if devices else ""))')
+          test -n "$device"
+          if ! xcrun simctl boot "$device"; then
+            xcrun simctl list devices | grep -F "$device" | grep -F Booted
+          fi
+          xcrun simctl bootstatus "$device" -b
+          xcrun simctl install "$device" "$app"
+          launch=$(xcrun simctl launch --terminate-running-process "$device" "$bundle_id")
+          echo "$launch"
+          app_pid=${launch##*: }
+          sleep 8
+          xcrun simctl spawn "$device" launchctl list | awk -v pid="$app_pid" '$1 == pid { print; found=1 } END { exit !found }'
