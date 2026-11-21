@@ -82,7 +82,7 @@ kotlin {
             // stream resolution, the same library the Android app asks first
             implementation(libs.innertubex.desktop)
             // decoding: JavaCV's FFmpeg grabber without the rest of JavaCV's camera and vision stack
-            implementation(libs.javacv) { isTransitive = false }
+            implementation("org.bytedeco:javacv:${libs.versions.javacpp.get()}") { isTransitive = false }
             implementation(libs.javacpp)
             implementation("org.bytedeco:ffmpeg:$ffmpegDesktop")
             implementation("org.bytedeco:ffmpeg:$ffmpegDesktop:$ffmpegPlatform")

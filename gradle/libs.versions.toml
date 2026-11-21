@@ -159,7 +159,6 @@ newpipeextractor = { module = "com.github.TeamNewPipe:NewPipeExtractor", version
 innertubex = { module = "com.github.MetrolistGroup.innertubex:innertubex", version.ref = "innertubex" }
 # the same InnerTubeX release, its desktop JVM artifact
 innertubex-desktop = { module = "com.github.MetrolistGroup.innertubex:innertubex-desktop", version.ref = "innertubex" }
-javacv = { module = "org.bytedeco:javacv", version.ref = "javacpp" }
 javacpp = { module = "org.bytedeco:javacpp", version.ref = "javacpp" }
 
 kuromoji-ipadic = { module = "com.atilika.kuromoji:kuromoji-ipadic", version.ref = "kuromojiIpadic" }
