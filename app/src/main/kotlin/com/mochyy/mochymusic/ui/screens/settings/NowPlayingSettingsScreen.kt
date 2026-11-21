@@ -27,6 +27,8 @@ import com.mochyy.mochymusic.constants.CanvasThumbnailAnimationKey
 import com.mochyy.mochymusic.constants.CanvasWifiOnlyKey
 import com.mochyy.mochymusic.constants.DisableVideoAutoplayKey
 import com.mochyy.mochymusic.constants.LyricsHighBloomKey
+import com.mochyy.mochymusic.constants.LyricsInterludeDotsKey
+import com.mochyy.mochymusic.constants.LyricsLineBounceKey
 import com.mochyy.mochymusic.constants.LyricsSoftLightKey
 import com.mochyy.mochymusic.constants.LyricsMotionStyle
 import com.mochyy.mochymusic.constants.LyricsMotionStyleKey
@@ -122,6 +124,8 @@ private fun lyricsItems(): List<SettingsItem> {
     val (syncLyricsToVideo, onSyncLyricsToVideoChange) = rememberPreference(SyncLyricsToVideoKey, defaultValue = true)
     val (romanizeAsMain, onRomanizeAsMainChange) = rememberPreference(LyricsRomanizeAsMainKey, defaultValue = false)
     val (highBloom, onHighBloomChange) = rememberPreference(LyricsHighBloomKey, defaultValue = true)
+    val (interludeDots, onInterludeDotsChange) = rememberPreference(LyricsInterludeDotsKey, defaultValue = true)
+    val (lineBounce, onLineBounceChange) = rememberPreference(LyricsLineBounceKey, defaultValue = true)
     val (softLight, onSoftLightChange) = rememberPreference(LyricsSoftLightKey, defaultValue = true)
     val (lyricsStyle) = rememberEnumPreference(LyricsMotionStyleKey, defaultValue = LyricsMotionStyle.MOTION)
     val (floatingLyrics, onFloatingLyricsChange) = rememberFloatingLyricsSwitch()
@@ -151,6 +155,23 @@ private fun lyricsItems(): List<SettingsItem> {
             icon = painterResource(R.drawable.lyrics),
             checked = romanizeAsMain,
             onCheckedChange = onRomanizeAsMainChange,
+        ),
+        switchItem(
+            key = "Show instrumental dots",
+            title = stringResource(R.string.settings_lyrics_interlude_dots),
+            description = stringResource(R.string.settings_lyrics_interlude_dots_desc),
+            icon = painterResource(R.drawable.lyrics),
+            checked = interludeDots,
+            onCheckedChange = onInterludeDotsChange,
+        ),
+        switchItem(
+            key = "Animate line-synced lyrics",
+            title = stringResource(R.string.settings_lyrics_line_bounce),
+            description = stringResource(R.string.settings_lyrics_line_bounce_desc),
+            icon = painterResource(R.drawable.lyrics),
+            checked = lineBounce,
+            onCheckedChange = onLineBounceChange,
+            visible = lyricsStyle.risesWords,
         ),
         // only the shaded lyric styles have a bloom to make softer
         switchItem(

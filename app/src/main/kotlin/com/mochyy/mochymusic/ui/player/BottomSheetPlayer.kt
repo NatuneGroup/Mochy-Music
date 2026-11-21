@@ -556,6 +556,7 @@ private fun PlayerSheet(
             },
             onClose = { state.collapseSoft() },
             onQueue = { styleQueueOpen = true },
+            onSleepTimer = { showSleepTimer = true },
             turn = if (onTv) null else styleTurn,
         )
     }

@@ -220,6 +220,8 @@ fun LyricsGlowLine(
 
     suppressEffects: Boolean = false,
 
+    lineBounce: Boolean = true,
+
     /** Which voice this line belongs to. See [LyricsAlignment]. */
     alignment: LyricsAlignment = LyricsAlignment.START,
 
@@ -273,7 +275,7 @@ fun LyricsGlowLine(
     )
 
     // Only lines without word timing move as a whole; word-synced ones rise word by word.
-    val wholeLineRise = wordMotion && entry.words.isNullOrEmpty()
+    val wholeLineRise = lineBounce && wordMotion && entry.words.isNullOrEmpty()
     val drop by com.mochyy.mochymusic.ui.utils.animateFloatOnChange(
         target = if (state == LyricsLineState.ACTIVE || !wholeLineRise) 0f else 1f,
         spec = androidx.compose.animation.core.spring(

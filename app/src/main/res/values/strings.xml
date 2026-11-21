@@ -499,4 +499,13 @@
     <string name="work_out_genres">Work out genres</string>
     <string name="work_out_genres_on_desc">Asks Last.fm for an artist\'s genres. Only the artist name is sent.</string>
     <string name="work_out_genres_off_desc">The stats genre chart keeps to iTunes\' own answers while this is off</string>
+    <string name="settings_navigation_tab_labels">Navigation tab labels</string>
+    <string name="settings_navigation_tab_labels_desc">Show the name under each navigation icon.</string>
+    <string name="settings_lyrics_interlude_dots">Show instrumental dots</string>
+    <string name="settings_lyrics_interlude_dots_desc">Show animated dots during gaps between timed lyric lines.</string>
+    <string name="settings_lyrics_line_bounce">Animate line-synced lyrics</string>
+    <string name="settings_lyrics_line_bounce_desc">Raise and lower lyric lines that have a single timestamp.</string>
+    <string name="metrolist_modern">Metrolist Modern</string>
+    <string name="metrolist_vintage">Metrolist Vintage</string>
+    <string name="metrolist_collapse">Close player</string>
 </resources>
