@@ -7,9 +7,9 @@ package com.mochyy.mochymusic.shared.lyrics
 import io.ktor.client.HttpClient
 import io.ktor.client.request.parameter
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.JsonNames
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.JsonNames
 
 /**
  * Port of the Android BetterLyrics Portato provider: the QQ Music endpoint of the BetterLyrics lyrics
