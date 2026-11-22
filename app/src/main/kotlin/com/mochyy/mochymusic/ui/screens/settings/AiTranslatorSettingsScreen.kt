@@ -31,6 +31,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.mochyy.mochymusic.constants.AiTranslatorConfig
 import com.mochyy.mochymusic.constants.CustomAiModelKey
 import com.mochyy.mochymusic.constants.CustomAiBaseUrlKey
 import com.mochyy.mochymusic.constants.CustomAiApiKey
@@ -67,7 +68,7 @@ fun AiTranslatorSettingsScreen(navController: NavController) {
     val (legacyEndpoint) = rememberPreference(OpenRouterBaseUrlKey, defaultValue = "")
     val (customEndpoint, setCustomEndpoint) = rememberPreference(CustomAiBaseUrlKey, defaultValue = "")
     val (openRouterModel, setOpenRouterModel) = rememberPreference(OpenRouterModelKey, defaultValue = "")
-    val (customModel, setCustomModel) = rememberPreference(CustomAiModelKey, defaultValue = "")
+    val (customModel, setCustomModel) = rememberPreference(CustomAiModelKey, defaultValue = AiTranslatorConfig.ModelUnset)
     val (openRouterKey, setOpenRouterKey) = rememberPreference(OpenRouterApiKey, defaultValue = "")
     val (customKey, setCustomKey) = rememberPreference(CustomAiApiKey, defaultValue = "")
     val (deeplKey, setDeeplKey) = rememberPreference(DeeplApiKey, defaultValue = "")
@@ -80,7 +81,7 @@ fun AiTranslatorSettingsScreen(navController: NavController) {
     // every provider keeps its own key, model and address (AiTranslatorConfig decides what a request uses);
     // the address the two used to share only ever counts as Custom's
     val endpoint = customEndpoint.ifBlank { legacyEndpoint }
-    val model = if (isCustom) customModel.ifBlank { openRouterModel } else openRouterModel
+    val model = if (isCustom) AiTranslatorConfig.customModel(customModel, legacyEndpoint, openRouterModel) else openRouterModel
     val apiKey = when {
         isDeepL -> deeplKey
         isCustom -> customKey

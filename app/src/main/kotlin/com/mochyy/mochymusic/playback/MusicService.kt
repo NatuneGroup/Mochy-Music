@@ -81,6 +81,7 @@ import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
+import com.mochyy.mochymusic.shared.playback.SharedFetches
 import com.mochyy.mochymusic.shared.playback.UpcomingPreloader
 import com.mochyy.mochymusic.utils.followAppProxy
 import com.music.innertube.YouTube
@@ -257,7 +258,6 @@ import com.mochyy.mochymusic.utils.reportException
 import com.mochyy.mochymusic.widget.MochyWidgetManager
 import com.mochyy.mochymusic.widget.MusicWidgetReceiver
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -3864,16 +3864,12 @@ class MusicService :
 
     // a song's lyrics are kept the first time they're fetched; an offline miss is not kept, so it's asked again online
     // one lookup per song at a time: the current song's fetch and the queue's preload of the same song share it
-    // (the database and the provider cache only know finished results, not ones still on the way)
-    private val lyricsFetches = HashMap<String, Deferred<Unit>>()
+    // (the database and the provider cache only know finished results, not ones still on the way), and it stops
+    // once neither still wants it, so a preload called off by a pause doesn't fetch on alone
+    private val lyricsFetches = SharedFetches<String>({ scope })
 
     private suspend fun storeLyricsIfMissing(mediaMetadata: com.mochyy.mochymusic.models.MediaMetadata) {
-        val id = mediaMetadata.id
-        val fetch = lyricsFetches[id]?.takeIf { it.isActive } ?: scope.async { fetchAndStoreLyrics(mediaMetadata) }.also { started ->
-            lyricsFetches[id] = started
-            started.invokeOnCompletion { if (lyricsFetches[id] === started) lyricsFetches.remove(id) }
-        }
-        fetch.await()
+        lyricsFetches.fetch(mediaMetadata.id) { fetchAndStoreLyrics(mediaMetadata) }
     }
 
     private suspend fun fetchAndStoreLyrics(mediaMetadata: com.mochyy.mochymusic.models.MediaMetadata) {

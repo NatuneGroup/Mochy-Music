@@ -20,6 +20,17 @@ data class AiTranslatorConfig(val provider: String, val apiKey: String, val base
         const val Custom = "Custom"
         const val DeepL = "DeepL"
 
+        /** What a never-saved Custom model reads as, so a saved blank ("let the provider pick") stays blank. */
+        const val ModelUnset = "\u0000unset"
+
+        /**
+         * Custom's model as settings show it and requests use it: the saved value, blank included; only if
+         * none was ever saved, the model the old shared fields held, and that only when the old shared
+         * address was set (a Custom setup), never OpenRouter's own model.
+         */
+        fun customModel(saved: String, legacyBaseUrl: String, legacyModel: String): String =
+            if (saved != ModelUnset) saved else if (legacyBaseUrl.isNotBlank()) legacyModel else ""
+
         /**
          * [legacyBaseUrl] is the address field OpenRouter and Custom used to share. It is only ever
          * used as Custom's address (that's what it was for), never for OpenRouter, and no key comes
@@ -40,7 +51,7 @@ data class AiTranslatorConfig(val provider: String, val apiKey: String, val base
             Custom -> {
                 val url = customBaseUrl.ifBlank { legacyBaseUrl }.trim()
                 // no address means nowhere safe to send the key
-                AiTranslatorConfig(provider, if (url.isBlank()) "" else customKey.trim(), url, customModel.ifBlank { legacyModel })
+                AiTranslatorConfig(provider, if (url.isBlank()) "" else customKey.trim(), url, customModel(customModel, legacyBaseUrl, legacyModel))
             }
             DeepL -> AiTranslatorConfig(provider, deeplKey.trim(), "", "")
             // a provider no longer offered gets no key, rather than borrowing another provider's
