@@ -80,6 +80,8 @@ class App : Application(), SingletonImageLoader.Factory {
         super.onCreate()
 
         AppLanguage.initialize(this)
+        // the shared font state starts on the system font until it has the app's own inter
+        com.mochyy.mochymusic.ui.theme.AppFont.inter = com.mochyy.mochymusic.ui.theme.AndroidInter
         CrashHandler.install(this)
 
         CipherDeobfuscator.initialize(this)

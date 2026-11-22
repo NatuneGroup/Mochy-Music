@@ -36,6 +36,8 @@ import org.jetbrains.compose.resources.stringResource
 fun runDesktopApp(font: FontFamily) {
     // warm before the first frame, so rememberPreference starts on the saved value
     PreferencesCache.start(desktopPlaybackPreferences.store)
+    // the app's font pick falls back to this inter (StandaloneMochyTheme hands it over too, as iOS does)
+    com.mochyy.mochymusic.ui.theme.AppFont.inter = font
     runDesktopWindow(font)
 }
 

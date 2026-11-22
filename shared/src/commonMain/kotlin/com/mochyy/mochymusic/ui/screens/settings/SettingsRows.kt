@@ -1,4 +1,4 @@
-// the pieces app behaviour, playback and now playing build their rows from
+// the pieces app behaviour, playback and now playing build their rows from; shared, so desktop and iOS can build theirs too
 
 package com.mochyy.mochymusic.ui.screens.settings
 
@@ -17,20 +17,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.navigate_next
 import com.mochyy.mochymusic.ui.component.AppSwitch
 import com.mochyy.mochymusic.ui.component.SettingsGroup
 import com.mochyy.mochymusic.ui.component.SettingsGroupStyle
 import com.mochyy.mochymusic.ui.component.SettingsItem
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import org.jetbrains.compose.resources.painterResource
 
 // a section's title (if it has one) and its grouped rows, left out whole when the search hides every row
 @Composable
-internal fun SettingsSection(title: String?, items: List<SettingsItem>) {
+fun SettingsSection(title: String?, items: List<SettingsItem>) {
     if (items.isEmpty()) return
     if (title != null) {
         Text(
@@ -46,7 +47,7 @@ internal fun SettingsSection(title: String?, items: List<SettingsItem>) {
     Spacer(Modifier.height(18.dp))
 }
 
-internal fun List<SettingsItem>.matching(query: String): List<SettingsItem> {
+fun List<SettingsItem>.matching(query: String): List<SettingsItem> {
     if (query.isBlank()) return this
     return filter {
         it.highlightKey?.contains(query, ignoreCase = true) == true ||
@@ -58,7 +59,7 @@ internal fun List<SettingsItem>.matching(query: String): List<SettingsItem> {
 
 // a row title with its value on the right, for the rows with a slider under them
 @Composable
-internal fun ValueTitle(title: String, value: String) {
+fun ValueTitle(title: String, value: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -75,8 +76,9 @@ internal fun ValueTitle(title: String, value: String) {
     }
 }
 
-// one switch row: key is the english name search results point at, subOptionOf tucks it under a parent that's on
-internal fun switchItem(
+// one switch row: key is the english name search results point at, subOptionOf tucks it under a parent that's on;
+// enabled = false greys it out and leaves it as it is
+fun switchItem(
     key: String,
     title: String,
     description: String,
@@ -86,24 +88,26 @@ internal fun switchItem(
     detail: String? = null,
     subOptionOf: Boolean? = null,
     visible: Boolean = true,
+    enabled: Boolean = true,
 ) = SettingsItem(
     title = { Text(title) },
     highlightKey = key,
     searchText = title,
     descriptionText = description,
     detail = detail,
+    enabled = enabled,
     icon = icon,
     iconShape = CircleShape,
     isVisible = visible && subOptionOf != false,
     isSubOption = subOptionOf != null,
     onClick = { onCheckedChange(!checked) },
     trailingContent = {
-        AppSwitch(checked = checked, onCheckedChange = onCheckedChange, enabled = subOptionOf != false)
+        AppSwitch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled && subOptionOf != false)
     },
 )
 
 // a row that opens another page, with the little arrow on the right
-internal fun linkItem(
+fun linkItem(
     key: String,
     title: String,
     description: String,
@@ -127,7 +131,7 @@ internal fun linkItem(
 @Composable
 private fun NextArrow() {
     Icon(
-        painter = painterResource(R.drawable.navigate_next),
+        painter = painterResource(Res.drawable.navigate_next),
         contentDescription = null,
         tint = Color.White.copy(alpha = 0.5f),
         modifier = Modifier.size(20.dp),

@@ -542,4 +542,12 @@
     <string name="settings_sponsorblock_outro_desc">Credits or chatter after the song ends</string>
     <string name="settings_keep_cpu_awake">Keep CPU awake during playback</string>
     <string name="settings_keep_cpu_awake_desc">Stops the phone from pausing music when the screen is off. Uses more battery</string>
+    <string name="settings_custom_font">Custom font</string>
+    <string name="settings_custom_font_desc">Pick a .ttf or .otf file and the whole app uses it</string>
+    <string name="settings_custom_font_bold">Bold font file</string>
+    <string name="settings_custom_font_bold_desc">Optional: the bold file of the same font</string>
+    <string name="settings_custom_font_remove">Remove font</string>
+    <string name="settings_custom_font_too_big">That font file is over 20 MB</string>
+    <string name="settings_custom_font_unreadable">That file isn\'t a font Mochy can use</string>
+    <string name="settings_system_font_overridden">Your custom font is used instead. Remove it to use this</string>
 </resources>

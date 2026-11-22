@@ -696,7 +696,14 @@ class MainActivity : ComponentActivity() {
                 val (tabletLayout) = rememberPreference(com.mochyy.mochymusic.constants.TabletLayoutKey, defaultValue = false)
                 LaunchedEffect(tabletLayout) { com.mochyy.mochymusic.ui.utils.TabletLayout.forced = tabletLayout }
                 val (systemFont) = rememberPreference(com.mochyy.mochymusic.constants.SystemFontKey, defaultValue = false)
-                LaunchedEffect(systemFont) { com.mochyy.mochymusic.ui.theme.AppFontChoice.useSystem = systemFont }
+                LaunchedEffect(systemFont) { com.mochyy.mochymusic.ui.theme.AppFont.useSystem = systemFont }
+                // the user's own font file, loaded off the main thread; it stands in for both inter and the system font
+                val (customFont) = rememberPreference(com.mochyy.mochymusic.constants.CustomFontKey, defaultValue = "")
+                val (customBoldFont) = rememberPreference(com.mochyy.mochymusic.constants.CustomBoldFontKey, defaultValue = "")
+                LaunchedEffect(customFont, customBoldFont) {
+                    com.mochyy.mochymusic.ui.theme.AppFont.custom =
+                        if (customFont.isEmpty()) null else com.mochyy.mochymusic.ui.theme.CustomFont.load(this@MainActivity)
+                }
                 LaunchedEffect(landscapeUnlocked) {
                     if (!isTelevision()) com.mochyy.mochymusic.ui.utils.WindowTurning.setUnlocked(this@MainActivity, landscapeUnlocked)
                 }
