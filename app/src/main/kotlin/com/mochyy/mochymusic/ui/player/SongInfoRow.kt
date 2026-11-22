@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.sp
 import com.mochyy.mochymusic.LocalPlayerConnection
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.PlayerHorizontalPadding
+import com.mochyy.mochymusic.shared.ui.player.StreamFormatBadge
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
