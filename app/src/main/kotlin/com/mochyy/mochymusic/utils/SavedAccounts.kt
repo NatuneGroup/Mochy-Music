@@ -25,6 +25,9 @@ data class SavedAccount(
     // brand accounts share their owner's email, so the data sync id goes first
     val id: String get() = dataSyncId.ifBlank { email.ifBlank { cookie } }
 
+    // a data class prints every field; this one holds a sign-in cookie, so a stray log or crash report must not
+    override fun toString() = "SavedAccount(name=$name)"
+
     companion object {
         // the account that is signed in right now, or null when nobody is
         fun fromActive(prefs: Preferences): SavedAccount? {
