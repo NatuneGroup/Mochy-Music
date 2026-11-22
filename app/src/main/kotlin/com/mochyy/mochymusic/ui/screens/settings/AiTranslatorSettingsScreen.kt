@@ -31,6 +31,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.mochyy.mochymusic.constants.CustomAiModelKey
+import com.mochyy.mochymusic.constants.CustomAiBaseUrlKey
+import com.mochyy.mochymusic.constants.CustomAiApiKey
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.AiProviderKey
 import com.mochyy.mochymusic.constants.DeeplApiKey
@@ -61,17 +64,28 @@ private enum class AiTranslatorDialog { Provider, Endpoint, Model, Key }
 @Composable
 fun AiTranslatorSettingsScreen(navController: NavController) {
     val (provider, setProvider) = rememberPreference(AiProviderKey, defaultValue = ProviderOpenRouter)
-    val (endpoint, setEndpoint) = rememberPreference(OpenRouterBaseUrlKey, defaultValue = "")
-    val (model, setModel) = rememberPreference(OpenRouterModelKey, defaultValue = "")
+    val (legacyEndpoint) = rememberPreference(OpenRouterBaseUrlKey, defaultValue = "")
+    val (customEndpoint, setCustomEndpoint) = rememberPreference(CustomAiBaseUrlKey, defaultValue = "")
+    val (openRouterModel, setOpenRouterModel) = rememberPreference(OpenRouterModelKey, defaultValue = "")
+    val (customModel, setCustomModel) = rememberPreference(CustomAiModelKey, defaultValue = "")
     val (openRouterKey, setOpenRouterKey) = rememberPreference(OpenRouterApiKey, defaultValue = "")
+    val (customKey, setCustomKey) = rememberPreference(CustomAiApiKey, defaultValue = "")
     val (deeplKey, setDeeplKey) = rememberPreference(DeeplApiKey, defaultValue = "")
     val (targetLanguage, setTargetLanguage) = rememberPreference(TranslateLanguageKey, defaultValue = "en")
     val (translateAutomatically, setTranslateAutomatically) = rememberPreference(TranslateLyricsKey, defaultValue = false)
 
     val targets = rememberTranslationTargets()
     val isDeepL = provider == ProviderDeepL
-    // deepl has its own key; openrouter and a custom endpoint share one
-    val apiKey = if (isDeepL) deeplKey else openRouterKey
+    val isCustom = provider == ProviderCustom
+    // every provider keeps its own key, model and address (AiTranslatorConfig decides what a request uses);
+    // the address the two used to share only ever counts as Custom's
+    val endpoint = customEndpoint.ifBlank { legacyEndpoint }
+    val model = if (isCustom) customModel.ifBlank { openRouterModel } else openRouterModel
+    val apiKey = when {
+        isDeepL -> deeplKey
+        isCustom -> customKey
+        else -> openRouterKey
+    }
     val targetName = targets.firstOrNull { it.first == targetLanguage }?.second ?: targetLanguage
 
     var dialog by remember { mutableStateOf<AiTranslatorDialog?>(null) }
@@ -90,16 +104,18 @@ fun AiTranslatorSettingsScreen(navController: NavController) {
                     onClick = { dialog = AiTranslatorDialog.Provider },
                 ),
             )
-            // deepl sends to its own address, so the endpoint and model only apply to the others
-            if (!isDeepL) {
+            // openrouter and deepl send to their own addresses; only a custom translator has one to set
+            if (isCustom) {
                 add(
                     SettingsItem(
                         title = { Text(stringResource(R.string.ai_translator_endpoint)) },
-                        descriptionText = endpoint.ifBlank { stringResource(R.string.ai_translator_endpoint_default) },
+                        descriptionText = endpoint.ifBlank { stringResource(R.string.ai_translator_endpoint_hint) },
                         icon = painterResource(R.drawable.link),
                         onClick = { dialog = AiTranslatorDialog.Endpoint },
                     ),
                 )
+            }
+            if (!isDeepL) {
                 add(
                     SettingsItem(
                         title = { Text(stringResource(R.string.ai_translator_model)) },
@@ -154,11 +170,11 @@ fun AiTranslatorSettingsScreen(navController: NavController) {
             title = { Text(stringResource(R.string.ai_translator_endpoint)) },
             initialTextFieldValue = TextFieldValue(endpoint, TextRange(endpoint.length)),
             placeholder = { Text(stringResource(R.string.ai_translator_endpoint_hint)) },
-            // empty goes back to openrouter; anything else must be https so the key never travels in clear
-            isInputValid = { it.isBlank() || it.trim().startsWith("https://") },
+            // https only, so the key never travels in clear; there's no default to fall back to
+            isInputValid = { it.trim().startsWith("https://") },
             keyboardType = KeyboardType.Uri,
             onDone = {
-                setEndpoint(it.trim())
+                setCustomEndpoint(it.trim())
                 dialog = null
             },
             onDismiss = { dialog = null },
@@ -170,7 +186,7 @@ fun AiTranslatorSettingsScreen(navController: NavController) {
             // blank lets the provider pick its own model
             isInputValid = { true },
             onDone = {
-                setModel(it.trim())
+                if (isCustom) setCustomModel(it.trim()) else setOpenRouterModel(it.trim())
                 dialog = null
             },
             onDismiss = { dialog = null },
@@ -178,7 +194,11 @@ fun AiTranslatorSettingsScreen(navController: NavController) {
         AiTranslatorDialog.Key -> KeyDialog(
             current = apiKey,
             onDone = { value ->
-                if (isDeepL) setDeeplKey(value.trim()) else setOpenRouterKey(value.trim())
+                when {
+                    isDeepL -> setDeeplKey(value.trim())
+                    isCustom -> setCustomKey(value.trim())
+                    else -> setOpenRouterKey(value.trim())
+                }
                 dialog = null
             },
             onDismiss = { dialog = null },

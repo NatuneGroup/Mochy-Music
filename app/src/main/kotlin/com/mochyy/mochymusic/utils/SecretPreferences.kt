@@ -2,6 +2,7 @@
 
 package com.mochyy.mochymusic.utils
 
+import com.mochyy.mochymusic.constants.CustomAiApiKey
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import com.mochyy.mochymusic.constants.DataSyncIdKey
@@ -51,6 +52,7 @@ class SecretPreferences(private val raw: DataStore<Preferences>) : DataStore<Pre
             ListenBrainzTokenKey,
             LibreFmSessionKey,
             OpenRouterApiKey,
+            CustomAiApiKey,
             DeeplApiKey,
             MonochromePlaybackApiTokenKey,
             TurnstileBypassTokenKey,
