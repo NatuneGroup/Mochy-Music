@@ -51,7 +51,7 @@ internal fun ModuleStoreCard(onClick: () -> Unit, modifier: Modifier = Modifier)
         )
         Spacer(Modifier.width(22.dp))
         Text(
-            stringResource(R.string.settings_module_store),
+            stringResource(R.string.modules_find_more),
             fontFamily = InterFontFamily, fontWeight = FontWeight.Bold, fontSize = 21.sp, lineHeight = 24.sp,
             letterSpacing = (-0.7).sp, color = Color.White, modifier = Modifier.weight(1f),
         )

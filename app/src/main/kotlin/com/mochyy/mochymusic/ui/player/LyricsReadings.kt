@@ -31,6 +31,8 @@ import com.mochyy.mochymusic.constants.TranslateModeKey
 import com.mochyy.mochymusic.constants.TranslateSourceLanguageKey
 import com.mochyy.mochymusic.constants.YouTubeCaptionTranslationKey
 import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.lyrics.JapaneseLanguagePackManager
+import com.mochyy.mochymusic.lyrics.JapaneseLanguagePackState
 import com.mochyy.mochymusic.lyrics.LyricsEntry
 import com.mochyy.mochymusic.lyrics.LyricsTranslationHelper
 import com.mochyy.mochymusic.lyrics.LyricsUtils
@@ -63,8 +65,9 @@ fun LyricsReadings(
     val context = LocalContext.current
     // every language switch, in the order of RomanizeLanguageKeys; the list never changes, so reading them in a loop is safe
     val switches = RomanizeLanguageKeys.map { key -> rememberPreference(key, defaultValue = true).value }
+    val japanesePack by JapaneseLanguagePackManager.state.collectAsState()
 
-    LaunchedEffect(lines, switches) {
+    LaunchedEffect(lines, switches, japanesePack is JapaneseLanguagePackState.Installed) {
         val allowed = RomanizeLanguageKeys.zip(switches).toMap()
         readSong(lines, allowed = { allowed[it] != false }) { index, reading ->
             val entry = lines[index]
