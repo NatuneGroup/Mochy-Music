@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.DontSkipOnFailureKey
+import com.mochyy.mochymusic.constants.InfiniteQueueKey
 import com.mochyy.mochymusic.constants.MixWithOtherAppsKey
 import com.mochyy.mochymusic.constants.PauseOnMute
 import com.mochyy.mochymusic.constants.PersistentQueueKey
@@ -63,7 +64,17 @@ private fun listeningItems(): List<SettingsItem> {
     val (persistentShuffle, onPersistentShuffleChange) = rememberPreference(PersistentShuffleAcrossQueuesKey, defaultValue = true)
     val (skipSilence, onSkipSilenceChange) = rememberPreference(SkipSilenceKey, defaultValue = false)
     val (preloadNextTrack, onPreloadNextTrackChange) = rememberPreference(PreloadNextTrackKey, defaultValue = true)
+    val (infiniteQueue, onInfiniteQueueChange) = rememberPreference(InfiniteQueueKey, defaultValue = true)
     return listOf(
+        switchItem(
+            key = "Infinite queue",
+            title = stringResource(R.string.playback_infinite_queue),
+            description = stringResource(R.string.playback_infinite_queue_desc),
+            detail = stringResource(R.string.playback_infinite_queue_detail),
+            icon = painterResource(R.drawable.playlist_play),
+            checked = infiniteQueue,
+            onCheckedChange = onInfiniteQueueChange,
+        ),
         switchItem(
             key = "Keep playing even when closed",
             title = stringResource(R.string.playback_keep_playing),

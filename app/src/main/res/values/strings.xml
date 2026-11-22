@@ -510,4 +510,7 @@
     <string name="metrolist_modern">Metrolist Modern</string>
     <string name="metrolist_vintage">Metrolist Vintage</string>
     <string name="metrolist_collapse">Close player</string>
+    <string name="playback_infinite_queue">Infinite queue</string>
+    <string name="playback_infinite_queue_desc">Keep the music going with related songs</string>
+    <string name="playback_infinite_queue_detail">When the queue is about to end, songs similar to the one playing are added from YouTube radio</string>
 </resources>

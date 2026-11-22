@@ -204,6 +204,7 @@ private val SettingsIndex = listOf(
     SettingsEntry("Resume on Bluetooth connection", "Playback", PlaybackSettingsRoute, "bluetooth headphones earbuds car connect resume auto play start", R.string.playback_resume_bluetooth),
     SettingsEntry("Pause when muted", "Playback", PlaybackSettingsRoute, "pause mute volume silent zero off automatic", R.string.pause_music_when_media_is_muted),
     SettingsEntry("Save Player's last state", "Playback", PlaybackSettingsRoute, "persistent queue restore track state"),
+    SettingsEntry("Infinite queue", "Playback", PlaybackSettingsRoute, "autoplay radio related endless queue songs keep going never stop", R.string.playback_infinite_queue),
     SettingsEntry("Keep shuffle on", "Playback", PlaybackSettingsRoute, "shuffle persistent spotify random keep new playlist"),
     SettingsEntry("Preload next song", "Playback", PlaybackSettingsRoute, "queue next track buffer preload unmetered wi-fi"),
     SettingsEntry("Skip Silence", "Playback", PlaybackSettingsRoute, "silence trim gap interval"),
