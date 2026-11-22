@@ -134,30 +134,15 @@ val prepareIosFonts = tasks.register<Sync>("prepareIosFonts") {
  * translated. Android and Compose unescape differently (Compose knows only \n, \t, \uXXXX and
  * \\), so each value is decoded the way aapt2 reads it and written back in Compose's form.
  */
-@CacheableTask
-abstract class BridgeAppResources : DefaultTask() {
-    @get:InputDirectory
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val appRes: DirectoryProperty
-
-    @get:InputDirectory
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val sharedResources: DirectoryProperty
-
-    @get:OutputDirectory
-    abstract val output: DirectoryProperty
-
+object ResourceBridge {
     private val localeDir = Regex("values(-([a-z]{2,3})(-r([A-Z]{2}))?)?")
 
     // compose matches the platform locale's language, and ios and desktop say "he" and "id"
     private val legacyLanguages = mapOf("iw" to "he", "in" to "id")
 
-    @TaskAction
-    fun bridge() {
-        val out = output.get().asFile
+    fun run(res: File, sharedResources: File, out: File) {
         out.deleteRecursively()
-        sharedResources.get().asFile.copyRecursively(out)
-        val res = appRes.get().asFile
+        sharedResources.copyRecursively(out)
 
         val locales = res.listFiles().orEmpty().filter { it.isDirectory && localeDir.matches(it.name) }
         val parsed = locales.associate { dir -> dir.name to readValues(dir) }
@@ -286,15 +271,21 @@ abstract class BridgeAppResources : DefaultTask() {
     }
 }
 
-val bridgeAppResources = tasks.register<BridgeAppResources>("bridgeAppResources") {
-    appRes.set(rootProject.layout.projectDirectory.dir("app/src/main/res"))
-    sharedResources.set(layout.projectDirectory.dir("src/commonMain/composeResources"))
-    output.set(layout.buildDirectory.dir("generated/mochyComposeResources/commonMain"))
+val bridgedResources = layout.buildDirectory.dir("generated/mochyComposeResources/commonMain")
+val bridgeAppResources = tasks.register("bridgeAppResources") {
+    val appRes = rootProject.layout.projectDirectory.dir("app/src/main/res")
+    val sharedRes = layout.projectDirectory.dir("src/commonMain/composeResources")
+    val out = bridgedResources
+    inputs.dir(appRes).withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir(sharedRes).withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.dir(out)
+    outputs.cacheIf { true }
+    doLast { ResourceBridge.run(appRes.asFile, sharedRes.asFile, out.get().asFile) }
 }
 
 compose.resources {
     customDirectory("iosMain", layout.dir(prepareIosFonts.map { it.destinationDir }))
-    customDirectory("commonMain", bridgeAppResources.flatMap { it.output })
+    customDirectory("commonMain", layout.dir(bridgeAppResources.map { bridgedResources.get().asFile }))
     // a library does not generate Res by default; every platform's UI reads strings through it
     generateResClass = always
     publicResClass = false
