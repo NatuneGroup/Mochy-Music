@@ -48,11 +48,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.util.lerp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import com.mochyy.mochymusic.ui.component.BottomSheetState
+import com.mochyy.mochymusic.ui.component.drawBendingBar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -155,6 +155,8 @@ fun PlayerHandle(
     /** False while something else owns the top of the player (the studio). */
     enabled: () -> Boolean,
     modifier: Modifier = Modifier,
+    /** False while paused: the colour behind the bar is looked at once, not every few seconds. */
+    playing: Boolean = true,
 ) {
     val currentEnabled by rememberUpdatedState(enabled)
     val bend = remember { Animatable(0f) }
@@ -172,7 +174,7 @@ fun PlayerHandle(
 
     // Window bounds of the tap target, for the colour sampling. Not state: only read when sampling.
     val targetBounds = remember { FloatArray(4) }
-    val onLight by rememberOnLightBehind(sheet, targetBounds)
+    val onLight by rememberOnLightBehind(sheet, targetBounds, playing)
     val color by animateColorAsState(
         targetValue = if (onLight) Color.Black else Color.White,
         animationSpec = tween(durationMillis = 300),
@@ -228,18 +230,7 @@ fun PlayerHandle(
                 val barHalf = (HandleLength - HandleThickness).toPx() / 2f
                 val chevronHalf = (ChevronLength - HandleThickness).toPx() / 2f
                 val depthPx = ChevronDepth.toPx()
-                onDrawBehind {
-                    val b = bend.value
-                    val half = lerp(barHalf, chevronHalf, b)
-                    val depth = depthPx * b
-                    val cx = size.width / 2f
-                    val cy = size.height / 2f
-                    path.reset()
-                    path.moveTo(cx - half, cy - depth / 2f)
-                    path.lineTo(cx, cy + depth / 2f)
-                    path.lineTo(cx + half, cy - depth / 2f)
-                    drawPath(path = path, color = color, style = stroke)
-                }
+                onDrawBehind { drawBendingBar(path, bend.value, barHalf, chevronHalf, depthPx, stroke, color) }
             },
     )
 }
@@ -251,12 +242,12 @@ fun PlayerHandle(
  * pixels, made on the render thread.
  */
 @Composable
-private fun rememberOnLightBehind(sheet: BottomSheetState, targetBounds: FloatArray): State<Boolean> {
+private fun rememberOnLightBehind(sheet: BottomSheetState, targetBounds: FloatArray, playing: Boolean): State<Boolean> {
     val onLight = remember { mutableStateOf(false) }
     val view = LocalView.current
     val density = LocalDensity.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(view, sheet, density) {
+    LaunchedEffect(view, sheet, density, playing) {
         val window = view.context.findActivity()?.window ?: return@LaunchedEffect
         val bitmap = Bitmap.createBitmap(SampleBitmapWidth, SampleBitmapHeight, Bitmap.Config.ARGB_8888)
         val pixels = IntArray(SampleBitmapWidth * SampleBitmapHeight)
@@ -286,6 +277,8 @@ private fun rememberOnLightBehind(sheet: BottomSheetState, targetBounds: FloatAr
                         // Apart, so a backdrop sitting near the line doesn't flip it back and forth.
                         onLight.value = if (onLight.value) luminance > 0.52f else luminance > 0.66f
                     }
+                    // paused: nothing behind the bar moves, so one look is enough (playing again restarts this)
+                    if (!playing) break
                     delay(HandleSampleIntervalMs)
                 }
             }

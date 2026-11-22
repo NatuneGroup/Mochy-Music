@@ -641,16 +641,18 @@ fun MorphingCover(
     // recomposed all of this in the first frames of every open.
     // the new flagship's open player hides the backdrop completely under its cover and mirror, so nothing there needs to move
     val backdropHidden = frostedCover && coverBlur && coverStyle == PlayerCoverStyle.EDGE_TO_EDGE
-    LaunchedEffect(editMode, alternateStyle, backdropHidden) {
+    val appObscured = com.mochyy.mochymusic.LocalAppContentObscured.current
+    // paused means the warp stands still, so it doesn't redraw the backdrop for nothing
+    LaunchedEffect(editMode, alternateStyle, backdropHidden, isPlaying) {
         snapshotFlow {
-            !alternateStyle && !editMode && progressProvider() > 0.02f && lyricsProgressProvider() < 0.6f &&
+            isPlaying && !alternateStyle && !editMode && !appObscured.value && progressProvider() > 0.02f && lyricsProgressProvider() < 0.6f &&
                 !(backdropHidden && progressProvider() >= 0.999f && lyricsProgressProvider() <= 0.001f)
         }
             .collectLatest { active ->
                 if (!active) return@collectLatest
                 // it carries on from where it stopped, so pausing it never makes the backdrop jump when it shows again
                 var last = 0L
-                // ends when the flow moves on: collectLatest cancels this at the frame wait
+                // paced to the backdrops' 30 hz step so 120 hz displays aren't woken four times per actual draw
                 while (true) {
                     androidx.compose.animation.core.withInfiniteAnimationFrameNanos { frameTimeNanos ->
                         if (last != 0L) {
@@ -659,6 +661,7 @@ fun MorphingCover(
                         }
                         last = frameTimeNanos
                     }
+                    kotlinx.coroutines.delay(30L)
                 }
             }
     }
@@ -740,6 +743,7 @@ fun MorphingCover(
         val coverMagnify = remember { { animatedPauseScale } }
 
         SheetBackdrop(
+            isPlaying = isPlaying,
             progressProvider = progressProvider,
             endpointsPx = endpointsPx,
             trackInfo = trackInfo,
@@ -1455,6 +1459,7 @@ private fun CoverPicture(thumbnailUrl: String?, modifier: Modifier = Modifier, z
 @Composable
 private fun PlayerBackdropCrossfade(
     trackInfo: TrackInfo,
+    isPlaying: Boolean = true,
     backgroundStyle: PlayerBackgroundStyle,
     pureBlack: Boolean,
     playVideoBackground: Boolean,
@@ -1494,6 +1499,13 @@ private fun PlayerBackdropCrossfade(
     val currentCanvasAlpha = androidx.compose.runtime.rememberUpdatedState(canvasMirrorAlpha)
     val effectiveCanvasAlpha = { (currentCanvasAlpha.value() * (1f - currentLyricsProgress.value())).coerceIn(0f, 1f) }
     val canvasShown by remember { derivedStateOf { effectiveCanvasAlpha() > 0.005f && currentSheetShown.value() } }
+    val appObscured = com.mochyy.mochymusic.LocalAppContentObscured.current
+    val backdropAnimate by remember {
+        derivedStateOf {
+            currentSheetShown.value() && !appObscured.value &&
+                (1f - effectiveVideoAlpha()) * (1f - effectiveCanvasAlpha()) > 0.005f
+        }
+    }
 
     Box(modifier = modifier) {
         Box(
@@ -1516,7 +1528,9 @@ private fun PlayerBackdropCrossfade(
                     style = backgroundStyle,
                     thumbnailUrl = trackInfo.thumbnailUrl,
                     pureBlack = pureBlack,
-                    modifier = Modifier.requiredSize(maxWidth, maxHeight)
+                    modifier = Modifier.requiredSize(maxWidth, maxHeight),
+                    // paused means the drift stands still (also stops the cover gradient's own clock)
+                    animate = backdropAnimate && isPlaying,
                 )
             } else {
                 CoverBackdropFade(
@@ -1913,6 +1927,7 @@ private fun SheetPillGlass(
  */
 @Composable
 private fun SheetBackdrop(
+    isPlaying: Boolean = true,
     progressProvider: () -> Float,
     endpointsPx: MorphEndpointsPx,
     trackInfo: TrackInfo,
@@ -1968,6 +1983,7 @@ private fun SheetBackdrop(
         if (!alternateStyle && (trackInfo.thumbnailUrl != null || backgroundStyle != PlayerBackgroundStyle.COVER_GRADIENT)) {
             PlayerBackdropCrossfade(
                 trackInfo = trackInfo,
+                isPlaying = isPlaying,
                 backgroundStyle = backgroundStyle,
                 pureBlack = pureBlack,
                 playVideoBackground = playVideoBackground,

@@ -428,6 +428,10 @@ fun NavGraphBuilder.navigationBuilder(
         com.mochyy.mochymusic.ui.screens.settings.integrations.IntegrationsScreen(navController = navController)
     }
 
+    composable(com.mochyy.mochymusic.ui.screens.settings.integrations.AndroidAutoSettingsRoute) {
+        com.mochyy.mochymusic.ui.screens.settings.integrations.AndroidAutoSettingsScreen(navController = navController)
+    }
+
     composable(com.mochyy.mochymusic.ui.screens.settings.integrations.spotify.SpotifyRoute) {
         com.mochyy.mochymusic.ui.screens.settings.integrations.spotify.SpotifyScreen(navController = navController)
     }
@@ -537,6 +541,14 @@ fun NavGraphBuilder.navigationBuilder(
 
     composable("gesture_settings") {
         com.mochyy.mochymusic.ui.screens.gesture.GestureScreen(navController = navController)
+    }
+
+    composable("nav_bar_settings") {
+        com.mochyy.mochymusic.ui.screens.settings.NavBarSettingsScreen(navController = navController)
+    }
+
+    composable("appearance_settings") {
+        com.mochyy.mochymusic.ui.screens.settings.AppearanceSettingsScreen(navController = navController)
     }
 
     composable("customisation_settings") {

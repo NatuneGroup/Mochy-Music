@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
+import com.mochyy.mochymusic.ui.theme.LocalChromeAccent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -28,8 +29,9 @@ fun DefaultPlayerSeekBarSlider(
     val interactionSource = remember { MutableInteractionSource() }
     val isDragged by interactionSource.collectIsDraggedAsState()
     val isPressed by interactionSource.collectIsPressedAsState()
-    val activeColor = if (enabled) MaterialTheme.colorScheme.onSurface else
-        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+    // the accent only when one is picked, so the default grey stays as it was
+    val activeBase = LocalChromeAccent.current ?: MaterialTheme.colorScheme.onSurface
+    val activeColor = if (enabled) activeBase else activeBase.copy(alpha = 0.38f)
     val inactiveColor = if (enabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.20f) else
         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
 

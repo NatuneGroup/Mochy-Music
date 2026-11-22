@@ -39,6 +39,12 @@ fun IntegrationsScreen(navController: NavController) {
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             IntegrationRow(
+                name = stringResource(R.string.car_settings_title),
+                description = stringResource(R.string.car_settings_integration_desc),
+                icon = R.drawable.cast,
+                onClick = { navController.navigate(AndroidAutoSettingsRoute) },
+            )
+            IntegrationRow(
                 name = "Discord",
                 description = stringResource(R.string.integration_discord_desc),
                 icon = R.drawable.integration_discord,

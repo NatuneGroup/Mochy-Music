@@ -32,7 +32,21 @@ import com.mochyy.mochymusic.constants.LyricsLineBounceKey
 import com.mochyy.mochymusic.constants.LyricsSoftLightKey
 import com.mochyy.mochymusic.constants.LyricsMotionStyle
 import com.mochyy.mochymusic.constants.LyricsMotionStyleKey
+import com.mochyy.mochymusic.constants.LyricsClickKey
+import com.mochyy.mochymusic.constants.LyricsScrollKey
 import com.mochyy.mochymusic.constants.LyricsRomanizeAsMainKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeJapaneseKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeKoreanKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeChineseKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeRussianKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeUkrainianKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeSerbianKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeBulgarianKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeBelarusianKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeKyrgyzKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeMacedonianKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeHindiKey
+import com.mochyy.mochymusic.constants.LyricsRomanizePunjabiKey
 import com.mochyy.mochymusic.constants.PlayVideoBackgroundKey
 import com.mochyy.mochymusic.constants.ShowFormatBadgeKey
 import com.mochyy.mochymusic.constants.ShowFormatBitDepthKey
@@ -123,6 +137,8 @@ private fun lyricsItems(): List<SettingsItem> {
     val (youtubeTranslations, onYoutubeTranslationsChange) = rememberPreference(YouTubeCaptionTranslationKey, defaultValue = true)
     val (syncLyricsToVideo, onSyncLyricsToVideoChange) = rememberPreference(SyncLyricsToVideoKey, defaultValue = true)
     val (romanizeAsMain, onRomanizeAsMainChange) = rememberPreference(LyricsRomanizeAsMainKey, defaultValue = false)
+    val (tapToSeek, onTapToSeekChange) = rememberPreference(LyricsClickKey, defaultValue = true)
+    val (autoScroll, onAutoScrollChange) = rememberPreference(LyricsScrollKey, defaultValue = true)
     val (highBloom, onHighBloomChange) = rememberPreference(LyricsHighBloomKey, defaultValue = true)
     val (interludeDots, onInterludeDotsChange) = rememberPreference(LyricsInterludeDotsKey, defaultValue = true)
     val (lineBounce, onLineBounceChange) = rememberPreference(LyricsLineBounceKey, defaultValue = true)
@@ -155,6 +171,23 @@ private fun lyricsItems(): List<SettingsItem> {
             icon = painterResource(R.drawable.lyrics),
             checked = romanizeAsMain,
             onCheckedChange = onRomanizeAsMainChange,
+        ),
+        *romanizeLanguageItems().toTypedArray(),
+        switchItem(
+            key = "Change lyrics on click",
+            title = stringResource(R.string.lyrics_click_change),
+            description = stringResource(R.string.lyrics_click_change_desc),
+            icon = painterResource(R.drawable.lyrics),
+            checked = tapToSeek,
+            onCheckedChange = onTapToSeekChange,
+        ),
+        switchItem(
+            key = "Auto scroll lyrics",
+            title = stringResource(R.string.lyrics_auto_scroll),
+            description = stringResource(R.string.lyrics_auto_scroll_desc),
+            icon = painterResource(R.drawable.lyrics),
+            checked = autoScroll,
+            onCheckedChange = onAutoScrollChange,
         ),
         switchItem(
             key = "Show instrumental dots",
@@ -367,4 +400,36 @@ private fun relatedItems(navController: NavController): List<SettingsItem> {
             onClick = { openCustomise(BottomBarHighlightKey) },
         ),
     )
+}
+
+// one switch per language the readings can romanise, under the switch above; the customise page's master switch sets them all
+private val romanizeLanguages = listOf(
+    Triple("Romanize Japanese lyrics", R.string.lyrics_romanize_japanese, LyricsRomanizeJapaneseKey),
+    Triple("Romanize Korean lyrics", R.string.lyrics_romanize_korean, LyricsRomanizeKoreanKey),
+    Triple("Romanize Chinese lyrics", R.string.lyrics_romanize_chinese, LyricsRomanizeChineseKey),
+    Triple("Romanize Russian lyrics", R.string.lyrics_romanize_russian, LyricsRomanizeRussianKey),
+    Triple("Romanize Ukrainian lyrics", R.string.lyrics_romanize_ukrainian, LyricsRomanizeUkrainianKey),
+    Triple("Romanize Serbian lyrics", R.string.lyrics_romanize_serbian, LyricsRomanizeSerbianKey),
+    Triple("Romanize Bulgarian lyrics", R.string.lyrics_romanize_bulgarian, LyricsRomanizeBulgarianKey),
+    Triple("Romanize Belarusian lyrics", R.string.lyrics_romanize_belarusian, LyricsRomanizeBelarusianKey),
+    Triple("Romanize Kyrgyz lyrics", R.string.lyrics_romanize_kyrgyz, LyricsRomanizeKyrgyzKey),
+    Triple("Romanize Macedonian lyrics", R.string.lyrics_romanize_macedonian, LyricsRomanizeMacedonianKey),
+    Triple("Romanize Hindi lyrics", R.string.lyrics_romanize_hindi, LyricsRomanizeHindiKey),
+    Triple("Romanize Punjabi lyrics", R.string.lyrics_romanize_punjabi, LyricsRomanizePunjabiKey),
+)
+
+@Composable
+private fun romanizeLanguageItems(): List<SettingsItem> {
+    val description = stringResource(R.string.settings_romanize_language_desc)
+    return romanizeLanguages.map { (name, titleRes, key) ->
+        val state = rememberPreference(key, defaultValue = true)
+        switchItem(
+            key = name,
+            title = stringResource(titleRes),
+            description = description,
+            icon = painterResource(R.drawable.lyrics),
+            checked = state.value,
+            onCheckedChange = { state.value = it },
+        )
+    }
 }

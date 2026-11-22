@@ -1,6 +1,7 @@
 package com.mochyy.mochymusic.shared.ui.shell
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +10,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -25,6 +29,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -32,9 +37,12 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -49,6 +57,9 @@ import com.mochyy.mochymusic.shared.media.SearchSource
 import com.mochyy.mochymusic.shared.playback.PlayerController
 import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.shared.resources.library_empty
+import com.mochyy.mochymusic.shared.resources.library_filter_hint
+import com.mochyy.mochymusic.shared.resources.library_filter_no_results
+import com.mochyy.mochymusic.shared.resources.library_clear_filter
 import com.mochyy.mochymusic.shared.resources.library_remove
 import com.mochyy.mochymusic.shared.resources.library_save
 import com.mochyy.mochymusic.shared.resources.library_update_failed
@@ -65,6 +76,9 @@ import com.mochyy.mochymusic.shared.resources.show_format_badge
 import com.mochyy.mochymusic.shared.resources.show_format_sample_rate
 import com.mochyy.mochymusic.shared.resources.queue
 import com.mochyy.mochymusic.shared.resources.queue_empty
+import com.mochyy.mochymusic.shared.resources.queue_load_failed
+import com.mochyy.mochymusic.shared.resources.queue_loading
+import com.mochyy.mochymusic.shared.resources.queue_write_failed
 import com.mochyy.mochymusic.shared.resources.recently_played
 import com.mochyy.mochymusic.shared.resources.recently_played_empty
 import com.mochyy.mochymusic.shared.resources.shell_credit
@@ -73,15 +87,20 @@ import com.mochyy.mochymusic.shared.resources.remove_from_queue
 import com.mochyy.mochymusic.shared.resources.skip_next
 import com.mochyy.mochymusic.shared.settings.PlaybackPreferenceKeys
 import com.mochyy.mochymusic.shared.settings.PlaybackPreferences
+import com.mochyy.mochymusic.shared.settings.UpcomingQueueRead
 import com.mochyy.mochymusic.shared.ui.player.MiniPlayerBar
 import com.mochyy.mochymusic.shared.ui.search.SearchScreen
 import com.mochyy.mochymusic.shared.ui.search.SongRow
 import com.music.innertube.models.SongItem
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import okio.IOException
 import org.jetbrains.compose.resources.stringResource
 
 private enum class PlayerPanel { Queue, Lyrics, Settings }
+private const val PreloadStartDelayMs = 2_000L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,6 +114,10 @@ internal fun StandaloneMusicApp(
 ) {
     val playback by player.state.collectAsState()
     var queued by remember { mutableStateOf<List<SongItem>>(emptyList()) }
+    val storedQueue by settings.upcomingQueue.collectAsState(initial = UpcomingQueueRead.Loading)
+    var queueReady by remember { mutableStateOf(false) }
+    var queueStorageUnavailable by remember { mutableStateOf(false) }
+    var queueWriteFailed by remember { mutableStateOf(false) }
     var showPlayer by remember { mutableStateOf(false) }
     var panel by remember { mutableStateOf(PlayerPanel.Queue) }
     val preferences by settings.values.collectAsState(initial = emptyPreferences())
@@ -102,10 +125,32 @@ internal fun StandaloneMusicApp(
     val showSampleRate = preferences[PlaybackPreferenceKeys.showSampleRate] ?: false
     var settingsFailed by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val queueWriteMutex = remember { Mutex() }
     val saved by library.saved.collectAsState(initial = emptyList())
     val recent by library.recent.collectAsState(initial = emptyList())
     var libraryUpdateFailed by remember { mutableStateOf(false) }
     var lastRecorded by remember { mutableStateOf<String?>(null) }
+
+    DisposableEffect(player) {
+        onDispose { player.preloadNext(null) }
+    }
+
+    LaunchedEffect(storedQueue) {
+        if (!queueReady) {
+            when (val result = storedQueue) {
+                UpcomingQueueRead.Loading -> Unit
+                is UpcomingQueueRead.Loaded -> {
+                    queued = result.songs
+                    queueStorageUnavailable = false
+                    queueReady = true
+                }
+                UpcomingQueueRead.Unavailable -> {
+                    queueStorageUnavailable = true
+                    queueReady = true
+                }
+            }
+        }
+    }
 
     fun setSaved(song: SongItem, save: Boolean) {
         scope.launch {
@@ -132,8 +177,24 @@ internal fun StandaloneMusicApp(
         }
     }
 
+    fun replaceQueue(next: List<SongItem>) {
+        if (next == queued) return
+        queued = next
+        if (!queueReady || queueStorageUnavailable) return
+        scope.launch {
+            queueWriteMutex.withLock {
+                queueWriteFailed = try {
+                    settings.setUpcomingQueue(next)
+                    false
+                } catch (_: IOException) {
+                    true
+                }
+            }
+        }
+    }
+
     fun play(song: SongItem) {
-        queued = queued.filterNot { it.id == song.id }
+        replaceQueue(queued.filterNot { it.id == song.id })
         player.play(song)
     }
 
@@ -143,6 +204,16 @@ internal fun StandaloneMusicApp(
 
     LaunchedEffect(playback.hasEnded) {
         if (playback.hasEnded) playNext()
+    }
+
+    val nextSong = queued.firstOrNull()
+    LaunchedEffect(player, queueReady, playback.isPlaying, playback.isLoading, nextSong?.id) {
+        // A restored queue stays offline until playback actually gets underway; pauses and queue
+        // changes also cancel any pending or completed prefetch before choosing the new head.
+        player.preloadNext(null)
+        if (!queueReady || !playback.isPlaying || playback.isLoading || nextSong == null) return@LaunchedEffect
+        delay(PreloadStartDelayMs)
+        player.preloadNext(nextSong)
     }
 
     MochyShell(
@@ -159,8 +230,9 @@ internal fun StandaloneMusicApp(
             ShellTab.Search -> SearchScreen(
                 source = source,
                 onPlay = ::play,
+                queueEnabled = queueReady,
                 onQueue = { song ->
-                    if (queued.none { it.id == song.id }) queued = queued + song
+                    if (queueReady && queued.none { it.id == song.id }) replaceQueue(queued + song)
                     panel = PlayerPanel.Queue
                     showPlayer = true
                 },
@@ -225,19 +297,34 @@ internal fun StandaloneMusicApp(
                     }
                 } else if (panel == PlayerPanel.Lyrics && song != null) {
                     LyricsPanel(song, playback.positionMs, lyricsProviders, player::seekTo)
-                } else if (queued.isEmpty()) {
-                    Text(stringResource(Res.string.queue_empty))
                 } else {
-                    TextButton(onClick = ::playNext) { Text(stringResource(Res.string.skip_next)) }
-                    LazyColumn(Modifier.fillMaxWidth().heightIn(max = 320.dp)) {
-                        items(queued, key = { it.id }) { song ->
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                SongRow(song, onClick = { play(song) }, modifier = Modifier.weight(1f))
-                                val label = stringResource(Res.string.remove_from_queue)
-                                IconButton(
-                                    onClick = { queued = queued.filterNot { it.id == song.id } },
-                                    modifier = Modifier.semantics { contentDescription = label },
-                                ) { Text("−", style = MaterialTheme.typography.headlineSmall) }
+                    if (!queueReady) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                            Text(stringResource(Res.string.queue_loading))
+                        }
+                    } else {
+                        if (queueStorageUnavailable) {
+                            Text(stringResource(Res.string.queue_load_failed), color = MaterialTheme.colorScheme.error)
+                        }
+                        if (queueWriteFailed) {
+                            Text(stringResource(Res.string.queue_write_failed), color = MaterialTheme.colorScheme.error)
+                        }
+                        if (queued.isEmpty()) {
+                            Text(stringResource(Res.string.queue_empty))
+                        } else {
+                            TextButton(onClick = ::playNext) { Text(stringResource(Res.string.skip_next)) }
+                            LazyColumn(Modifier.fillMaxWidth().heightIn(max = 320.dp)) {
+                                items(queued, key = { it.id }) { song ->
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        SongRow(song, onClick = { play(song) }, modifier = Modifier.weight(1f))
+                                        val label = stringResource(Res.string.remove_from_queue)
+                                        IconButton(
+                                            onClick = { replaceQueue(queued.filterNot { it.id == song.id }) },
+                                            modifier = Modifier.semantics { contentDescription = label },
+                                        ) { Text("−", style = MaterialTheme.typography.headlineSmall) }
+                                    }
+                                }
                             }
                         }
                     }
@@ -257,6 +344,15 @@ private fun LibrarySongs(
     credit: String? = null,
     updateFailed: Boolean = false,
 ) {
+    var filter by rememberSaveable(title) { mutableStateOf("") }
+    val visibleSongs = remember(songs, filter) {
+        val query = filter.trim()
+        if (query.isEmpty()) songs else songs.filter { song ->
+            song.title.contains(query, ignoreCase = true) ||
+                song.artists.any { artist -> artist.name.contains(query, ignoreCase = true) }
+        }
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -264,13 +360,52 @@ private fun LibrarySongs(
         item {
             Text(title, style = MaterialTheme.typography.displaySmall, modifier = Modifier.padding(vertical = 24.dp))
         }
+        item {
+            val filterHint = stringResource(Res.string.library_filter_hint)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                    .padding(start = 16.dp, end = 8.dp, top = 2.dp, bottom = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.weight(1f).padding(vertical = 12.dp)) {
+                    if (filter.isEmpty()) {
+                        Text(
+                            filterHint,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                    }
+                    BasicTextField(
+                        value = filter,
+                        onValueChange = { filter = it },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        modifier = Modifier.fillMaxWidth().semantics { contentDescription = filterHint },
+                    )
+                }
+                if (filter.isNotEmpty()) {
+                    val clearLabel = stringResource(Res.string.library_clear_filter)
+                    IconButton(
+                        onClick = { filter = "" },
+                        modifier = Modifier.semantics { contentDescription = clearLabel },
+                    ) { Text("×", style = MaterialTheme.typography.headlineSmall) }
+                }
+            }
+        }
         if (updateFailed) item {
             Text(stringResource(Res.string.library_update_failed), color = MaterialTheme.colorScheme.error)
         }
-        if (songs.isEmpty()) item {
-            Text(emptyMessage, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (visibleSongs.isEmpty()) item {
+            Text(
+                if (filter.isBlank()) emptyMessage else stringResource(Res.string.library_filter_no_results),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
-        items(songs, key = { it.id }) { song ->
+        items(visibleSongs, key = { it.id }) { song ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 SongRow(song, onClick = { onPlay(song) }, modifier = Modifier.weight(1f))
                 if (onRemove != null) {

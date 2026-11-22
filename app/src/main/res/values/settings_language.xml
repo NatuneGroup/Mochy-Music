@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="playback_preload_next">Preload next song</string>
+    <string name="playback_preload_next_desc">Cache the start of the next YouTube song on unmetered networks, even with Blend skips off</string>
+    <string name="playback_audio_offload">Audio offload</string>
+    <string name="playback_audio_offload_desc">Let the phone\'s audio chip decode songs to save battery. Turns itself off while Crossmix or sound effects are on.</string>
+    <string name="playback_efficient_decoding">Efficient decoding</string>
+    <string name="playback_efficient_decoding_desc">Decode YouTube AAC and Opus songs inside the app to save battery. Turn off to use the phone\'s own decoder. Takes effect when playback restarts.</string>
     <string name="appearance_player">Player appearance</string>
     <string name="appearance_customize_player">Customize player</string>
     <string name="appearance_customize_player_desc">Customize player cover, background, style</string>
@@ -114,6 +120,7 @@
     <string name="settings_related">Related</string>
     <string name="settings_section_network">Network &amp; data</string>
     <string name="settings_section_library_privacy">Library &amp; privacy</string>
+    <string name="settings_section_content">Content</string>
     <string name="settings_section_listening">While you listen</string>
     <string name="settings_section_failures">When a song won\'t play</string>
     <string name="settings_section_lyrics">Lyrics</string>
@@ -232,6 +239,7 @@
     <string name="customise_landscape_full_cover">Full cover</string>
     <string name="customise_landscape_full_cover_desc">The cover fills the left side and melts into the controls. Off, it sits as a rounded square</string>
     <string name="settings_romanize_as_main">Romanisation as the main line</string>
+    <string name="settings_romanize_language_desc">Show this language's lyrics in Latin letters too, under each line.</string>
     <string name="settings_romanize_as_main_desc">The romanised words are the line that sings, the original stays underneath</string>
     <string name="customise_lyrics_romanisation">Romanisation</string>
     <string name="customise_lyrics_romanisation_desc">Readings for Japanese, Korean, Chinese, Hindi and Cyrillic lyrics</string>

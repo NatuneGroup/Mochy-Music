@@ -391,6 +391,10 @@
     <string name="enable_lrclib">Enable LrcLib lyrics provider</string>
     <string name="enable_kugou">Enable KuGou lyrics provider</string>
     <string name="hide_explicit">Hide explicit content</string>
+    <string name="settings_hide_explicit_desc">Leaves explicit songs out of Home, search, library and radio</string>
+    <string name="settings_hide_music_videos">Hide music videos</string>
+    <string name="settings_hide_music_videos_desc">Leaves music video versions out of Home, search, library and radio</string>
+    <string name="settings_pause_listen_history_desc">Stops saving new listens here and to YouTube history. Listens already saved are kept.</string>
 
     <string name="backup_restore">Backup and restore</string>
     <string name="action_backup">Backup</string>
@@ -510,4 +514,29 @@
     <string name="metrolist_modern">Metrolist Modern</string>
     <string name="metrolist_vintage">Metrolist Vintage</string>
     <string name="metrolist_collapse">Close player</string>
+    <string name="playback_infinite_queue">Infinite queue</string>
+    <string name="playback_infinite_queue_desc">Keep the music going with related songs</string>
+    <string name="playback_infinite_queue_detail">When the queue is about to end, songs similar to the one playing are added from YouTube radio</string>
+    <string name="settings_queue_prevent_duplicates">Prevent duplicates</string>
+    <string name="settings_queue_prevent_duplicates_desc">A song already in the queue moves instead of being added twice</string>
+    <string name="settings_queue_add_in_order">Add to queue in order</string>
+    <string name="settings_queue_add_in_order_desc">Songs you play next keep the order you added them in</string>
+    <string name="settings_queue_lock">Lock queue</string>
+    <string name="settings_queue_lock_desc">No removing, moving or swiping songs in the queue</string>
+    <string name="settings_section_sponsorblock">SponsorBlock</string>
+    <string name="settings_sponsorblock">Skip non-music parts</string>
+    <string name="settings_sponsorblock_desc">Skips parts of YouTube songs that other viewers marked on SponsorBlock</string>
+    <string name="settings_sponsorblock_detail">Only the song\'s video ID is sent to sponsor.ajay.app to look these up</string>
+    <string name="settings_sponsorblock_offtopic">Non-music sections</string>
+    <string name="settings_sponsorblock_offtopic_desc">Parts of a music video that aren\'t the song</string>
+    <string name="settings_sponsorblock_sponsor">Sponsor reads</string>
+    <string name="settings_sponsorblock_sponsor_desc">Paid promotions read out in the song</string>
+    <string name="settings_sponsorblock_selfpromo">Self-promotion</string>
+    <string name="settings_sponsorblock_selfpromo_desc">Plugs for the artist\'s own channels or merch</string>
+    <string name="settings_sponsorblock_intro">Intros</string>
+    <string name="settings_sponsorblock_intro_desc">Lead-in before the song starts</string>
+    <string name="settings_sponsorblock_outro">Outros</string>
+    <string name="settings_sponsorblock_outro_desc">Credits or chatter after the song ends</string>
+    <string name="settings_keep_cpu_awake">Keep CPU awake during playback</string>
+    <string name="settings_keep_cpu_awake_desc">Stops the phone from pausing music when the screen is off. Uses more battery</string>
 </resources>

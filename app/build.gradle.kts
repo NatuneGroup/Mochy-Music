@@ -30,7 +30,7 @@ extensions.configure<ApplicationExtension> {
         minSdk = 24
         targetSdk = 37
         versionCode = 73
-        versionName = "8.4.3 build#1285"
+        versionName = "8.4.3 build#1290"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -177,7 +177,7 @@ extensions.configure<ApplicationExtension> {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            isCrunchPngs = false
+            isCrunchPngs = true
             isDebuggable = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -289,6 +289,16 @@ extensions.configure<ApplicationExtension> {
             excludes += "META-INF/LICENSE.md"
             excludes += "META-INF/INDEX.LIST"
             excludes += "META-INF/io.netty.versions.properties"
+            excludes += "META-INF/*.version"
+            excludes += "META-INF/CHANGES"
+            excludes += "META-INF/README.md"
+            excludes += "META-INF/proguard/**"
+            excludes += "META-INF/maven/**"
+            excludes += "META-INF/com.android.tools/**"
+            excludes += "DebugProbesKt.bin"
+            excludes += "google/protobuf/**"
+            excludes += "src/google/protobuf/**"
+            excludes += "**/*.proto"
         }
     }
 }
@@ -393,9 +403,6 @@ dependencies {
     implementation(libs.lifecycle.process)
 
     implementation(libs.material3)
-    implementation(libs.androidx.adaptive)
-    implementation(libs.androidx.adaptive.layout)
-    implementation(libs.androidx.adaptive.navigation)
     implementation(libs.palette)
     implementation(libs.materialKolor)
 
@@ -404,8 +411,6 @@ dependencies {
     implementation(libs.coil)
     implementation(libs.coil.svg)
     implementation(libs.coil.network.okhttp)
-
-    implementation(libs.ucrop)
 
     implementation(libs.shimmer)
 
@@ -434,8 +439,6 @@ dependencies {
     implementation(libs.tinypinyin)
     ksp(libs.room.compiler)
     implementation(libs.room.ktx)
-
-    implementation(libs.apache.lang3)
 
     implementation(libs.hilt)
     implementation(libs.jsoup)
@@ -481,7 +484,6 @@ dependencies {
     coreLibraryDesugaring(libs.desugaring)
     implementation(libs.timber)
     implementation(libs.smoothCorner)
-    implementation(libs.lottie.compose)
     implementation("androidx.compose.material:material-icons-extended:1.7.8")
     implementation(libs.work.runtime.ktx)
     implementation(libs.androidx.core.splashscreen)

@@ -36,6 +36,7 @@ import com.music.innertube.models.filterExplicit
 import com.music.innertube.models.filterVideoSongs
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.car.CarLyricsSource
+import com.mochyy.mochymusic.car.CarStreamGate
 import com.mochyy.mochymusic.constants.HideExplicitKey
 import com.mochyy.mochymusic.constants.HideVideoSongsKey
 import com.mochyy.mochymusic.constants.MediaSessionConstants
@@ -61,6 +62,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
@@ -74,6 +76,7 @@ constructor(
     @ApplicationContext val context: Context,
     val database: MusicDatabase,
     val downloadUtil: DownloadUtil,
+    private val carStreamGate: CarStreamGate,
 ) : MediaLibrarySession.Callback {
     private val scope = CoroutineScope(Dispatchers.Main) + Job()
     lateinit var service: MusicService
@@ -392,6 +395,7 @@ constructor(
         pageSize: Int,
         params: MediaLibraryService.LibraryParams?
     ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
+        val allowOnline = allowOnlineSearch(session, browser)
         return scope.future(Dispatchers.IO) {
             if (query.isEmpty()) {
                 return@future LibraryResult.ofItemList(emptyList(), params.withContentStyleHints())
@@ -429,7 +433,7 @@ constructor(
                     ))
                 }
 
-                try {
+                if (allowOnline) try {
                     val onlineResults = YouTube.search(query, YouTube.SearchFilter.FILTER_SONG)
                         .getOrNull()
                         ?.items
@@ -480,7 +484,7 @@ constructor(
         if (controller.packageName == OriginCard.Package) {
             mediaItems.singleOrNull()?.let { playFromOriginCard(mediaSession, it.mediaId) }?.let { return it }
         }
-        return scope.future {
+        val resolved = scope.future {
             val defaultResult = MediaItemsWithStartPosition(emptyList(), startIndex, startPositionMs)
             val path = mediaItems.firstOrNull()?.mediaId?.split("/")
                 ?: return@future defaultResult
@@ -668,6 +672,17 @@ constructor(
                 else -> defaultResult
             }
         }
+        // android auto on mobile data with streaming off: only songs already on the phone start
+        return scope.future {
+            val result = resolved.await()
+            val items = result.mediaItems
+            if (controller.packageName != CarStreamGate.AndroidAuto || items.isEmpty()) return@future result
+            val kept = carStreamGate.playable(items)
+            if (kept.size == items.size) return@future result
+            if (kept.isEmpty()) throw IllegalStateException("Streaming on mobile data is off in the car")
+            val start = items.getOrNull(result.startIndex)?.mediaId
+            MediaItemsWithStartPosition(kept, kept.indexOfFirst { it.mediaId == start }.coerceAtLeast(0), result.startPositionMs)
+        }
     }
 
     // a song tapped in the card's queue plays where it already is in the queue instead of a new queue being built round it, and
@@ -727,7 +742,7 @@ constructor(
             player.play()
             return
         }
-        val queue = voice.queueFor(request)
+        val queue = voice.queueFor(request, allowOnline = allowOnlineSearch(session, controller))
         if (queue == null) {
             val heard = query?.trim().orEmpty()
             val message = if (heard.isEmpty()) {
@@ -740,6 +755,10 @@ constructor(
         }
         service.playQueue(queue)
     }
+
+    private fun allowOnlineSearch(session: MediaSession, controller: MediaSession.ControllerInfo): Boolean =
+        !(session.isAutoCompanionController(controller) || session.isAutomotiveController(controller)) ||
+            context.dataStore.get(com.mochyy.mochymusic.constants.CarOnlineVoiceSearchKey, true)
 
     private fun drawableUri(
         @DrawableRes id: Int,

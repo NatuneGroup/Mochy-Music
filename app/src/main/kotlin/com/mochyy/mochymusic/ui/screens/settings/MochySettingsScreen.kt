@@ -60,6 +60,7 @@ import com.mochyy.mochymusic.scrobble.ScrobbleSite
 import com.mochyy.mochymusic.ui.screens.devices.showDeviceIntegration
 import com.mochyy.mochymusic.ui.screens.settings.importsync.YouTubeSyncRoute
 import com.mochyy.mochymusic.ui.screens.settings.integrations.IntegrationsRoute
+import com.mochyy.mochymusic.ui.screens.settings.integrations.AndroidAutoSettingsRoute
 import com.mochyy.mochymusic.ui.screens.settings.integrations.discord.DiscordRoute
 import com.mochyy.mochymusic.ui.screens.settings.integrations.scrobbleServiceRoute
 import com.mochyy.mochymusic.constants.ProfilePicUriKey
@@ -105,6 +106,10 @@ private val LocalizedSettingsTitles = mapOf(
     "Save Player's last state" to R.string.playback_save_state,
     "Local song auto metadata" to R.string.settings_local_auto_metadata,
     "Keep shuffle on" to R.string.settings_persistent_shuffle,
+    "Preload next song" to R.string.playback_preload_next,
+    "Audio offload" to R.string.playback_audio_offload,
+    "Efficient decoding" to R.string.playback_efficient_decoding,
+    "Android Auto" to R.string.car_settings_title,
     "Disable auto-playing YouTube video" to R.string.settings_disable_video_autoplay,
     "Translations from YouTube" to R.string.settings_youtube_translations,
     "Sync lyrics to music videos" to R.string.settings_sync_lyrics_video,
@@ -129,6 +134,10 @@ private val LocalizedSettingsTitles = mapOf(
     "Playback" to R.string.settings_playback_category,
     "Now playing" to R.string.settings_now_playing,
     "Disable description on settings" to R.string.settings_hide_descriptions,
+    "Hide explicit content" to R.string.hide_explicit,
+    "Hide music videos" to R.string.settings_hide_music_videos,
+    "Pause listen history" to R.string.pause_listen_history,
+    "Disable screenshot" to R.string.disable_screenshot,
     "Cover rounding" to R.string.customise_cover_rounding,
     "Playlist styles" to R.string.customise_playlist_styles,
     "Player styles" to R.string.customise_player_styles,
@@ -147,6 +156,7 @@ private val LocalizedSettingsPages = mapOf(
     "Playback" to R.string.settings_playback_category,
     "Now playing" to R.string.settings_now_playing,
     "Customisation" to R.string.settings_customisation_category,
+    "Appearance" to R.string.settings_appearance,
     "Storage" to R.string.storage,
     "Audio Lab" to R.string.settings_audio_lab_category,
     "Modules" to R.string.settings_modules_category,
@@ -154,6 +164,16 @@ private val LocalizedSettingsPages = mapOf(
 )
 
 private val SettingsIndex = listOf(
+    // Appearance
+    SettingsEntry("Appearance", "Appearance", "appearance_settings", "look theme tabs navigation bar layout scale colour color font tablet", R.string.settings_appearance),
+    SettingsEntry("Default start tab", "Appearance", "appearance_settings", "start open launch first tab home search library", R.string.settings_start_tab),
+    SettingsEntry("Hide navigation bar on scroll", "Appearance", "appearance_settings", "nav navigation bar tabs hide slide scroll list auto", R.string.settings_hide_nav_on_scroll),
+    SettingsEntry("Navigation bar", "Appearance", "nav_bar_settings", "nav bar tabs order reorder show hide home search library settings choose", R.string.settings_nav_bar),
+    SettingsEntry("Accent colour", "Appearance", "appearance_settings", "accent colour color palette theme primary highlight album art cover", R.string.settings_accent),
+    SettingsEntry("UI scale", "Appearance", "appearance_settings", "scale size zoom bigger smaller density text display", R.string.settings_ui_scale),
+    SettingsEntry("Tablet layout", "Appearance", "appearance_settings", "tablet wide layout side rail landscape big screen split pane", R.string.settings_tablet_layout),
+    SettingsEntry("System font", "Appearance", "appearance_settings", "font typeface text system phone default inter", R.string.settings_system_font),
+
     // Customisation
     SettingsEntry("Customisation", "Customisation", "customisation_settings", "customize cover rounding playlist player home styles gesture swipe blur animation lyrics"),
     SettingsEntry("Cover rounding", "Customisation", "customisation_settings", "square rounded corner radius px thumbnail art"),
@@ -181,6 +201,10 @@ private val SettingsIndex = listOf(
     SettingsEntry("App language", "App behaviour", "general_settings", "language bahasa locale device system indonesia english translate", R.string.app_language),
     SettingsEntry("Disable App Updates notice", "App behaviour", "general_settings", "update popup notification updater"),
     SettingsEntry("Disable description on settings", "App behaviour", "general_settings", "hide subtitle text rows titles only"),
+    SettingsEntry("Hide explicit content", "App behaviour", "general_settings", "explicit content songs filter hide clean family", R.string.hide_explicit),
+    SettingsEntry("Hide music videos", "App behaviour", "general_settings", "music video mv videos filter hide clip"),
+    SettingsEntry("Pause listen history", "App behaviour", "general_settings", "listen history pause private incognito privacy youtube plays stop"),
+    SettingsEntry("Disable screenshot", "App behaviour", "general_settings", "screenshot screen capture recents privacy secure block"),
     SettingsEntry("Offline mode", "App behaviour", "general_settings", "play downloaded cache offline"),
     SettingsEntry("Data saver", "App behaviour", "general_settings", "data saver mobile metered cellular bandwidth lower quality canvas video"),
     SettingsEntry("Internet", "App behaviour", com.mochyy.mochymusic.ui.screens.settings.InternetSettingsRoute, "internet region country dns doh proxy wifi cellular quality blocked spoof"),
@@ -201,7 +225,21 @@ private val SettingsIndex = listOf(
     SettingsEntry("Resume on Bluetooth connection", "Playback", PlaybackSettingsRoute, "bluetooth headphones earbuds car connect resume auto play start", R.string.playback_resume_bluetooth),
     SettingsEntry("Pause when muted", "Playback", PlaybackSettingsRoute, "pause mute volume silent zero off automatic", R.string.pause_music_when_media_is_muted),
     SettingsEntry("Save Player's last state", "Playback", PlaybackSettingsRoute, "persistent queue restore track state"),
+    SettingsEntry("Infinite queue", "Playback", PlaybackSettingsRoute, "autoplay radio related endless queue songs keep going never stop", R.string.playback_infinite_queue),
+    SettingsEntry("Keep CPU awake during playback", "Playback", PlaybackSettingsRoute, "cpu wake lock awake screen off background sleep stop music battery", R.string.settings_keep_cpu_awake),
+    SettingsEntry("Prevent duplicates in queue", "Playback", PlaybackSettingsRoute, "queue duplicate copy twice same song move again", R.string.settings_queue_prevent_duplicates),
+    SettingsEntry("Add to queue in order", "Playback", PlaybackSettingsRoute, "queue play next order sequence keep add later", R.string.settings_queue_add_in_order),
+    SettingsEntry("Lock queue", "Playback", PlaybackSettingsRoute, "queue lock remove move swipe reorder protect", R.string.settings_queue_lock),
+    SettingsEntry("SponsorBlock", "Playback", PlaybackSettingsRoute, "sponsorblock sponsor skip segments non-music intro outro self promotion youtube", R.string.settings_sponsorblock),
+    SettingsEntry("SponsorBlock non-music sections", "Playback", PlaybackSettingsRoute, "sponsorblock off topic music non-music skip", R.string.settings_sponsorblock_offtopic),
+    SettingsEntry("SponsorBlock sponsor reads", "Playback", PlaybackSettingsRoute, "sponsorblock sponsor advert ad read skip", R.string.settings_sponsorblock_sponsor),
+    SettingsEntry("SponsorBlock self-promotion", "Playback", PlaybackSettingsRoute, "sponsorblock self promo promotion skip", R.string.settings_sponsorblock_selfpromo),
+    SettingsEntry("SponsorBlock intros", "Playback", PlaybackSettingsRoute, "sponsorblock intro start skip", R.string.settings_sponsorblock_intro),
+    SettingsEntry("SponsorBlock outros", "Playback", PlaybackSettingsRoute, "sponsorblock outro end credits skip", R.string.settings_sponsorblock_outro),
     SettingsEntry("Keep shuffle on", "Playback", PlaybackSettingsRoute, "shuffle persistent spotify random keep new playlist"),
+    SettingsEntry("Preload next song", "Playback", PlaybackSettingsRoute, "queue next track buffer preload unmetered wi-fi"),
+    SettingsEntry("Audio offload", "Playback", PlaybackSettingsRoute, "battery offload decode chip power efficiency hardware"),
+    SettingsEntry("Efficient decoding", "Playback", PlaybackSettingsRoute, "battery decode decoder ffmpeg aac opus codec power efficient in-app"),
     SettingsEntry("Skip Silence", "Playback", PlaybackSettingsRoute, "silence trim gap interval"),
     SettingsEntry("Don't skip on failure", "Playback", PlaybackSettingsRoute, "fail stream error stay skip"),
     SettingsEntry("Skip timeout failure", "Playback", PlaybackSettingsRoute, "skip timeout seconds failed stream"),
@@ -213,6 +251,20 @@ private val SettingsIndex = listOf(
     SettingsEntry("Translations from YouTube", "Now playing", NowPlayingSettingsRoute, "captions translate lyrics language"),
     SettingsEntry("Sync lyrics to music videos", "Now playing", NowPlayingSettingsRoute, "lyrics video timing intro skit"),
     SettingsEntry("Romanisation as the main line", "Now playing", NowPlayingSettingsRoute, "romaji romanization pinyin latin lyrics japanese korean chinese", R.string.settings_romanize_as_main),
+    SettingsEntry("Romanize Japanese lyrics", "Now playing", NowPlayingSettingsRoute, "romanize romanise lyrics japanese romaji japanese kana kanji", R.string.lyrics_romanize_japanese),
+    SettingsEntry("Romanize Korean lyrics", "Now playing", NowPlayingSettingsRoute, "romanize romanise lyrics korean hangul korean", R.string.lyrics_romanize_korean),
+    SettingsEntry("Romanize Chinese lyrics", "Now playing", NowPlayingSettingsRoute, "romanize romanise lyrics chinese pinyin chinese han hanzi", R.string.lyrics_romanize_chinese),
+    SettingsEntry("Romanize Russian lyrics", "Now playing", NowPlayingSettingsRoute, "romanize romanise lyrics russian cyrillic russian", R.string.lyrics_romanize_russian),
+    SettingsEntry("Romanize Ukrainian lyrics", "Now playing", NowPlayingSettingsRoute, "romanize romanise lyrics ukrainian cyrillic ukrainian", R.string.lyrics_romanize_ukrainian),
+    SettingsEntry("Romanize Serbian lyrics", "Now playing", NowPlayingSettingsRoute, "romanize romanise lyrics serbian cyrillic serbian latin", R.string.lyrics_romanize_serbian),
+    SettingsEntry("Romanize Bulgarian lyrics", "Now playing", NowPlayingSettingsRoute, "romanize romanise lyrics bulgarian cyrillic bulgarian", R.string.lyrics_romanize_bulgarian),
+    SettingsEntry("Romanize Belarusian lyrics", "Now playing", NowPlayingSettingsRoute, "romanize romanise lyrics belarusian cyrillic belarusian", R.string.lyrics_romanize_belarusian),
+    SettingsEntry("Romanize Kyrgyz lyrics", "Now playing", NowPlayingSettingsRoute, "romanize romanise lyrics kyrgyz cyrillic kyrgyz", R.string.lyrics_romanize_kyrgyz),
+    SettingsEntry("Romanize Macedonian lyrics", "Now playing", NowPlayingSettingsRoute, "romanize romanise lyrics macedonian cyrillic macedonian", R.string.lyrics_romanize_macedonian),
+    SettingsEntry("Romanize Hindi lyrics", "Now playing", NowPlayingSettingsRoute, "romanize romanise lyrics hindi devanagari hindi", R.string.lyrics_romanize_hindi),
+    SettingsEntry("Romanize Punjabi lyrics", "Now playing", NowPlayingSettingsRoute, "romanize romanise lyrics punjabi gurmukhi punjabi", R.string.lyrics_romanize_punjabi),
+    SettingsEntry("Change lyrics on click", "Now playing", NowPlayingSettingsRoute, "lyrics tap seek jump line click", R.string.lyrics_click_change),
+    SettingsEntry("Auto scroll lyrics", "Now playing", NowPlayingSettingsRoute, "lyrics scroll follow current line back", R.string.lyrics_auto_scroll),
     SettingsEntry("High quality bloom", "Now playing", NowPlayingSettingsRoute, "lyrics bloom quality extra soft pass glow"),
     SettingsEntry("Tinted lyrics", "Now playing", NowPlayingSettingsRoute, "lyrics soft light blend tint colour color cover inactive grey gray lines"),
     SettingsEntry("Floating lyrics overlay bubble", "Now playing", NowPlayingSettingsRoute, "floating lyrics overlay bubble pill other apps draw over", R.string.settings_floating_lyrics),
@@ -251,6 +303,10 @@ private val SettingsIndex = listOf(
     SettingsEntry("YouTube Music", "Audio Lab", "audio_quality", "youtube turn off disable provider only monochrome apple music"),
 
     // Integrations
+    SettingsEntry("Android Auto", "Integrations", AndroidAutoSettingsRoute, "car carplay driving upcoming recommendations voice artwork lyrics mobile data"),
+    SettingsEntry("Songs on this device", "Integrations", AndroidAutoSettingsRoute, "car library folder local downloaded files phone"),
+    SettingsEntry("Stream on mobile data", "Integrations", AndroidAutoSettingsRoute, "car metered mobile data cellular streaming offline saved cached"),
+    SettingsEntry("Pinned playlists in the car", "Integrations", AndroidAutoSettingsRoute, "car library pin playlists order first top"),
     SettingsEntry("Discord", "Integrations", DiscordRoute, "discord rich presence rpc status activity listening playing profile behaviour pause clear"),
     SettingsEntry("Last.fm", "Integrations", scrobbleServiceRoute(ScrobbleSite.LASTFM), "lastfm scrobble scrobbling history stats account sign in"),
     SettingsEntry("Libre.fm", "Integrations", scrobbleServiceRoute(ScrobbleSite.LIBREFM), "librefm scrobble scrobbling history stats account sign in"),
@@ -261,6 +317,7 @@ private val SettingsIndex = listOf(
     // Storage
     SettingsEntry("Storage", "Storage", "storage_settings", "space disk size cache downloads clear free junk delete"),
     SettingsEntry("Music cache limit", "Storage", "storage_settings", "cache size limit space song stream"),
+    SettingsEntry("Image cache limit", "Storage", "storage_settings", "image cache size limit covers pictures artwork space"),
     SettingsEntry("Manage downloads", "Storage", "storage_settings", "downloads delete remove biggest offline space"),
     SettingsEntry("Remove all downloads", "Storage", "storage_settings", "delete clear downloads offline space"),
 
@@ -497,6 +554,13 @@ fun MochySettingsScreen(navController: NavController, pane: SettingsPane? = null
                             iconRes = R.drawable.settings,
                             selected = selected == "general_settings",
                             onClick = { open("general_settings") }
+                        )
+
+                        CategoryBubble(
+                            title = stringResource(R.string.settings_appearance),
+                            iconRes = R.drawable.contrast,
+                            selected = selected == "appearance_settings",
+                            onClick = { open("appearance_settings") }
                         )
 
                         CategoryBubble(

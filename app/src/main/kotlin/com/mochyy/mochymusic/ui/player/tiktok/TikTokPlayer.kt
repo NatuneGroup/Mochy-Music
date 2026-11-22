@@ -209,8 +209,8 @@ private fun TikTokSongPage(
     onMore: () -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
-        // the mesh of the artwork's colours, drifting
-        TikTokMeshBackdrop(seed, Modifier.fillMaxSize(), animate = isCurrent)
+        // the mesh of the artwork's colours, drifting (only while playing, so paused doesn't redraw)
+        TikTokMeshBackdrop(seed, Modifier.fillMaxSize(), animate = isCurrent && playing)
         // the darkening scrim the feed sits on
         Box(
             Modifier

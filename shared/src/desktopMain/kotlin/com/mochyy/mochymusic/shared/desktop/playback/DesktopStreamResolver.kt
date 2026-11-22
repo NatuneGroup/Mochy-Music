@@ -21,6 +21,8 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 
@@ -33,9 +35,14 @@ data class ResolvedStream(
     val bitrate: Int,
 )
 
-class DesktopStreamResolver {
-    private val http by lazy {
-        HttpClient(OkHttp) {
+class DesktopStreamResolver : AutoCloseable {
+    private val clientLock = Any()
+    @Volatile private var closed = false
+    private var client: HttpClient? = null
+
+    private fun httpClient(): HttpClient = synchronized(clientLock) {
+        check(!closed) { "Desktop stream resolver is closed" }
+        client ?: HttpClient(OkHttp) {
             expectSuccess = false
             install(ContentNegotiation) {
                 json(Json { ignoreUnknownKeys = true; explicitNulls = false; encodeDefaults = true })
@@ -45,10 +52,11 @@ class DesktopStreamResolver {
                 requestTimeoutMillis = 30_000
                 socketTimeoutMillis = 30_000
             }
-        }
+        }.also { client = it }
     }
 
     private val extractor by lazy {
+        val http = httpClient()
         val logger = InnerTubeLogger { }
         val innerTube = InnerTubeX(http, logger = logger)
         val configStore = RemotePlayerConfigStore(http, PlayerConfigRepository.disabled(), logger)
@@ -63,7 +71,16 @@ class DesktopStreamResolver {
         )
     }
 
-    @Volatile
+    /** Closes the HTTP connection pool when the desktop player is released. */
+    override fun close() {
+        val activeClient = synchronized(clientLock) {
+            closed = true
+            client.also { client = null }
+        }
+        activeClient?.close()
+    }
+
+    private val prewarmMutex = Mutex()
     private var prewarmed = false
 
     suspend fun resolve(videoId: String): ResolvedStream? {
@@ -94,8 +111,8 @@ class DesktopStreamResolver {
     }
 
     /** Warming is an optimisation: a failed warm never fails playback and the next resolve tries again. */
-    private suspend fun prewarmOnce() {
-        if (prewarmed) return
+    private suspend fun prewarmOnce() = prewarmMutex.withLock {
+        if (prewarmed) return@withLock
         try {
             extractor.prewarm()
             prewarmed = true

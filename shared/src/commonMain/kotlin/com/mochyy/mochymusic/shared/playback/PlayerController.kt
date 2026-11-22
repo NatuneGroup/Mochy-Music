@@ -36,6 +36,11 @@ interface PlayerController {
     /** Resolves [song]'s stream and plays it, replacing whatever was playing. */
     fun play(song: SongItem)
 
+    /** Warm at most one upcoming song without playback; repeat calls for the same ID should be idempotent.
+     * Passing null cancels and drops an unclaimed prefetch.
+     */
+    fun preloadNext(song: SongItem?) {}
+
     fun togglePlayPause()
 
     fun seekTo(positionMs: Long)
