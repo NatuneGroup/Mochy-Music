@@ -1,5 +1,9 @@
 package com.mochyy.mochymusic.ui.player
 
+import com.mochyy.mochymusic.constants.CustomAiModelKey
+import com.mochyy.mochymusic.constants.CustomAiBaseUrlKey
+import com.mochyy.mochymusic.constants.CustomAiApiKey
+import com.mochyy.mochymusic.constants.AiTranslatorConfig
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -98,7 +102,22 @@ fun LyricsReadings(
         defaultValue = "",
     )
     val (openRouterModel) = rememberPreference(OpenRouterModelKey, defaultValue = "")
+    val (customBaseUrl) = rememberPreference(CustomAiBaseUrlKey, defaultValue = "")
+    val (customKey) = rememberPreference(CustomAiApiKey, defaultValue = "")
+    val (customModel) = rememberPreference(CustomAiModelKey, defaultValue = "")
     val (deeplKey) = rememberPreference(DeeplApiKey, defaultValue = "")
+    // the chosen provider decides the address and the key together, so a key only ever goes to its own provider
+    val ai = AiTranslatorConfig.resolve(
+        provider = aiProvider,
+        openRouterKey = openRouterKey,
+        openRouterModel = openRouterModel,
+        customBaseUrl = customBaseUrl,
+        customKey = customKey,
+        customModel = customModel,
+        legacyBaseUrl = openRouterBaseUrl,
+        legacyModel = openRouterModel,
+        deeplKey = deeplKey,
+    )
     val (deeplFormality) = rememberPreference(DeeplFormalityKey, defaultValue = "default")
     val (youtubeTranslations) = rememberPreference(YouTubeCaptionTranslationKey, defaultValue = true)
     val playerConnection = com.mochyy.mochymusic.LocalPlayerConnection.current
@@ -113,7 +132,7 @@ fun LyricsReadings(
 
     LaunchedEffect(
         lines, translationOn, translateLanguage, translateSourceLanguage, translateMode,
-        aiProvider, openRouterKey, deeplKey, youtubeTranslations,
+        ai, youtubeTranslations,
     ) {
         if (lines.isEmpty()) return@LaunchedEffect
         if (!translationOn) {
@@ -144,7 +163,7 @@ fun LyricsReadings(
         if (LyricsTranslationHelper.loadTranslationsFromDatabase(
                 lyrics = lines,
                 lyricsEntity = latestLyricsEntity,
-                targetLanguage = if (hasAiKeyFor(aiProvider, openRouterKey, deeplKey)) {
+                targetLanguage = if (ai.usable) {
                     target
                 } else {
                     LyricsTranslationHelper.languageTag(translateSourceLanguage, target)
@@ -156,7 +175,7 @@ fun LyricsReadings(
         // Google Translate needs no account, so it is used whenever the chosen AI provider has no
         // key. (This used to check for ANY key, so DeepL picked with only an OpenRouter key saved
         // went to DeepL and failed with "API key required".)
-        if (!hasAiKeyFor(aiProvider, openRouterKey, deeplKey)) {
+        if (!ai.usable) {
             LyricsTranslationHelper.translateWithGoogle(
                 lyrics = lines,
                 targetLanguage = target,
@@ -170,14 +189,14 @@ fun LyricsReadings(
             LyricsTranslationHelper.translateLyrics(
                 lyrics = lines,
                 targetLanguage = target,
-                apiKey = openRouterKey,
-                baseUrl = openRouterBaseUrl,
-                model = openRouterModel,
+                apiKey = ai.apiKey,
+                baseUrl = ai.baseUrl,
+                model = ai.model,
                 mode = translateMode,
                 scope = this,
                 context = context,
-                provider = aiProvider,
-                deeplApiKey = deeplKey,
+                provider = ai.provider,
+                deeplApiKey = if (ai.provider == AiTranslatorConfig.DeepL) ai.apiKey else "",
                 deeplFormality = deeplFormality,
                 songId = songId.orEmpty(),
                 database = database,
@@ -284,9 +303,6 @@ suspend fun readSong(
         onLine(index, reading)
     }
 }
-
-internal fun hasAiKeyFor(provider: String, openRouterKey: String, deeplKey: String): Boolean =
-    if (provider == "DeepL") deeplKey.isNotBlank() else openRouterKey.isNotBlank()
 
 // every language the readings can be switched off for; the style page's one switch sets them all
 val RomanizeLanguageKeys = listOf(

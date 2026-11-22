@@ -25,6 +25,14 @@ data class SavedAccount(
     // brand accounts share their owner's email, so the data sync id goes first
     val id: String get() = dataSyncId.ifBlank { email.ifBlank { cookie } }
 
+    /**
+     * The same account as [id], for things that get queued, compared or logged: a one-way hash, since [id]
+     * can be the sign-in cookie itself when the account has no data sync id or email yet.
+     */
+    val opaqueId: String
+        get() = java.security.MessageDigest.getInstance("SHA-256").digest(id.toByteArray())
+            .take(12).joinToString("") { "%02x".format(it) }
+
     // a data class prints every field; this one holds a sign-in cookie, so a stray log or crash report must not
     override fun toString() = "SavedAccount(name=$name)"
 
