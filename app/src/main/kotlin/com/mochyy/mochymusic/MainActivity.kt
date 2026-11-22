@@ -182,6 +182,7 @@ import com.mochyy.mochymusic.playback.DownloadUtil
 import com.mochyy.mochymusic.playback.MusicService
 import com.mochyy.mochymusic.playback.MusicService.MusicBinder
 import com.mochyy.mochymusic.playback.PlayerConnection
+import com.mochyy.mochymusic.ui.player.video.VideoPipLayer
 import com.mochyy.mochymusic.playback.queues.YouTubeQueue
 import com.mochyy.mochymusic.ui.component.AppNavigationBar
 import com.mochyy.mochymusic.ui.component.navigateToTab
@@ -290,6 +291,10 @@ class MainActivity : ComponentActivity() {
 
     private var playerConnection by mutableStateOf<PlayerConnection?>(null)
 
+    // picture-in-picture for the video style: the setting, and whether the window is in it now
+    private var videoPipOn by mutableStateOf(false)
+    private var inPip by mutableStateOf(false)
+
     /** Bumped when launched from an update notification; the composition opens the version sheet. */
     private var openUpdateRequests by mutableStateOf(0)
 
@@ -397,6 +402,26 @@ class MainActivity : ComponentActivity() {
         return super.dispatchTouchEvent(ev)
     }
 
+    // before android 12 there is no auto-enter, so leaving the app with a video picture opens the window here
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        val session = com.mochyy.mochymusic.ui.player.video.VideoPip.session
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && videoPipOn && session != null) {
+            runCatching {
+                enterPictureInPictureMode(
+                    com.mochyy.mochymusic.ui.player.video.VideoPip.params(
+                        this, session, playing = playerConnection?.isPlaying?.value == true, autoEnter = false,
+                    ),
+                )
+            }
+        }
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: android.content.res.Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        inPip = isInPictureInPictureMode
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         if (intent.action == com.mochyy.mochymusic.ui.screens.update.ActionOpenUpdate) {
@@ -448,6 +473,13 @@ class MainActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             dataStore.data
+                .map { it[com.mochyy.mochymusic.constants.VideoPictureInPictureKey] == true }
+                .distinctUntilChanged()
+                .collect { videoPipOn = it }
+        }
+
+        lifecycleScope.launch {
+            dataStore.data
                 .map { it[DisableScreenshotKey] ?: false }
                 .distinctUntilChanged()
                 .collectLatest {
@@ -483,6 +515,7 @@ class MainActivity : ComponentActivity() {
                     downloadUtil = downloadUtil,
                     syncUtils = syncUtils,
                 )
+                VideoPipLayer(this@MainActivity, videoPipOn, playerConnection, inPip)
             }
         }
     }

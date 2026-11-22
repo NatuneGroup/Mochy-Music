@@ -121,7 +121,7 @@ object RemoteFocus : IndicationNodeFactory {
 
     override fun equals(other: Any?): Boolean = other === this
 
-    override fun hashCode(): Int = javaClass.hashCode()
+    override fun hashCode(): Int = "RemoteFocus".hashCode()
 }
 
 private class RemoteFocusNode(private val interactionSource: InteractionSource) : Modifier.Node(), DrawModifierNode {

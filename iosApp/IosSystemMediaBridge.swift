@@ -35,6 +35,14 @@ final class IosSystemMediaBridge {
             self?.post("remoteToggle")
             return .success
         }
+        commands.nextTrackCommand.addTarget { [weak self] _ in
+            self?.post("remoteNext")
+            return .success
+        }
+        commands.previousTrackCommand.addTarget { [weak self] _ in
+            self?.post("remotePrevious")
+            return .success
+        }
         commands.changePlaybackPositionCommand.addTarget { [weak self] event in
             guard let event = event as? MPChangePlaybackPositionCommandEvent else {
                 return .commandFailed
@@ -42,7 +50,7 @@ final class IosSystemMediaBridge {
             self?.post("remoteSeek", payload: ["positionSeconds": event.positionTime])
             return .success
         }
-        setCommandsEnabled(false)
+        setCommandsEnabled(playback: false)
     }
 
     private func observeBridgeEvents() {
@@ -90,6 +98,8 @@ final class IosSystemMediaBridge {
         let elapsed = payload["elapsedSeconds"] as? Double ?? 0
         let isPlaying = payload["isPlaying"] as? Bool ?? false
         let nextArtworkURL = payload["artworkURL"] as? String ?? ""
+        let canGoNext = payload["canGoNext"] as? Bool ?? false
+        let canGoPrevious = payload["canGoPrevious"] as? Bool ?? false
 
         if title.isEmpty {
             clearNowPlaying()
@@ -108,7 +118,7 @@ final class IosSystemMediaBridge {
         if duration > 0 { info[MPMediaItemPropertyPlaybackDuration] = duration }
         if let artwork { info[MPMediaItemPropertyArtwork] = artwork }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
-        setCommandsEnabled(available)
+        setCommandsEnabled(playback: available, canGoNext: canGoNext, canGoPrevious: canGoPrevious)
     }
 
     private func updateArtwork(for urlString: String) {
@@ -133,12 +143,15 @@ final class IosSystemMediaBridge {
         artworkRequest?.resume()
     }
 
-    private func setCommandsEnabled(_ enabled: Bool) {
+    // Next and previous follow the phone queue state from the shared side, not just whether a song is loaded.
+    private func setCommandsEnabled(playback: Bool, canGoNext: Bool = false, canGoPrevious: Bool = false) {
         let commands = MPRemoteCommandCenter.shared()
-        commands.playCommand.isEnabled = enabled
-        commands.pauseCommand.isEnabled = enabled
-        commands.togglePlayPauseCommand.isEnabled = enabled
-        commands.changePlaybackPositionCommand.isEnabled = enabled
+        commands.playCommand.isEnabled = playback
+        commands.pauseCommand.isEnabled = playback
+        commands.togglePlayPauseCommand.isEnabled = playback
+        commands.changePlaybackPositionCommand.isEnabled = playback
+        commands.nextTrackCommand.isEnabled = canGoNext
+        commands.previousTrackCommand.isEnabled = canGoPrevious
     }
 
     private func clearNowPlaying() {
@@ -147,7 +160,7 @@ final class IosSystemMediaBridge {
         artworkURL = nil
         artwork = nil
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
-        setCommandsEnabled(false)
+        setCommandsEnabled(playback: false)
     }
 
     private func activateAudioSession() {

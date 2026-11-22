@@ -50,6 +50,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mochyy.mochymusic.ui.player.menu.MenuRowSurface
 
+/** How big a row's icon is drawn. There's no disc behind it any more, so the glyph itself is the marker. */
+val SheetIconSize = 20.dp
+
 @Composable
 fun Material3MenuGroup(
     items: List<Material3MenuItemData>
@@ -75,7 +78,7 @@ fun Material3MenuGroup(
  * by NewActionGrid for the actions that don't make it onto its two cards.
  */
 @Composable
-internal fun MenuItemRow(
+fun MenuItemRow(
     icon: (@Composable () -> Unit)?,
     enabled: Boolean,
     onClick: () -> Unit,

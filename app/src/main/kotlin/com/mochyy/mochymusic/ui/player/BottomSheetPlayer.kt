@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.media3.common.Player
 import com.mochyy.mochymusic.constants.PlayerHorizontalPadding
+import com.mochyy.mochymusic.constants.SwipeUpOpensQueueKey
 import com.mochyy.mochymusic.extensions.toggleRepeatMode
 import com.mochyy.mochymusic.ui.component.BlurEffectCache
 import androidx.compose.foundation.layout.Column
@@ -755,6 +756,8 @@ private fun PlayerSheet(
         val currentLandscapeFlagship by androidx.compose.runtime.rememberUpdatedState(landscapeFlagship)
         val currentCardShown by androidx.compose.runtime.rememberUpdatedState(showDeck)
         val currentCoverStyle by androidx.compose.runtime.rememberUpdatedState(shownCoverStyle)
+        val (swipeUpOpensQueue) = rememberPreference(SwipeUpOpensQueueKey, defaultValue = false)
+        val currentSwipeUpOpensQueue by androidx.compose.runtime.rememberUpdatedState(swipeUpOpensQueue)
         val closeStripBottom = with(density) { (statusBarTopInset + PlayerCloseStrip).toPx() }
         val currentCloseStripBottom by androidx.compose.runtime.rememberUpdatedState(closeStripBottom)
         val swipe = remember(transition, deck, morph, screenHeightPx, density) {
@@ -804,7 +807,13 @@ private fun PlayerSheet(
                         transition.page == PlayerPage.NONE ->
                             if (
                                 up && aroundControls(start) &&
-                                transition.beginDrag(if (currentCardShown) deck.focusedPage else PlayerPage.LYRICS)
+                                transition.beginDrag(
+                                    when {
+                                        currentSwipeUpOpensQueue -> PlayerPage.QUEUE
+                                        currentCardShown -> deck.focusedPage
+                                        else -> PlayerPage.LYRICS
+                                    },
+                                )
                             ) {
                                 PlayerSwipe.PULL
                             } else {

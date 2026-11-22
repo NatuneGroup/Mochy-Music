@@ -15,6 +15,7 @@ import com.mochyy.mochymusic.constants.LibreFmSessionKey
 import com.mochyy.mochymusic.constants.MonochromePlaybackApiTokenKey
 import com.mochyy.mochymusic.constants.OpenRouterApiKey
 import com.mochyy.mochymusic.constants.ProxyPasswordKey
+import com.mochyy.mochymusic.constants.SavedAccountsKey
 import com.mochyy.mochymusic.constants.TurnstileBypassTokenKey
 import com.mochyy.mochymusic.constants.VisitorDataKey
 import kotlinx.coroutines.flow.Flow
@@ -43,6 +44,7 @@ class SecretPreferences(private val raw: DataStore<Preferences>) : DataStore<Pre
             InnerTubeCookieKey,
             VisitorDataKey,
             DataSyncIdKey,
+            SavedAccountsKey,
             DiscordAccessTokenKey,
             DiscordRefreshTokenKey,
             LastFMSessionKey,

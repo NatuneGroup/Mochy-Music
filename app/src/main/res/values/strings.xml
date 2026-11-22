@@ -515,6 +515,9 @@
     <string name="metrolist_vintage">Metrolist Vintage</string>
     <string name="metrolist_collapse">Close player</string>
     <string name="playback_infinite_queue">Infinite queue</string>
+    <string name="playback_pip">Picture-in-picture</string>
+    <string name="playback_pip_desc">Keep a music video in a small window when you leave the app</string>
+    <string name="pip_next">Next</string>
     <string name="playback_infinite_queue_desc">Keep the music going with related songs</string>
     <string name="playback_infinite_queue_detail">When the queue is about to end, songs similar to the one playing are added from YouTube radio</string>
     <string name="settings_queue_prevent_duplicates">Prevent duplicates</string>

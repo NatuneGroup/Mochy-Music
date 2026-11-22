@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="playback_preload_next">Preload next song</string>
+    <string name="playback_preload_lyrics">Preload lyrics for next songs</string>
+    <string name="playback_preload_lyrics_desc">Fetch lyrics for the next two queued songs while playing, on unmetered networks only</string>
+    <string name="settings_mute_recovery_volume">Recovery volume</string>
+    <string name="mute_recovery_off">Off</string>
+    <string name="settings_hide_player_thumbnail">Hide player thumbnail</string>
+    <string name="settings_hide_player_thumbnail_desc">Show the Mochy mark instead of the cover on the player</string>
     <string name="playback_preload_next_desc">Cache the start of the next YouTube song on unmetered networks, even with Blend skips off</string>
     <string name="playback_audio_offload">Audio offload</string>
     <string name="playback_audio_offload_desc">Let the phone\'s audio chip decode songs to save battery. Turns itself off while Crossmix or sound effects are on.</string>
@@ -232,6 +238,8 @@
     <string name="customise_player_gestures_desc">How the open player answers your swipes</string>
     <string name="customise_swipe_down_anywhere">Swipe down anywhere to close</string>
     <string name="customise_swipe_down_anywhere_desc">Otherwise only from the top of the player and its cover</string>
+    <string name="customise_swipe_up_queue">Swipe up opens the queue</string>
+    <string name="customise_swipe_up_queue_desc">Swiping up on the player opens the queue instead of the lyrics</string>
     <string name="customise_swipe_up_follows">Open with your finger</string>
     <string name="customise_swipe_up_follows_desc">Swiping up the mini player carries the player with you, and it opens as fast as you swipe</string>
     <string name="customise_landscape_player">Player on its side</string>
@@ -249,4 +257,22 @@
     <string name="settings_floating_lyrics">Floating lyrics</string>
     <string name="settings_floating_lyrics_desc">Keep the line being sung in a little bubble over other apps</string>
     <string name="settings_floating_lyrics_detail">Tap the cover for play and pause, or hold it to open Mochy. Drag it and it snaps to the nearest edge. Drop it on Close to hide it until you\'re back in Mochy, or on Don\'t show again to turn it off.</string>
+    <string name="settings_ai_translator">AI translator</string>
+    <string name="settings_ai_translator_desc">Translate lyrics with OpenRouter, your own OpenAI-compatible endpoint or DeepL</string>
+    <string name="settings_translate_auto">Translate lyrics automatically</string>
+    <string name="settings_translate_auto_desc">Translate lyrics when they load. Off, you tap Translate in the lyrics menu</string>
+    <string name="ai_translator_provider">Provider</string>
+    <string name="ai_translator_provider_openrouter">OpenRouter</string>
+    <string name="ai_translator_provider_custom">Custom endpoint (OpenAI-compatible)</string>
+    <string name="ai_translator_provider_deepl">DeepL</string>
+    <string name="ai_translator_endpoint">Endpoint URL</string>
+    <string name="ai_translator_endpoint_hint">https://example.com/v1/chat/completions</string>
+    <string name="ai_translator_endpoint_default">OpenRouter</string>
+    <string name="ai_translator_model">Model</string>
+    <string name="ai_translator_model_default">Provider default</string>
+    <string name="ai_translator_key">API key</string>
+    <string name="ai_translator_key_saved">Saved on this phone</string>
+    <string name="ai_translator_key_empty">Not set</string>
+    <string name="ai_translator_key_clear">Clear</string>
+    <string name="ai_translator_target">Translate to</string>
 </resources>

@@ -26,6 +26,7 @@ fun MainViewController(): UIViewController = ComposeUIViewController {
     val player = IosPlaybackRuntime.player
     val providers = IosPlaybackRuntime.lyricsProviders
     val library = IosPlaybackRuntime.library
+    val queueTransport = IosPlaybackRuntime.queueTransport
 
     val inter = FontFamily(
         Font(Res.font.inter_regular, FontWeight.Normal),
@@ -38,6 +39,7 @@ fun MainViewController(): UIViewController = ComposeUIViewController {
             lyricsProviders = providers,
             settings = iosPlaybackPreferences,
             library = library,
+            queueTransport = queueTransport,
             modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing),
         )
     }

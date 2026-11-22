@@ -60,6 +60,7 @@ import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.ui.theme.LocalChromeAccent
 import com.mochyy.mochymusic.scrobble.ScrobbleSite
 import com.mochyy.mochymusic.ui.screens.devices.showDeviceIntegration
+import com.mochyy.mochymusic.ui.screens.settings.importsync.AccountSwitcherRoute
 import com.mochyy.mochymusic.ui.screens.settings.importsync.YouTubeSyncRoute
 import com.mochyy.mochymusic.ui.screens.settings.integrations.IntegrationsRoute
 import com.mochyy.mochymusic.ui.screens.settings.integrations.AndroidAutoSettingsRoute
@@ -109,6 +110,10 @@ private val LocalizedSettingsTitles = mapOf(
     "Local song auto metadata" to R.string.settings_local_auto_metadata,
     "Keep shuffle on" to R.string.settings_persistent_shuffle,
     "Preload next song" to R.string.playback_preload_next,
+    "Preload queue lyrics" to R.string.playback_preload_lyrics,
+    "Mute recovery volume" to R.string.settings_mute_recovery_volume,
+    "Hide player thumbnail" to R.string.settings_hide_player_thumbnail,
+    "Swipe up opens the queue" to R.string.customise_swipe_up_queue,
     "Audio offload" to R.string.playback_audio_offload,
     "Efficient decoding" to R.string.playback_efficient_decoding,
     "Android Auto" to R.string.car_settings_title,
@@ -172,6 +177,7 @@ private val SettingsIndex = listOf(
     SettingsEntry("Hide navigation bar on scroll", "Appearance", "appearance_settings", "nav navigation bar tabs hide slide scroll list auto", R.string.settings_hide_nav_on_scroll),
     SettingsEntry("Navigation bar", "Appearance", "nav_bar_settings", "nav bar tabs order reorder show hide home search library settings choose", R.string.settings_nav_bar),
     SettingsEntry("Accent colour", "Appearance", "appearance_settings", "accent colour color palette theme primary highlight album art cover", R.string.settings_accent),
+    SettingsEntry("Custom themes", "Appearance", "appearance_settings", "theme themes custom palette colour color seed create edit delete save saved", R.string.settings_custom_themes),
     SettingsEntry("UI scale", "Appearance", "appearance_settings", "scale size zoom bigger smaller density text display", R.string.settings_ui_scale),
     SettingsEntry("Tablet layout", "Appearance", "appearance_settings", "tablet wide layout side rail landscape big screen split pane", R.string.settings_tablet_layout),
     SettingsEntry("System font", "Appearance", "appearance_settings", "font typeface text system phone default inter", R.string.settings_system_font),
@@ -195,6 +201,7 @@ private val SettingsIndex = listOf(
     SettingsEntry("Swipe right", "Customisation", "customisation_settings", "slide song list queue library download play next playlist details action"),
     SettingsEntry("Swipe left", "Customisation", "customisation_settings", "slide song list queue library download play next playlist details action"),
     SettingsEntry("Swipe down anywhere to close", "Customisation", "customisation_settings", "player close dismiss swipe down pull gesture anywhere"),
+    SettingsEntry("Swipe up opens the queue", "Customisation", "customisation_settings", "swipe up queue lyrics open player gesture", R.string.customise_swipe_up_queue),
     SettingsEntry("Open with your finger", "Customisation", "customisation_settings", "player open swipe up mini player follow finger speed velocity gesture"),
 
     // App behaviour
@@ -226,6 +233,8 @@ private val SettingsIndex = listOf(
     SettingsEntry("Play alongside other apps", "Playback", PlaybackSettingsRoute, "audio focus mix pause other app video game sound together"),
     SettingsEntry("Resume on Bluetooth connection", "Playback", PlaybackSettingsRoute, "bluetooth headphones earbuds car connect resume auto play start", R.string.playback_resume_bluetooth),
     SettingsEntry("Pause when muted", "Playback", PlaybackSettingsRoute, "pause mute volume silent zero off automatic", R.string.pause_music_when_media_is_muted),
+    SettingsEntry("Mute recovery volume", "Playback", PlaybackSettingsRoute, "pause mute recovery volume restore play zero silent percent", R.string.settings_mute_recovery_volume),
+    SettingsEntry("Preload queue lyrics", "Playback", PlaybackSettingsRoute, "lyrics preload prefetch next queued songs unmetered wifi", R.string.playback_preload_lyrics),
     SettingsEntry("Save Player's last state", "Playback", PlaybackSettingsRoute, "persistent queue restore track state"),
     SettingsEntry("Infinite queue", "Playback", PlaybackSettingsRoute, "autoplay radio related endless queue songs keep going never stop", R.string.playback_infinite_queue),
     SettingsEntry("Keep CPU awake during playback", "Playback", PlaybackSettingsRoute, "cpu wake lock awake screen off background sleep stop music battery", R.string.settings_keep_cpu_awake),
@@ -238,6 +247,7 @@ private val SettingsIndex = listOf(
     SettingsEntry("SponsorBlock self-promotion", "Playback", PlaybackSettingsRoute, "sponsorblock self promo promotion skip", R.string.settings_sponsorblock_selfpromo),
     SettingsEntry("SponsorBlock intros", "Playback", PlaybackSettingsRoute, "sponsorblock intro start skip", R.string.settings_sponsorblock_intro),
     SettingsEntry("SponsorBlock outros", "Playback", PlaybackSettingsRoute, "sponsorblock outro end credits skip", R.string.settings_sponsorblock_outro),
+    SettingsEntry("Picture-in-picture", "Playback", PlaybackSettingsRoute, "video music pip picture in picture window float leave app background", R.string.playback_pip),
     SettingsEntry("Keep shuffle on", "Playback", PlaybackSettingsRoute, "shuffle persistent spotify random keep new playlist"),
     SettingsEntry("Preload next song", "Playback", PlaybackSettingsRoute, "queue next track buffer preload unmetered wi-fi"),
     SettingsEntry("Audio offload", "Playback", PlaybackSettingsRoute, "battery offload decode chip power efficiency hardware"),
@@ -248,9 +258,12 @@ private val SettingsIndex = listOf(
 
     // Now playing
     SettingsEntry("Now playing", "Now playing", NowPlayingSettingsRoute, "player lyrics video canvas badge format"),
+    SettingsEntry("Hide player thumbnail", "Now playing", NowPlayingSettingsRoute, "hide thumbnail artwork cover album art logo player", R.string.settings_hide_player_thumbnail),
     SettingsEntry("Audio format badge", "Now playing", NowPlayingSettingsRoute, "format codec opus aac flac badge title quality"),
     SettingsEntry("Show sample rate", "Now playing", NowPlayingSettingsRoute, "sample rate khz hz format badge quality"),
     SettingsEntry("Translations from YouTube", "Now playing", NowPlayingSettingsRoute, "captions translate lyrics language"),
+    SettingsEntry("AI translator", "Now playing", AiTranslatorSettingsRoute, "translate lyrics ai openrouter deepl custom endpoint model api key provider openai", R.string.settings_ai_translator),
+    SettingsEntry("Translate lyrics automatically", "Now playing", AiTranslatorSettingsRoute, "translate lyrics automatic auto language on load", R.string.settings_translate_auto),
     SettingsEntry("Sync lyrics to music videos", "Now playing", NowPlayingSettingsRoute, "lyrics video timing intro skit"),
     SettingsEntry("Romanisation as the main line", "Now playing", NowPlayingSettingsRoute, "romaji romanization pinyin latin lyrics japanese korean chinese", R.string.settings_romanize_as_main),
     SettingsEntry("Romanize Japanese lyrics", "Now playing", NowPlayingSettingsRoute, "romanize romanise lyrics japanese romaji japanese kana kanji", R.string.lyrics_romanize_japanese),
@@ -315,6 +328,7 @@ private val SettingsIndex = listOf(
     SettingsEntry("Now Playing", "Integrations", scrobbleServiceRoute(ScrobbleSite.LASTFM), "scrobble now playing status profile lastfm librefm"),
     SettingsEntry("Send likes", "Integrations", scrobbleServiceRoute(ScrobbleSite.LASTFM), "love loved songs lastfm librefm scrobble"),
     SettingsEntry("YouTube Music sync", "Integrations", YouTubeSyncRoute, "youtube ytm sync account sign in likes library playlists history", R.string.settings_index_youtube_sync),
+    SettingsEntry("Account switcher", "Integrations", AccountSwitcherRoute, "account switcher switch account multiple accounts saved accounts add remove youtube"),
 
     // Storage
     SettingsEntry("Storage", "Storage", "storage_settings", "space disk size cache downloads clear free junk delete"),

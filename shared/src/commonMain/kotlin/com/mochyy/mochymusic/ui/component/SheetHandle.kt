@@ -92,7 +92,7 @@ fun SheetGrabber(bend: () -> Float, modifier: Modifier = Modifier, color: Color 
 }
 
 // a bar that folds into an arrow pointing down as bend goes 0 to 1, centred in the box; the player's handle draws with it too
-internal fun DrawScope.drawBendingBar(
+fun DrawScope.drawBendingBar(
     path: Path,
     bend: Float,
     barHalf: Float,

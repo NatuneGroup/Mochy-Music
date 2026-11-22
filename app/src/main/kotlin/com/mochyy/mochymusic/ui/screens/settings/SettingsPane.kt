@@ -63,6 +63,7 @@ val SettingsPaneRoutes = setOf(
     BackupRoute,
     InternetSettingsRoute,
     ProxySettingsRoute,
+    AiTranslatorSettingsRoute,
     ModulesRoute,
     "module/{id}",
     "cipher_settings",

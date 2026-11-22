@@ -48,6 +48,7 @@ import com.mochyy.mochymusic.constants.LyricsRomanizeMacedonianKey
 import com.mochyy.mochymusic.constants.LyricsRomanizeHindiKey
 import com.mochyy.mochymusic.constants.LyricsRomanizePunjabiKey
 import com.mochyy.mochymusic.constants.PlayVideoBackgroundKey
+import com.mochyy.mochymusic.constants.HidePlayerThumbnailKey
 import com.mochyy.mochymusic.constants.ShowFormatBadgeKey
 import com.mochyy.mochymusic.constants.ShowFormatBitDepthKey
 import com.mochyy.mochymusic.constants.ShowFormatSampleRateKey
@@ -89,7 +90,7 @@ fun NowPlayingSettingsScreen(navController: NavController) {
         searchBar = { SubSettingsSearchBar(query = query, onQueryChange = { query = it }) },
     ) {
         SettingsSection(stringResource(R.string.settings_on_the_player), badgeItems().matching(query))
-        SettingsSection(stringResource(R.string.settings_section_lyrics), lyricsItems().matching(query))
+        SettingsSection(stringResource(R.string.settings_section_lyrics), lyricsItems(navController).matching(query))
         SettingsSection(stringResource(R.string.settings_section_videos), videoItems().matching(query))
         SettingsSection(stringResource(R.string.settings_section_canvas), canvasItems(navController).matching(query))
         SettingsSection(stringResource(R.string.settings_related), relatedItems(navController).matching(query))
@@ -99,10 +100,19 @@ fun NowPlayingSettingsScreen(navController: NavController) {
 
 @Composable
 private fun badgeItems(): List<SettingsItem> {
+    val (hidePlayerThumbnail, onHidePlayerThumbnailChange) = rememberPreference(HidePlayerThumbnailKey, defaultValue = false)
     val (formatBadge, onFormatBadgeChange) = rememberPreference(ShowFormatBadgeKey, defaultValue = true)
     val (formatSampleRate, onFormatSampleRateChange) = rememberPreference(ShowFormatSampleRateKey, defaultValue = false)
     val (formatBitDepth, onFormatBitDepthChange) = rememberPreference(ShowFormatBitDepthKey, defaultValue = false)
     return listOf(
+        switchItem(
+            key = "Hide player thumbnail",
+            title = stringResource(R.string.settings_hide_player_thumbnail),
+            description = stringResource(R.string.settings_hide_player_thumbnail_desc),
+            icon = painterResource(R.drawable.hide_image),
+            checked = hidePlayerThumbnail,
+            onCheckedChange = onHidePlayerThumbnailChange,
+        ),
         switchItem(
             key = "Audio format badge",
             title = stringResource(R.string.appearance_format_badge),
@@ -133,7 +143,7 @@ private fun badgeItems(): List<SettingsItem> {
 }
 
 @Composable
-private fun lyricsItems(): List<SettingsItem> {
+private fun lyricsItems(navController: NavController): List<SettingsItem> {
     val (youtubeTranslations, onYoutubeTranslationsChange) = rememberPreference(YouTubeCaptionTranslationKey, defaultValue = true)
     val (syncLyricsToVideo, onSyncLyricsToVideoChange) = rememberPreference(SyncLyricsToVideoKey, defaultValue = true)
     val (romanizeAsMain, onRomanizeAsMainChange) = rememberPreference(LyricsRomanizeAsMainKey, defaultValue = false)
@@ -146,6 +156,12 @@ private fun lyricsItems(): List<SettingsItem> {
     val (lyricsStyle) = rememberEnumPreference(LyricsMotionStyleKey, defaultValue = LyricsMotionStyle.MOTION)
     val (floatingLyrics, onFloatingLyricsChange) = rememberFloatingLyricsSwitch()
     return listOf(
+        SettingsItem(
+            title = { Text(stringResource(R.string.settings_ai_translator)) },
+            descriptionText = stringResource(R.string.settings_ai_translator_desc),
+            icon = painterResource(R.drawable.translate),
+            onClick = { navController.navigate(AiTranslatorSettingsRoute) },
+        ),
         switchItem(
             key = "Translations from YouTube",
             title = stringResource(R.string.settings_youtube_translations),
