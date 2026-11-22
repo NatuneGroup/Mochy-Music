@@ -62,6 +62,8 @@ class AccountSwitcherViewModel @Inject constructor(
 
     fun switchTo(account: SavedAccount) {
         viewModelScope.launch(Dispatchers.IO) {
+            // stop the old account's queued and running syncs before the session changes hands
+            syncUtils.cancelAllSyncs()
             context.dataStore.edit { it.writeActive(account) }
             // the sync reads the client's session, so set it here rather than wait for the app's collector
             runCatching {

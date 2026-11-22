@@ -14,6 +14,9 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlin.math.abs
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 import org.freedesktop.dbus.DBusPath
 import org.freedesktop.dbus.annotations.DBusInterfaceName
 import org.freedesktop.dbus.connections.impl.DBusConnection
@@ -21,12 +24,15 @@ import org.freedesktop.dbus.connections.impl.DBusConnectionBuilder
 import org.freedesktop.dbus.exceptions.DBusExecutionException
 import org.freedesktop.dbus.interfaces.DBusInterface
 import org.freedesktop.dbus.interfaces.Properties
+import org.freedesktop.dbus.messages.DBusSignal
 import org.freedesktop.dbus.types.Variant
 
 private const val MPRIS_BUS_NAME = "org.mpris.MediaPlayer2.mochy"
 private const val MPRIS_PATH = "/org/mpris/MediaPlayer2"
 private const val MPRIS_ROOT = "org.mpris.MediaPlayer2"
 private const val MPRIS_PLAYER = "org.mpris.MediaPlayer2.Player"
+// Position updates arrive a few times a second; a jump past this is a seek, not timing jitter.
+private const val SEEK_JUMP_MS = 2_000L
 // A wedged session bus must not hold up playback or shutdown for dbus-java's 20 s default.
 private const val DBUS_CALL_TIMEOUT_MILLIS = 2_000
 
@@ -40,6 +46,9 @@ interface MprisPlayerMethods : DBusInterface {
     fun Previous()
     fun Seek(offset: Long)
     fun SetPosition(trackId: DBusPath, position: Long)
+
+    /** Sent after the position jumps (a seek from here, from the app, or a restart), in microseconds. */
+    class Seeked(path: String, val position: Long) : DBusSignal(path, position)
 }
 
 /**
@@ -55,12 +64,20 @@ internal class LinuxMprisSession(
     private var connection: DBusConnection? = null // guarded by lock
     private var closed = false // guarded by lock
     @Volatile private var latest = PlayerState()
+    // where the position was at the last state update, to tell a seek from playback moving on
+    private var lastSongId: String? = null
+    private var lastPositionMs = 0L
+    private var lastAdvancing = false
+    private var lastMark: TimeMark? = null
 
     init {
         scope.launch {
             // Only song and play/pause changes publish; the position is read on demand, never pushed per tick.
             player.state
-                .onEach { latest = it }
+                .onEach {
+                    noticeSeek(it)
+                    latest = it
+                }
                 .map { it.song?.id to it.isPlaying }
                 .distinctUntilChanged()
                 .collect { publish() }
@@ -146,6 +163,30 @@ internal class LinuxMprisSession(
         }
     }
 
+    // clients count the position forward on their own, so they're told only when it jumps: a gap of more
+    // than SEEK_JUMP_MS between where playback should be and where it is, within the same song
+    private fun noticeSeek(state: PlayerState) {
+        val songId = state.song?.id
+        val mark = lastMark
+        if (songId != null && songId == lastSongId && mark != null) {
+            val expected = lastPositionMs + if (lastAdvancing) mark.elapsedNow().inWholeMilliseconds else 0L
+            if (abs(state.positionMs - expected) > SEEK_JUMP_MS) sendSeeked(state.positionMs)
+        }
+        lastSongId = songId
+        lastPositionMs = state.positionMs
+        lastAdvancing = state.isPlaying && !state.isLoading
+        lastMark = TimeSource.Monotonic.markNow()
+    }
+
+    private fun sendSeeked(positionMs: Long) {
+        val bus = synchronized(lock) { connection } ?: return
+        try {
+            bus.sendMessage(MprisPlayerMethods.Seeked(MPRIS_PATH, positionMs * 1000L))
+        } catch (_: Exception) {
+            // a missed Seeked only leaves a widget's clock off until the next song or seek
+        }
+    }
+
     private fun playerProperties(state: PlayerState): Map<String, Variant<*>> {
         val song = state.song
         val status = when {
@@ -217,6 +258,10 @@ internal class LinuxMprisSession(
         override fun GetAll(interfaceName: String): Map<String, Variant<*>> = when (interfaceName) {
             MPRIS_PLAYER -> playerProperties(latest) + mapOf(
                 "Position" to Variant(latest.positionMs * 1000L),
+                // required player properties; playback speed is fixed
+                "Rate" to Variant(1.0),
+                "MinimumRate" to Variant(1.0),
+                "MaximumRate" to Variant(1.0),
             )
             MPRIS_ROOT -> mapOf(
                 "Identity" to Variant("Mochy"),

@@ -81,6 +81,7 @@ import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
+import com.mochyy.mochymusic.shared.playback.UpcomingPreloader
 import com.mochyy.mochymusic.utils.followAppProxy
 import com.music.innertube.YouTube
 import com.music.innertube.models.SongItem
@@ -1104,7 +1105,7 @@ class MusicService :
         }.collectLatest(scope) { (mediaMetadata, showLyrics) ->
             if (showLyrics && mediaMetadata != null) {
                 storeLyricsIfMissing(mediaMetadata)
-                preloadQueuedLyrics()
+                scheduleLyricsPreload()
             }
         }
 
@@ -2086,13 +2087,12 @@ class MusicService :
         return status
     }
 
-    // a queue's songs, with the ones the listener hides already taken out unless that would leave the queue empty
+    // a queue's songs, with the ones the listener hides taken out; the picked song itself always stays (Queue.Status)
     private suspend fun readQueue(queue: Queue): Queue.Status =
         withContext(Dispatchers.IO) {
-            val raw = queue.getInitialStatus()
+            queue.getInitialStatus()
                 .filterExplicit(dataStore.get(HideExplicitKey, false))
-            val filtered = raw.filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
-            if (filtered.items.isEmpty() && raw.items.isNotEmpty()) raw else filtered
+                .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
         }
 
     // [blend] means the old song is still playing: a queue with a first song has it crossing over already, one without crosses once it's read; [read] is the queue already read while the old song played
@@ -2443,22 +2443,28 @@ class MusicService :
         val hideExplicit = dataStore.get(HideExplicitKey, false)
         val hideVideos = dataStore.get(HideVideoSongsKey, false)
 
+        // a batch the filters empty completely (an all-video radio page, say) is skipped rather than played
+        // unfiltered; a few more are tried, then nothing is added
         val queue = currentQueue
-        if (queue.hasOwnNextPage()) {
-            val rawPage = runCatching { withContext(Dispatchers.IO) { queue.nextPage() } }
+        repeat(FilteredBatchTries) {
+            if (!queue.hasOwnNextPage()) return@repeat
+            val page = runCatching { withContext(Dispatchers.IO) { queue.nextPage() } }
                 .onFailure { Timber.tag(TAG).w(it, "Failed to load next queue page") }
                 .getOrDefault(emptyList())
                 .filterExplicit(hideExplicit)
-            val page = rawPage.filterVideoSongs(hideVideos).ifEmpty { rawPage }
+                .filterVideoSongs(hideVideos)
             if (page.isNotEmpty()) return page to false
         }
 
         if (!isInfiniteQueueEnabled() || player.repeatMode != REPEAT_MODE_OFF) return null
 
-        val rawInfinite = loadInfiniteQueueItems()
-            .filterExplicit(hideExplicit)
-        val infiniteItems = rawInfinite.filterVideoSongs(hideVideos).ifEmpty { rawInfinite }
-        return infiniteItems.takeIf { it.isNotEmpty() }?.let { it to true }
+        repeat(FilteredBatchTries) {
+            val raw = loadInfiniteQueueItems()
+            if (raw.isEmpty()) return null
+            val infiniteItems = raw.filterExplicit(hideExplicit).filterVideoSongs(hideVideos)
+            if (infiniteItems.isNotEmpty()) return infiniteItems to true
+        }
+        return null
     }
 
     private suspend fun loadInfiniteQueueItems(): List<MediaItem> {
@@ -3209,10 +3215,9 @@ class MusicService :
         }
 
         if (reason == Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST) {
-            if (playWhenReady) {
-                isPausedByVolumeMute = false
-                restoreMuteRecoveryVolume()
-            }
+            // media3 calls every play() from the app's own code a user request, the automatic resumes too, so the
+            // mute recovery volume is raised from transport's explicit play instead (TransportHost.onExplicitPlay)
+            if (playWhenReady) isPausedByVolumeMute = false
 
             if (!playWhenReady && !isPausedByVolumeMute) {
                 wasPlayingBeforeVolumeMute = false
@@ -3298,6 +3303,8 @@ class MusicService :
 
     override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
         updateNotification()
+        // a later main-thread turn, once the new shuffle order below is in place
+        if (player.isPlaying) scope.launch { scheduleLyricsPreload() }
         if (shuffleModeEnabled) {
 
             if (player.mediaItemCount == 0) return
@@ -3324,6 +3331,8 @@ class MusicService :
 
     override fun onRepeatModeChanged(repeatMode: Int) {
         updateNotification()
+        // repeat all wraps round, so the last song's next songs change with it
+        if (player.isPlaying) scheduleLyricsPreload()
         // a crossfade or mix planned before repeat one went on would still swap players at the end, and the song came round silent
         scheduleCrossfade()
         scope.launch {
@@ -3869,22 +3878,19 @@ class MusicService :
     }
 
     // the next two queued songs' lyrics, so they're ready when they come up; only while playing on an unmetered network
-    private var lyricsPreload: Job? = null
-
-    private fun scheduleLyricsPreload() {
-        lyricsPreload?.cancel()
-        lyricsPreload = scope.launch { preloadQueuedLyrics() }
+    // every trigger for the next songs' lyrics goes through this one owner (the current song's own fetch stays separate)
+    private val lyricsPreloader = UpcomingPreloader<com.mochyy.mochymusic.models.MediaMetadata>({ scope }, { it.id }) { queued ->
+        for (metadata in queued) {
+            if (!player.isPlaying) return@UpcomingPreloader
+            storeLyricsIfMissing(metadata)
+        }
     }
 
-    private suspend fun preloadQueuedLyrics() {
+    private fun scheduleLyricsPreload() {
         if (!dataStore.get(PreloadQueueLyricsKey, false) || !dataStore.get(ShowLyricsKey, false)) return
         if (!player.isPlaying || connectivityManager.isActiveNetworkMetered) return
         // the order they will actually play in, shuffle included
-        val queued = upcomingIndices(2).mapNotNull { player.getMediaItemAt(it).metadata }
-        for (metadata in queued) {
-            if (!player.isPlaying) return
-            storeLyricsIfMissing(metadata)
-        }
+        lyricsPreloader.request(upcomingIndices(2).mapNotNull { player.getMediaItemAt(it).metadata })
     }
 
     // play pressed while pause-on-mute finds the device at zero: raise it to the recovery level so the song is heard
@@ -5616,6 +5622,8 @@ class MusicService :
     private inner class TransportHost : TransportTransitions.Host {
         override val player: ExoPlayer get() = this@MusicService.player
 
+        override fun onExplicitPlay() = restoreMuteRecoveryVolume()
+
         override fun processorFor(player: ExoPlayer): CrossmixTransitionAudioProcessor? = playerCrossmixProcessors[player]
 
         override fun targetVolume(): Float = this@MusicService.targetVolume()
@@ -5804,6 +5812,8 @@ class MusicService :
         const val PLAYLIST = "playlist"
         const val YOUTUBE_PLAYLIST = "youtube_playlist"
         const val SEARCH = "search"
+        // how many batches in a row the hide filters may empty before the queue stops growing
+        const val FilteredBatchTries = 3
         const val SHUFFLE_ACTION = "__shuffle__"
 
         const val CHANNEL_ID = "music_channel_01"

@@ -24,11 +24,25 @@ class PlaybackHistory(private val limit: Int = 200) {
     }
 
     /**
+     * [song] is from before this session (Previous went past its start), so the history starts over
+     * from it: a further Previous keeps walking back in time instead of returning to this session.
+     */
+    fun startedBefore(song: SongItem) {
+        seen += song.id
+        played.clear()
+        played.addLast(song)
+    }
+
+    /**
      * The song before [current], taken off the history along with [current] itself; starting it
-     * puts it back on top through [started]. Null when nothing played before [current].
+     * puts it back on top through [started]. Null when nothing played before [current], and then
+     * the history is left as it was, so a Previous that only restarts the first song loses nothing.
      */
     fun stepBack(current: SongItem): SongItem? {
-        if (played.lastOrNull()?.id == current.id) played.removeLast()
-        return played.removeLastOrNull()
+        val currentOnTop = played.lastOrNull()?.id == current.id
+        val previousIndex = if (currentOnTop) played.size - 2 else played.size - 1
+        if (previousIndex < 0) return null
+        if (currentOnTop) played.removeLast()
+        return played.removeLast()
     }
 }
