@@ -686,6 +686,8 @@ enum class PlayerStyle(
     TIKTOK("TikTok", "TikTok"),
     // the looper: a flat dark stage, a wave seek bar and pill transport, the looper look
     LOOPER("Looper", "Looper", PlayerStyleTraits(showsHandle = false)),
+    // a big rounded cover with a slim seek bar, the title under it, and large round transport controls
+    SIMP("Simp", "Simp", PlayerStyleTraits(showsHandle = false)),
     METROLIST("Metrolist", "Metrolist", PlayerStyleTraits(turnable = true)),
     METROLIST_VINTAGE("Metrolist Vintage", "Vintage", PlayerStyleTraits(turnable = true)),
     // a look module's own player, drawn from its layout; kept last so the others keep their places, and only offered while such a module is on
@@ -728,6 +730,7 @@ enum class PlayerStyle(
             listOf(APPLE_MUSIC),
             listOf(TIKTOK),
             listOf(LOOPER),
+            listOf(SIMP),
             listOf(METROLIST, METROLIST_VINTAGE),
         )
     }
