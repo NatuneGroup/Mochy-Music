@@ -5,10 +5,6 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.mochyy.mochymusic.db.nowLocal
-import com.music.innertube.YouTube
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDateTime
 
 @Immutable
@@ -45,11 +41,4 @@ data class AlbumEntity(
     fun toggleLibrary() = copy(
         inLibrary = if (inLibrary != null) null else nowLocal()
     )
-
-    fun toggleLike() = localToggleLike().also {
-        CoroutineScope(Dispatchers.IO).launch {
-            if (playlistId != null)
-                YouTube.likePlaylist(playlistId, bookmarkedAt == null)
-        }
-    }
 }
