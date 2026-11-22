@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import javax.inject.Inject
+import kotlinx.datetime.toJavaLocalDateTime
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -50,7 +51,7 @@ constructor(
                         events
                             .filter { !hideVideoSongs || !it.song.song.isVideo }
                             // one group per day, newest first, each headed by its own date
-                            .groupBy { it.event.timestamp.toLocalDate() }
+                            .groupBy { it.event.timestamp.toJavaLocalDateTime().toLocalDate() }
                             .toSortedMap(compareByDescending { it })
                             .mapValues { entry ->
                                 entry.value.distinctBy { it.song.id }

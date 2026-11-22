@@ -59,7 +59,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import java.text.Collator
-import java.time.LocalDateTime
 import java.util.Locale
 
 /** How many playlists the "recents" section shows. */
@@ -286,7 +285,7 @@ private fun AddToPlaylistContent(
             } else if (all.size > RecentCount) {
                 val recents =
                     all
-                        .sortedByDescending { it.playlist.lastUpdateTime ?: it.playlist.createdAt ?: LocalDateTime.MIN }
+                        .sortedWith(compareByDescending(nullsFirst(naturalOrder<kotlinx.datetime.LocalDateTime>())) { it.playlist.lastUpdateTime ?: it.playlist.createdAt })
                         .take(RecentCount)
                 val collator = Collator.getInstance(Locale.getDefault()).apply { strength = Collator.PRIMARY }
                 val rest = (all - recents.toSet()).sortedWith(compareBy(collator) { it.playlist.name })

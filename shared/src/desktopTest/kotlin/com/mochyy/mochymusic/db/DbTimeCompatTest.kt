@@ -24,23 +24,23 @@ class DbTimeCompatTest {
 
     @Test
     fun readsEveryTextFormJavaWrote() {
-        for (java in samples) {
-            assertEquals(java, LocalDateTime.parse(java.toString()).toJavaLocalDateTime(), java.toString())
+        for (old in samples) {
+            assertEquals(old, LocalDateTime.parse(old.toString()).toJavaLocalDateTime(), old.toString())
         }
     }
 
     @Test
     fun javaReadsWhatKotlinxWrites() {
-        for (java in samples) {
-            assertEquals(java, java.time.LocalDateTime.parse(java.toKotlinLocalDateTime().toString()))
+        for (old in samples) {
+            assertEquals(old, java.time.LocalDateTime.parse(old.toKotlinLocalDateTime().toString()))
         }
     }
 
     @Test
     fun storesTheSameMillisAsBefore() {
-        for (java in samples) {
-            val before = java.atZone(ZoneOffset.UTC).toInstant().toEpochMilli()
-            assertEquals(before, java.toKotlinLocalDateTime().toEpochMillisUtc())
+        for (old in samples) {
+            val before = old.atZone(ZoneOffset.UTC).toInstant().toEpochMilli()
+            assertEquals(before, old.toKotlinLocalDateTime().toEpochMillisUtc())
             assertEquals(
                 java.time.LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(before), ZoneOffset.UTC),
                 localDateTimeFromEpochMillisUtc(before).toJavaLocalDateTime(),

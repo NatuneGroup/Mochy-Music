@@ -63,6 +63,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
+import kotlinx.datetime.toJavaLocalDateTime
 
 // a heading, or a song with its line already written ("artist • added 3 days ago")
 private sealed interface AddedRow {
@@ -77,7 +78,7 @@ private sealed interface AddedRow {
     }
 }
 
-private fun addedAt(song: Song): LocalDateTime? = song.song.inLibrary ?: song.song.dateDownload
+private fun addedAt(song: Song): LocalDateTime? = (song.song.inLibrary ?: song.song.dateDownload)?.toJavaLocalDateTime()
 
 // the heading a day falls under, the same words History uses
 private fun headingFor(date: LocalDate?, today: LocalDate, resources: Resources): String {

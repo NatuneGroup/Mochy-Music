@@ -83,8 +83,8 @@ import com.mochyy.mochymusic.utils.makeTimeString
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.time.LocalDateTime
 import androidx.compose.ui.graphics.Color
+import com.mochyy.mochymusic.db.nowLocal
 
 @SuppressLint("MutableCollectionMutableState")
 @Composable
@@ -457,7 +457,7 @@ fun YouTubeSongMenu(
                                 } else {
                                     database.transaction {
                                         insert(song.toMediaMetadata())
-                                        inLibrary(song.id, LocalDateTime.now())
+                                        inLibrary(song.id, nowLocal())
                                         addLibraryTokens(
                                             song.id,
                                             song.libraryAddToken,

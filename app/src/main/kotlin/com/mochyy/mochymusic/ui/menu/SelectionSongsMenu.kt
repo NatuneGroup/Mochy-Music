@@ -56,7 +56,7 @@ import com.mochyy.mochymusic.ui.component.NewAction
 import com.mochyy.mochymusic.ui.component.NewActionGrid
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.time.LocalDateTime
+import com.mochyy.mochymusic.db.nowLocal
 
 @SuppressLint("MutableCollectionMutableState")
 @Composable
@@ -327,7 +327,7 @@ fun SelectionSongMenu(
                                     database.transaction {
                                         songSelection.forEach { song ->
                                             insert(song.toMediaMetadata())
-                                            inLibrary(song.id, LocalDateTime.now())
+                                            inLibrary(song.id, nowLocal())
                                         }
                                     }
                                     coroutineScope.launch {

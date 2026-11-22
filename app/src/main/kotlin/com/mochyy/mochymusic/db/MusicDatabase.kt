@@ -50,6 +50,7 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.util.Date
+import kotlinx.datetime.toKotlinLocalDateTime
 
 class MusicDatabase(
     private val delegate: InternalDatabase,
@@ -369,8 +370,8 @@ val MIGRATION_1_2 =
                         "totalPlayTime" to song.totalPlayTime,
                         "isTrash" to false,
                         "download_state" to song.downloadState,
-                        "create_date" to converters.dateToTimestamp(song.createDate),
-                        "modify_date" to converters.dateToTimestamp(song.modifyDate),
+                        "create_date" to converters.dateToTimestamp(song.createDate.toKotlinLocalDateTime()),
+                        "modify_date" to converters.dateToTimestamp(song.modifyDate.toKotlinLocalDateTime()),
                     ),
                 )
             }

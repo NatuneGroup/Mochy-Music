@@ -22,8 +22,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import java.time.LocalDateTime
 import javax.inject.Inject
+import com.mochyy.mochymusic.db.nowLocal
 
 @HiltViewModel
 class CachePlaylistViewModel @Inject constructor(
@@ -60,7 +60,7 @@ class CachePlaylistViewModel @Inject constructor(
                     database.query {
                         completeSongs.forEach {
                             if (it.song.dateDownload == null) {
-                                update(it.song.copy(dateDownload = LocalDateTime.now()))
+                                update(it.song.copy(dateDownload = nowLocal()))
                             }
                         }
                     }
