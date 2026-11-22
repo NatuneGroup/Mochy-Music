@@ -81,6 +81,7 @@ import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
+import com.mochyy.mochymusic.shared.playback.UpcomingPreloader
 import com.mochyy.mochymusic.utils.followAppProxy
 import com.music.innertube.YouTube
 import com.music.innertube.models.SongItem
@@ -1104,7 +1105,7 @@ class MusicService :
         }.collectLatest(scope) { (mediaMetadata, showLyrics) ->
             if (showLyrics && mediaMetadata != null) {
                 storeLyricsIfMissing(mediaMetadata)
-                preloadQueuedLyrics()
+                scheduleLyricsPreload()
             }
         }
 
@@ -3298,8 +3299,8 @@ class MusicService :
 
     override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
         updateNotification()
-        // runs on a later main-thread turn, after the new shuffle order below is in place
-        if (player.isPlaying) scheduleLyricsPreload()
+        // a later main-thread turn, once the new shuffle order below is in place
+        if (player.isPlaying) scope.launch { scheduleLyricsPreload() }
         if (shuffleModeEnabled) {
 
             if (player.mediaItemCount == 0) return
@@ -3873,22 +3874,19 @@ class MusicService :
     }
 
     // the next two queued songs' lyrics, so they're ready when they come up; only while playing on an unmetered network
-    private var lyricsPreload: Job? = null
-
-    private fun scheduleLyricsPreload() {
-        lyricsPreload?.cancel()
-        lyricsPreload = scope.launch { preloadQueuedLyrics() }
+    // every trigger for the next songs' lyrics goes through this one owner (the current song's own fetch stays separate)
+    private val lyricsPreloader = UpcomingPreloader<com.mochyy.mochymusic.models.MediaMetadata>({ scope }, { it.id }) { queued ->
+        for (metadata in queued) {
+            if (!player.isPlaying) return@UpcomingPreloader
+            storeLyricsIfMissing(metadata)
+        }
     }
 
-    private suspend fun preloadQueuedLyrics() {
+    private fun scheduleLyricsPreload() {
         if (!dataStore.get(PreloadQueueLyricsKey, false) || !dataStore.get(ShowLyricsKey, false)) return
         if (!player.isPlaying || connectivityManager.isActiveNetworkMetered) return
         // the order they will actually play in, shuffle included
-        val queued = upcomingIndices(2).mapNotNull { player.getMediaItemAt(it).metadata }
-        for (metadata in queued) {
-            if (!player.isPlaying) return
-            storeLyricsIfMissing(metadata)
-        }
+        lyricsPreloader.request(upcomingIndices(2).mapNotNull { player.getMediaItemAt(it).metadata })
     }
 
     // play pressed while pause-on-mute finds the device at zero: raise it to the recovery level so the song is heard
