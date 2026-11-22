@@ -34,6 +34,8 @@ const val ForceDarkTheme = SharedForceDarkTheme
 fun MochyTheme(
     darkTheme: Boolean = ForceDarkTheme,
     pureBlack: Boolean = false,
+    /** the chrome's accent: replaces primary and secondary, the background stays as it is */
+    accent: Color? = null,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -42,12 +44,9 @@ fun MochyTheme(
     // The branch is gone rather than dead-but-present: dynamic*ColorScheme is API 31.
     val baseColorScheme = mochyColorScheme(darkTheme)
 
-    val colorScheme = remember(baseColorScheme, pureBlack, darkTheme) {
-        if (darkTheme && pureBlack) {
-            baseColorScheme.sharedPureBlack(true)
-        } else {
-            baseColorScheme
-        }
+    val colorScheme = remember(baseColorScheme, pureBlack, darkTheme, accent) {
+        val pured = if (darkTheme && pureBlack) baseColorScheme.sharedPureBlack(true) else baseColorScheme
+        if (accent == null) pured else pured.withAccent(accent)
     }
 
     val font = InterFontFamily
@@ -90,6 +89,17 @@ fun Bitmap.extractGradientColors(): List<Color> {
 }
 
 fun ColorScheme.pureBlack(apply: Boolean) = sharedPureBlack(apply)
+
+/** the accent as primary and secondary; the text on it is black or white, whichever reads better */
+fun ColorScheme.withAccent(accent: Color): ColorScheme {
+    val onAccent = if (accent.luminance() > 0.4f) Color.Black else Color.White
+    return copy(
+        primary = accent,
+        onPrimary = onAccent,
+        secondary = accent,
+        onSecondary = onAccent,
+    )
+}
 
 val ColorSaver = object : Saver<Color, Int> {
     override fun restore(value: Int): Color = Color(value)

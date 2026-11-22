@@ -613,9 +613,19 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // the chrome's accent: the picked colour, or the cover's colour when the user chose that
+        val (accentInt) = rememberPreference(com.mochyy.mochymusic.constants.AccentColorKey, defaultValue = 0)
+        val (accentFromArt) = rememberPreference(com.mochyy.mochymusic.constants.AccentFromArtKey, defaultValue = false)
+        val chromeAccent: Color? = when {
+            accentFromArt -> themeColor
+            accentInt != 0 -> Color(accentInt)
+            else -> null
+        }
+
         MochyTheme(
             darkTheme = useDarkTheme,
             pureBlack = pureBlack,
+            accent = chromeAccent,
         ) {
             BoxWithConstraints(
                 modifier = Modifier

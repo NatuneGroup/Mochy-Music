@@ -7,4 +7,7 @@
     <string name="settings_start_tab_desc">The tab that opens when the app starts.</string>
     <string name="settings_hide_nav_on_scroll">Hide navigation bar on scroll</string>
     <string name="settings_hide_nav_on_scroll_desc">Slide the bar away while a list scrolls down, and bring it back when you scroll up.</string>
+    <string name="settings_accent">Accent colour</string>
+    <string name="settings_accent_desc">Colours the switches, sliders and selected items. The player keeps its own colours.</string>
+    <string name="settings_accent_art">From album art</string>
 </resources>

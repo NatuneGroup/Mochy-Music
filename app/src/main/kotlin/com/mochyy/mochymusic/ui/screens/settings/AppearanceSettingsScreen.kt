@@ -6,7 +6,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -28,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.AccentColorKey
+import com.mochyy.mochymusic.constants.AccentFromArtKey
 import com.mochyy.mochymusic.constants.DefaultOpenTabKey
 import com.mochyy.mochymusic.constants.HideNavOnScrollKey
 import com.mochyy.mochymusic.ui.component.SettingsItem
@@ -48,7 +53,7 @@ fun AppearanceSettingsScreen(navController: NavController) {
         onBack = { navController.navigateUp() },
         searchBar = { SubSettingsSearchBar(query = query, onQueryChange = { query = it }) },
     ) {
-        SettingsSection(title = null, items = (startItems() + navBarItems()).matching(query))
+        SettingsSection(title = null, items = (startItems() + navBarItems() + accentItems()).matching(query))
         Spacer(Modifier.height(140.dp))
     }
 }
@@ -82,6 +87,81 @@ private fun navBarItems(): List<SettingsItem> {
             checked = hideOnScroll,
             onCheckedChange = setHideOnScroll,
         ),
+    )
+}
+
+// the accent presets are bright enough to read on black; the first swatch goes back to mochy's own grey
+private val AccentPresets = listOf(
+    0xFFFF6B6B.toInt(),
+    0xFFFFB300.toInt(),
+    0xFF9CCC65.toInt(),
+    0xFF26C6DA.toInt(),
+    0xFF42A5F5.toInt(),
+    0xFFAB78FF.toInt(),
+    0xFFF06292.toInt(),
+)
+
+@Composable
+private fun accentItems(): List<SettingsItem> {
+    val (accentInt, setAccent) = rememberPreference(AccentColorKey, defaultValue = 0)
+    val (fromArt, setFromArt) = rememberPreference(AccentFromArtKey, defaultValue = false)
+    val title = stringResource(R.string.settings_accent)
+    return listOf(
+        SettingsItem(
+            title = { Text(title) },
+            highlightKey = "Accent colour",
+            searchText = title,
+            description = {
+                AccentChoices(
+                    picked = accentInt,
+                    fromArt = fromArt,
+                    onPick = { argb -> setFromArt(false); setAccent(argb) },
+                    onPickArt = { setFromArt(true) },
+                )
+            },
+            icon = painterResource(R.drawable.palette),
+            iconShape = CircleShape,
+        ),
+    )
+}
+
+@Composable
+private fun AccentChoices(picked: Int, fromArt: Boolean, onPick: (Int) -> Unit, onPickArt: () -> Unit) {
+    Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            // 0 is mochy's own grey, the first swatch puts it back
+            Swatch(color = Color(0xFF8E8E8E), selected = !fromArt && picked == 0) { onPick(0) }
+            AccentPresets.forEach { argb ->
+                Swatch(color = Color(argb), selected = !fromArt && picked == argb) { onPick(argb) }
+            }
+        }
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .background(if (fromArt) Color.White.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.08f))
+                .clickable { onPickArt() }
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.settings_accent_art),
+                fontFamily = InterFontFamily,
+                fontSize = 13.sp,
+                fontWeight = if (fromArt) FontWeight.Bold else FontWeight.Normal,
+                color = Color.White,
+            )
+        }
+    }
+}
+
+@Composable
+private fun Swatch(color: Color, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(34.dp)
+            .clip(CircleShape)
+            .background(color)
+            .then(if (selected) Modifier.border(2.dp, Color.White, CircleShape) else Modifier)
+            .clickable(onClick = onClick),
     )
 }
 

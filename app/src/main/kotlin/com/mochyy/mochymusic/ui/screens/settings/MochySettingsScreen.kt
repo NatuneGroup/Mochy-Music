@@ -162,6 +162,7 @@ private val SettingsIndex = listOf(
     SettingsEntry("Appearance", "Appearance", "appearance_settings", "look theme tabs navigation bar layout scale colour color font tablet", R.string.settings_appearance),
     SettingsEntry("Default start tab", "Appearance", "appearance_settings", "start open launch first tab home search library", R.string.settings_start_tab),
     SettingsEntry("Hide navigation bar on scroll", "Appearance", "appearance_settings", "nav navigation bar tabs hide slide scroll list auto", R.string.settings_hide_nav_on_scroll),
+    SettingsEntry("Accent colour", "Appearance", "appearance_settings", "accent colour color palette theme primary highlight album art cover", R.string.settings_accent),
 
     // Customisation
     SettingsEntry("Customisation", "Customisation", "customisation_settings", "customize cover rounding playlist player home styles gesture swipe blur animation lyrics"),
