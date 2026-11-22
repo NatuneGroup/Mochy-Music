@@ -37,6 +37,12 @@
     <string name="car_liked">Liked songs</string>
     <string name="car_downloaded">Downloaded</string>
     <string name="car_device_songs">Songs on this device</string>
+    <string name="car_pinned_playlists">Pinned playlists</string>
+    <string name="car_settings_pinned_other">Other playlists</string>
+    <string name="car_pinned_move_up">Move up</string>
+    <string name="car_pinned_move_down">Move down</string>
+    <string name="car_pinned_remove">Unpin</string>
+    <string name="car_pinned_add">Pin</string>
     <string name="car_playlists">Playlists</string>
     <string name="car_albums">Albums</string>
     <string name="car_artists">Artists</string>

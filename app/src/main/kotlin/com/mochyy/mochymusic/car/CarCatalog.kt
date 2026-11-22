@@ -11,6 +11,7 @@ import com.music.innertube.models.SongItem
 import com.music.innertube.models.WatchEndpoint
 import com.music.innertube.models.YTItem
 import com.mochyy.mochymusic.constants.CarDeviceSongsKey
+import com.mochyy.mochymusic.constants.CarPinnedPlaylistIdsKey
 import com.mochyy.mochymusic.constants.HideVideoSongsKey
 import com.mochyy.mochymusic.constants.CarOnlineRecommendationsKey
 import com.mochyy.mochymusic.constants.SongSortType
@@ -107,6 +108,17 @@ class CarCatalog(
 
     // songs saved on this phone: imported local files and downloads, for the car's "songs on this device" row
     fun showDeviceSongs(): Boolean = context.dataStore.get(CarDeviceSongsKey, true)
+
+    // the playlists the user pinned for the car, in their chosen order
+    fun pinnedPlaylistIds(): List<String> =
+        context.dataStore.get(CarPinnedPlaylistIdsKey, "").split(",").filter { it.isNotBlank() }
+
+    suspend fun pinnedPlaylists(): List<CarCollection> = io {
+        val ids = pinnedPlaylistIds()
+        if (ids.isEmpty()) return@io emptyList()
+        val playlists = database.playlistsByCreateDateAsc().first().associateBy { it.id }
+        ids.mapNotNull { id -> playlists[id]?.toCollection() }
+    }
 
     suspend fun deviceSongs(): List<CarSong> = io {
         val local = database.localSongs(SongSortType.CREATE_DATE, true).first()

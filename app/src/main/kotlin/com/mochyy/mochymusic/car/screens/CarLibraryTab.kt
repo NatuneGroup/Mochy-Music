@@ -3,6 +3,7 @@
 package com.mochyy.mochymusic.car.screens
 
 import androidx.annotation.DrawableRes
+import androidx.car.app.model.CarIcon
 import androidx.car.app.model.Row
 import androidx.car.app.model.RowSection
 import androidx.car.app.model.SectionedItemTemplate
@@ -10,6 +11,7 @@ import androidx.car.app.model.Template
 import androidx.media3.common.util.UnstableApi
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.car.CarApp
+import com.mochyy.mochymusic.car.CarCollection
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 
@@ -17,16 +19,23 @@ import kotlinx.coroutines.coroutineScope
 @UnstableApi
 internal class CarLibraryTab(app: CarApp) : CarDataTab<CarLibraryTab.Data>(app, "library", R.string.car_tab_library, R.drawable.library_music) {
     // deviceSongs is -1 when the row is hidden in settings
-    class Data(val liked: Int, val downloaded: Int, val deviceSongs: Int)
+    class Data(
+        val liked: Int,
+        val downloaded: Int,
+        val deviceSongs: Int,
+        val pinned: List<CarCollection>,
+        val pinnedCovers: List<CarIcon>,
+    )
 
     override suspend fun fetch(): Data = coroutineScope {
         val liked = async { app.catalog.likedCount() }
         val downloaded = async { app.catalog.downloadedCount() }
         val device = async { if (app.catalog.showDeviceSongs()) app.catalog.deviceSongs().size else -1 }
-        Data(liked.await(), downloaded.await(), device.await())
+        val pinned = app.catalog.pinnedPlaylists()
+        Data(liked.await(), downloaded.await(), device.await(), pinned, app.images.covers(pinned.map { it.thumbnail }))
     }
 
-    override fun empty() = Data(0, 0, -1)
+    override fun empty() = Data(0, 0, -1, emptyList(), emptyList())
 
     override fun build(data: Data): Template {
         val songs = { count: Int -> app.carContext.resources.getQuantityString(R.plurals.n_song, count, count) }
@@ -53,10 +62,15 @@ internal class CarLibraryTab(app: CarApp) : CarDataTab<CarLibraryTab.Data>(app, 
                 app.push(CarCollectionsScreen(app, app.string(R.string.car_artists), grid = true) { app.catalog.artists() })
             },
         )
-        return SectionedItemTemplate.Builder()
-            .addSection(RowSection.Builder().setItems(rows).build())
-            .addAction(app.playerButton())
-            .build()
+        val template = SectionedItemTemplate.Builder().addSection(RowSection.Builder().setItems(rows).build())
+        // pinned playlists sit under the library rows, in the order picked in settings
+        if (data.pinned.isNotEmpty()) {
+            val pinned = data.pinned.mapIndexed { index, list ->
+                collectionRow(list, data.pinnedCovers[index]) { app.push(CarSongsScreen(app, list.title, list.songs)) }
+            }
+            template.addSection(RowSection.Builder().setTitle(app.string(R.string.car_pinned_playlists)).setItems(pinned).build())
+        }
+        return template.addAction(app.playerButton()).build()
     }
 
     override fun loadingTemplate(): Template = SectionedItemTemplate.Builder().setLoading(true).build()
