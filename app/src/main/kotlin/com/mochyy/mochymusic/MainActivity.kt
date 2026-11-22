@@ -735,6 +735,17 @@ class MainActivity : ComponentActivity() {
                 // the row the tabs take along the bottom: the wide bar's shrinks with a short screen
                 val navRowHeight = wideBar?.rowHeight ?: NavigationBarHeight
                 val navPadding = if (slimNav && wideBar == null) SlimNavBarHeight else navRowHeight
+                // the bar slides away on scroll only on a phone's bottom bar, not the wide pill
+                val (hideNavOnScroll) = rememberPreference(com.mochyy.mochymusic.constants.HideNavOnScrollKey, defaultValue = false)
+                val navHide = remember { com.mochyy.mochymusic.ui.component.NavBarHide() }
+                val navHideConnection = com.mochyy.mochymusic.ui.component.rememberNavBarHideConnection(
+                    state = navHide,
+                    barHeightPx = with(density) { navRowHeight.toPx() },
+                    enabled = hideNavOnScroll && wideBar == null,
+                )
+                LaunchedEffect(hideNavOnScroll) {
+                    if (!hideNavOnScroll) navHide.progress = 0f
+                }
 
                 val playerBottomSheetState = rememberBottomSheetState(
                     dismissedBound = 0.dp,
@@ -791,6 +802,8 @@ class MainActivity : ComponentActivity() {
                     }
 
                     topAppBarScrollBehavior.state.resetHeightOffset()
+                    // a new page always shows the bar again
+                    navHide.progress = 0f
 
                     navController.currentBackStackEntry?.destination?.route?.let {
                         setPreviousTab(it)
@@ -1147,7 +1160,10 @@ class MainActivity : ComponentActivity() {
                                                     navController.navigateToTab(route)
                                                 },
                                                 obscured = { playerBottomSheetState.progress > 0.001f },
-                                                modifier = barMotion,
+                                                // slides down out of the screen as the list scrolls, read while drawing
+                                                modifier = barMotion.graphicsLayer {
+                                                    translationY = navBarTotalHeight.toPx() * navHide.progress
+                                                },
                                             )
                                         }
                                         }
@@ -1157,6 +1173,7 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier
                                 .fillMaxSize()
                                 .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection)
+                                .nestedScroll(navHideConnection)
                         ) {
                             Row(Modifier.fillMaxSize()) {
                                 Box(

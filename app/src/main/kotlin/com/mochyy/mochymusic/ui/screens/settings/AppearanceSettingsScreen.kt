@@ -29,12 +29,14 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.DefaultOpenTabKey
+import com.mochyy.mochymusic.constants.HideNavOnScrollKey
 import com.mochyy.mochymusic.ui.component.SettingsItem
 import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
 import com.mochyy.mochymusic.ui.component.SubSettingsSearchBar
 import com.mochyy.mochymusic.ui.screens.NavigationTab
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import com.mochyy.mochymusic.utils.rememberEnumPreference
+import com.mochyy.mochymusic.utils.rememberPreference
 
 // settings > appearance: the tabs, the layout and the colours the app opens with
 @Composable
@@ -46,7 +48,7 @@ fun AppearanceSettingsScreen(navController: NavController) {
         onBack = { navController.navigateUp() },
         searchBar = { SubSettingsSearchBar(query = query, onQueryChange = { query = it }) },
     ) {
-        SettingsSection(title = null, items = startItems().matching(query))
+        SettingsSection(title = null, items = (startItems() + navBarItems()).matching(query))
         Spacer(Modifier.height(140.dp))
     }
 }
@@ -64,6 +66,21 @@ private fun startItems(): List<SettingsItem> {
             description = { TabChoices(selected = startTab, onPick = setStartTab) },
             icon = painterResource(R.drawable.home),
             iconShape = CircleShape,
+        ),
+    )
+}
+
+@Composable
+private fun navBarItems(): List<SettingsItem> {
+    val (hideOnScroll, setHideOnScroll) = rememberPreference(HideNavOnScrollKey, defaultValue = false)
+    return listOf(
+        switchItem(
+            key = "Hide navigation bar on scroll",
+            title = stringResource(R.string.settings_hide_nav_on_scroll),
+            description = stringResource(R.string.settings_hide_nav_on_scroll_desc),
+            icon = painterResource(R.drawable.arrow_downward),
+            checked = hideOnScroll,
+            onCheckedChange = setHideOnScroll,
         ),
     )
 }

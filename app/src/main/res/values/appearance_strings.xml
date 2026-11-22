@@ -5,4 +5,6 @@
     <string name="settings_appearance_desc">Start tab, navigation bar, scale and colours.</string>
     <string name="settings_start_tab">Start tab</string>
     <string name="settings_start_tab_desc">The tab that opens when the app starts.</string>
+    <string name="settings_hide_nav_on_scroll">Hide navigation bar on scroll</string>
+    <string name="settings_hide_nav_on_scroll_desc">Slide the bar away while a list scrolls down, and bring it back when you scroll up.</string>
 </resources>
