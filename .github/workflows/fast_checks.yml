@@ -35,6 +35,21 @@ jobs:
       - run: chmod +x gradlew
       - name: Compile
         run: ./gradlew --console=plain :app:compileArm64FossDebugKotlin :desktopApp:compileKotlinJvm :shared:compileCommonMainKotlinMetadata --warning-mode summary
+      - name: Database schema
+        run: |
+          git add --intent-to-add app/schemas
+          if ! git diff --quiet -- app/schemas; then
+            git diff --stat -- app/schemas
+            echo "The Room schema changed. If that is intended: bump MusicDatabaseVersion, add its migration to AllMigrations, and commit the new app/schemas file (it is in this run's artifacts)."
+            exit 1
+          fi
+      - name: Upload schema on change
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: room-schemas
+          path: app/schemas/
+          retention-days: 7
 
   unit-tests:
     name: Shared and provider unit tests
