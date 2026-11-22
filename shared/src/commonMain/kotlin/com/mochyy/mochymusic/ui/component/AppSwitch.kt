@@ -22,7 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import com.mochyy.mochymusic.ui.theme.LocalChromeAccent
+import com.mochyy.mochymusic.shared.ui.theme.LocalMochyAccent
 
 private val TrackWidth = 52.dp
 private val TrackHeight = 32.dp
@@ -40,7 +40,7 @@ fun AppSwitch(
 ) {
     val alpha = if (enabled) 1f else 0.38f
     val animSpec = tween<Color>(150)
-    val accent = LocalChromeAccent.current
+    val accent = LocalMochyAccent.current
     val checkedThumb = if (accent == null) Color.White else MaterialTheme.colorScheme.onPrimary
 
     val trackColor by animateColorAsState(
