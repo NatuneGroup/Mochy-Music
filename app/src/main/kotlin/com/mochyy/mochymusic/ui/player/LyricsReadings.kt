@@ -104,7 +104,7 @@ fun LyricsReadings(
     val (openRouterModel) = rememberPreference(OpenRouterModelKey, defaultValue = "")
     val (customBaseUrl) = rememberPreference(CustomAiBaseUrlKey, defaultValue = "")
     val (customKey) = rememberPreference(CustomAiApiKey, defaultValue = "")
-    val (customModel) = rememberPreference(CustomAiModelKey, defaultValue = "")
+    val (customModel) = rememberPreference(CustomAiModelKey, defaultValue = AiTranslatorConfig.ModelUnset)
     val (deeplKey) = rememberPreference(DeeplApiKey, defaultValue = "")
     // the chosen provider decides the address and the key together, so a key only ever goes to its own provider
     val ai = AiTranslatorConfig.resolve(

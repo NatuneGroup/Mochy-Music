@@ -28,13 +28,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - platform: linux-x64
-            runner: blacksmith-8vcpu-ubuntu-2404
-          - platform: macos-arm64
-            runner: blacksmith-6vcpu-macos-26
-          - platform: windows-x64
-            runner: blacksmith-4vcpu-windows-2025
+        # pull requests package Linux only (operator, 2026-11-22: Android and Linux for now, for speed);
+        # a manual run still packages all three
+        include: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '[{"platform":"linux-x64","runner":"blacksmith-8vcpu-ubuntu-2404"},{"platform":"macos-arm64","runner":"blacksmith-6vcpu-macos-26"},{"platform":"windows-x64","runner":"blacksmith-4vcpu-windows-2025"}]' || '[{"platform":"linux-x64","runner":"blacksmith-8vcpu-ubuntu-2404"}]') }}
     steps:
       - uses: actions/checkout@v6
 

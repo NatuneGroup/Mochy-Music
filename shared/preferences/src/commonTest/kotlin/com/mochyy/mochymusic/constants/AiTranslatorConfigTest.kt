@@ -12,6 +12,7 @@ class AiTranslatorConfigTest {
         openRouterKey: String = "fake-openrouter-key",
         customBaseUrl: String = "",
         customKey: String = "",
+        customModel: String = AiTranslatorConfig.ModelUnset,
         legacyBaseUrl: String = "",
         deeplKey: String = "fake-deepl-key",
     ) = AiTranslatorConfig.resolve(
@@ -20,7 +21,7 @@ class AiTranslatorConfigTest {
         openRouterModel = "or-model",
         customBaseUrl = customBaseUrl,
         customKey = customKey,
-        customModel = "",
+        customModel = customModel,
         legacyBaseUrl = legacyBaseUrl,
         legacyModel = "legacy-model",
         deeplKey = deeplKey,
@@ -58,6 +59,19 @@ class AiTranslatorConfigTest {
         assertEquals("https://old.invalid/v1", custom.baseUrl)
         assertEquals("legacy-model", custom.model)
         assertEquals(OpenRouterEndpoint, resolve("OpenRouter", legacyBaseUrl = "https://old.invalid/v1").baseUrl)
+    }
+
+    @Test
+    fun aClearedCustomModelStaysBlank() {
+        val config = resolve("Custom", customBaseUrl = "https://custom.invalid/v1", customKey = "fake-custom-key", customModel = "")
+        assertEquals("", config.model)
+    }
+
+    @Test
+    fun customNeverTakesOpenRoutersOwnModel() {
+        // an OpenRouter-only user (no old shared address) switching to Custom starts with no model
+        val config = resolve("Custom", customBaseUrl = "https://custom.invalid/v1", customKey = "fake-custom-key")
+        assertEquals("", config.model)
     }
 
     @Test
