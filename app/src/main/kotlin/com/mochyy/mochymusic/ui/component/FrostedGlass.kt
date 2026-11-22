@@ -42,9 +42,6 @@ private val ChromeOutlineStroke = Stroke(ChromeOutlineWidthPx)
 /** Lifts the chrome off a light page without looking like a dark halo on a black one. */
 val ChromeShadow = Shadow(radius = 6.3.dp, color = Color.Black.copy(alpha = 0.12f), spread = 2.dp)
 
-/** The lit tab's pill in the nav bar, and the round press behind the mini player's buttons. */
-val ChromeHighlightColor = Color.White.copy(alpha = 0.1f)
-
 /**
  * A faint grain over the glass. A dark blur only has a few shades to work with, so without it the
  * glass shows bands; this breaks them up and is too faint to see as grain.
