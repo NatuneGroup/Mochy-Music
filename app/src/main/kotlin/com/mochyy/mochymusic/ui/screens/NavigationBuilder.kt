@@ -538,6 +538,10 @@ fun NavGraphBuilder.navigationBuilder(
         com.mochyy.mochymusic.ui.screens.settings.importsync.YouTubeLoginScreen(navController = navController)
     }
 
+    composable(com.mochyy.mochymusic.ui.screens.settings.importsync.AccountSwitcherRoute) {
+        com.mochyy.mochymusic.ui.screens.settings.importsync.AccountSwitcherScreen(navController = navController)
+    }
+
     composable("equalizer") {
         com.mochyy.mochymusic.ui.screens.equalizer.EqualizerScreen(navController = navController)
     }

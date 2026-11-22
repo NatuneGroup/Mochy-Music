@@ -29,6 +29,7 @@ import com.mochyy.mochymusic.constants.EnableDiscordRPCKey
 import com.mochyy.mochymusic.constants.EnableLastFMScrobblingKey
 import com.mochyy.mochymusic.constants.EnableLibreFmScrobblingKey
 import com.mochyy.mochymusic.constants.InnerTubeCookieKey
+import com.mochyy.mochymusic.constants.SavedAccountsKey
 import com.mochyy.mochymusic.constants.LastFMSessionKey
 import com.mochyy.mochymusic.constants.LastFMUsernameKey
 import com.mochyy.mochymusic.constants.LibreFmSessionKey
@@ -71,7 +72,7 @@ internal object TransferArchive {
 
     // sign-ins and tokens stay behind, the new app signs in again instead of carrying them around in a zip
     val LoginKeys: Set<String> = setOf(
-        InnerTubeCookieKey, VisitorDataKey, DataSyncIdKey, AccountNameKey, AccountEmailKey, AccountChannelHandleKey,
+        InnerTubeCookieKey, VisitorDataKey, DataSyncIdKey, AccountNameKey, AccountEmailKey, AccountChannelHandleKey, SavedAccountsKey,
         DiscordAccessTokenKey, DiscordRefreshTokenKey, DiscordTokenExpiresAtKey, DiscordLoginStateKey,
         DiscordLoginVerifierKey, DiscordProfileKey, EnableDiscordRPCKey,
         LastFMSessionKey, LastFMUsernameKey, EnableLastFMScrobblingKey,

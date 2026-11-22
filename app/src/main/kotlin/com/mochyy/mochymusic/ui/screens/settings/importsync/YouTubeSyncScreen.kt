@@ -93,6 +93,13 @@ fun YouTubeSyncScreen(
                             onClick = { navController.navigate(YouTubeLoginRoute) },
                         )
                     },
+                    SettingsItem(
+                        title = { Text(stringResource(R.string.yt_sync_switch_accounts_title)) },
+                        descriptionText = stringResource(R.string.yt_sync_switch_accounts_desc),
+                        icon = painterResource(R.drawable.group),
+                        iconShape = CircleShape,
+                        onClick = { navController.navigate(AccountSwitcherRoute) },
+                    ),
                 ),
         )
 
