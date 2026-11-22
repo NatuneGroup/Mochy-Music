@@ -9,12 +9,12 @@ import androidx.media3.decoder.ffmpeg.FfmpegFallbackRenderer
 import androidx.media3.exoplayer.audio.AudioRendererEventListener
 import androidx.media3.exoplayer.audio.AudioSink
 
-// the lossy youtube codecs: the phone's codec service decodes these out of process, one binder call per buffer
-private val LossyTypes = setOf(MimeTypes.AUDIO_AAC, MimeTypes.AUDIO_OPUS, MimeTypes.AUDIO_VORBIS)
+// jellyfin's ffmpeg build carries aac but neither opus nor vorbis; opus goes to InProcessOpusRenderer
+private val LossyTypes = setOf(MimeTypes.AUDIO_AAC)
 
 /**
- * Decodes lossy youtube audio inside the app with ffmpeg, so each buffer skips the trip through the
- * phone's codec service. Only takes lossy codecs; everything else (flac, alac, video) still goes to the
+ * Decodes youtube's aac inside the app with ffmpeg, so each buffer skips the trip through the
+ * phone's codec service. Only takes aac; everything else (flac, alac, video) still goes to the
  * phone's codec first. Lossy audio is always handed to the sink as 16-bit, never float.
  */
 @UnstableApi
