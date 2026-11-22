@@ -48,6 +48,7 @@ import com.mochyy.mochymusic.constants.decodeCustomThemes
 import com.mochyy.mochymusic.constants.encodeCustomThemes
 import com.mochyy.mochymusic.shared.ui.theme.MochyAccentPresets
 import com.mochyy.mochymusic.ui.component.DefaultDialog
+import androidx.compose.material3.MaterialTheme
 import com.mochyy.mochymusic.ui.component.SettingsItem
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import com.mochyy.mochymusic.utils.dataStore
@@ -63,7 +64,12 @@ internal fun customThemeItems(): List<SettingsItem> {
             title = { Text(title) },
             highlightKey = "Custom themes",
             searchText = title,
-            description = { ThemeChoices() },
+            description = {
+                Column {
+                    Text(stringResource(R.string.settings_custom_themes_hint), style = MaterialTheme.typography.bodySmall)
+                    ThemeChoices()
+                }
+            },
             icon = painterResource(R.drawable.palette),
             iconShape = CircleShape,
         ),
