@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.border
@@ -20,15 +21,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.datastore.preferences.core.edit
 import androidx.navigation.NavController
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.AccentColorKey
@@ -44,9 +48,11 @@ import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
 import com.mochyy.mochymusic.ui.component.SubSettingsSearchBar
 import com.mochyy.mochymusic.ui.screens.NavigationTab
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.utils.dataStore
 import com.mochyy.mochymusic.utils.rememberEnumPreference
 import com.mochyy.mochymusic.utils.rememberPreference
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 // settings > appearance: the tabs, the layout and the colours the app opens with
 @Composable
@@ -173,8 +179,18 @@ private fun tabletItems(): List<SettingsItem> {
 
 @Composable
 private fun accentItems(): List<SettingsItem> {
-    val (accentInt, setAccent) = rememberPreference(AccentColorKey, defaultValue = 0)
-    val (fromArt, setFromArt) = rememberPreference(AccentFromArtKey, defaultValue = false)
+    val (accentInt) = rememberPreference(AccentColorKey, defaultValue = 0)
+    val (fromArt) = rememberPreference(AccentFromArtKey, defaultValue = false)
+    val store = LocalContext.current.applicationContext.dataStore
+    val scope = rememberCoroutineScope()
+    fun selectAccent(color: Int?) {
+        scope.launch {
+            store.edit { preferences ->
+                if (color != null) preferences[AccentColorKey] = color
+                preferences[AccentFromArtKey] = color == null
+            }
+        }
+    }
     val title = stringResource(R.string.settings_accent)
     return listOf(
         SettingsItem(
@@ -185,8 +201,8 @@ private fun accentItems(): List<SettingsItem> {
                 AccentChoices(
                     picked = accentInt,
                     fromArt = fromArt,
-                    onPick = { argb -> setFromArt(false); setAccent(argb) },
-                    onPickArt = { setFromArt(true) },
+                    onPick = ::selectAccent,
+                    onPickArt = { selectAccent(null) },
                 )
             },
             icon = painterResource(R.drawable.palette),
@@ -198,7 +214,10 @@ private fun accentItems(): List<SettingsItem> {
 @Composable
 private fun AccentChoices(picked: Int, fromArt: Boolean, onPick: (Int) -> Unit, onPickArt: () -> Unit) {
     Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
             // 0 is mochy's own grey, the first swatch puts it back
             Swatch(color = Color(0xFF8E8E8E), selected = !fromArt && picked == 0) { onPick(0) }
             AccentPresets.forEach { argb ->
