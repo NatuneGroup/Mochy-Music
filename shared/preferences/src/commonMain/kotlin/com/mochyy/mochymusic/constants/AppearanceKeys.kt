@@ -23,5 +23,11 @@ val TabletLayoutKey = booleanPreferencesKey("tabletLayout")
 // the app's text in the phone's system font instead of mochy's own
 val SystemFontKey = booleanPreferencesKey("systemFont")
 
+// the shown name of the user's own font file (copied into the app as fonts/custom-regular); blank when there is none
+val CustomFontKey = stringPreferencesKey("customFont")
+
+// the shown name of that font's optional bold file (fonts/custom-bold); blank when there is none
+val CustomBoldFontKey = stringPreferencesKey("customBoldFont")
+
 // the bar's tabs in order, as their routes separated by commas; a leading "-" hides a tab. blank means the default
 val NavTabsKey = stringPreferencesKey("navTabs")

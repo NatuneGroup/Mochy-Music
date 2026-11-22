@@ -2,6 +2,9 @@
 
 package com.mochyy.mochymusic.ui.screens.settings
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +19,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -37,6 +42,8 @@ import androidx.navigation.NavController
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.AccentColorKey
 import com.mochyy.mochymusic.constants.AccentFromArtKey
+import com.mochyy.mochymusic.constants.CustomBoldFontKey
+import com.mochyy.mochymusic.constants.CustomFontKey
 import com.mochyy.mochymusic.constants.DefaultOpenTabKey
 import com.mochyy.mochymusic.constants.HideNavOnScrollKey
 import com.mochyy.mochymusic.constants.SystemFontKey
@@ -47,7 +54,9 @@ import com.mochyy.mochymusic.ui.component.DefaultPlayerSeekBarSlider
 import com.mochyy.mochymusic.ui.component.SettingsItem
 import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
 import com.mochyy.mochymusic.ui.component.SubSettingsSearchBar
+import com.mochyy.mochymusic.ui.component.TopToaster
 import com.mochyy.mochymusic.ui.screens.NavigationTab
+import com.mochyy.mochymusic.ui.theme.CustomFont
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import com.mochyy.mochymusic.utils.dataStore
 import com.mochyy.mochymusic.utils.rememberEnumPreference
@@ -140,14 +149,72 @@ private fun scaleItems(): List<SettingsItem> {
 @Composable
 private fun fontItems(): List<SettingsItem> {
     val (systemFont, setSystemFont) = rememberPreference(SystemFontKey, defaultValue = false)
+    val (customFont) = rememberPreference(CustomFontKey, defaultValue = "")
+    val (customBoldFont) = rememberPreference(CustomBoldFontKey, defaultValue = "")
+    val hasCustom = customFont.isNotEmpty()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val tooBig = stringResource(R.string.settings_custom_font_too_big)
+    val notAFont = stringResource(R.string.settings_custom_font_unreadable)
+    fun picker(part: CustomFont.Part) = { uri: Uri? ->
+        if (uri != null) {
+            scope.launch {
+                when (CustomFont.pick(context.applicationContext, uri, part)) {
+                    is CustomFont.Picked.Done -> Unit
+                    CustomFont.Picked.TooBig -> TopToaster.error(tooBig)
+                    CustomFont.Picked.NotAFont -> TopToaster.error(notAFont)
+                }
+            }
+        }
+    }
+    val pickRegular = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument(), picker(CustomFont.Part.Regular))
+    val pickBold = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument(), picker(CustomFont.Part.Bold))
+    val customTitle = stringResource(R.string.settings_custom_font)
+    val boldTitle = stringResource(R.string.settings_custom_font_bold)
+    val removeLabel = stringResource(R.string.settings_custom_font_remove)
+    @Composable
+    fun RemoveButton(part: CustomFont.Part) {
+        IconButton(onClick = { scope.launch { CustomFont.remove(context.applicationContext, part) } }) {
+            Icon(painterResource(R.drawable.close), contentDescription = removeLabel, tint = Color.White.copy(alpha = 0.7f))
+        }
+    }
+    val removeCustom: (@Composable () -> Unit)? = if (hasCustom) { { RemoveButton(CustomFont.Part.Regular) } } else null
+    val removeBold: (@Composable () -> Unit)? = if (customBoldFont.isNotEmpty()) { { RemoveButton(CustomFont.Part.Bold) } } else null
+    val customDescription = stringResource(R.string.settings_custom_font_desc)
+    val boldDescription = stringResource(R.string.settings_custom_font_bold_desc)
     return listOf(
+        // a custom font stands in for the system font too, so the switch waits, greyed out and as it was, until that's removed
         switchItem(
             key = "System font",
             title = stringResource(R.string.settings_system_font),
-            description = stringResource(R.string.settings_system_font_desc),
+            description = stringResource(if (hasCustom) R.string.settings_system_font_overridden else R.string.settings_system_font_desc),
             icon = painterResource(R.drawable.translate),
             checked = systemFont,
             onCheckedChange = setSystemFont,
+            enabled = !hasCustom,
+        ),
+        // the picked file is copied into the app, so the font stays when the original is moved or deleted
+        SettingsItem(
+            title = { Text(customTitle) },
+            highlightKey = "Custom font",
+            searchText = customTitle,
+            descriptionText = customFont.ifEmpty { customDescription },
+            icon = painterResource(R.drawable.edit),
+            iconShape = CircleShape,
+            onClick = { pickRegular.launch(CustomFont.PickerTypes) },
+            trailingContent = removeCustom,
+        ),
+        SettingsItem(
+            title = { Text(boldTitle) },
+            highlightKey = "Custom bold font",
+            searchText = boldTitle,
+            descriptionText = customBoldFont.ifEmpty { boldDescription },
+            icon = painterResource(R.drawable.edit),
+            iconShape = CircleShape,
+            isVisible = hasCustom,
+            isSubOption = true,
+            onClick = { pickBold.launch(CustomFont.PickerTypes) },
+            trailingContent = removeBold,
         ),
     )
 }
