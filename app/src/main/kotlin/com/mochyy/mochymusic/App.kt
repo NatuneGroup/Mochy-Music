@@ -110,6 +110,15 @@ class App : Application(), SingletonImageLoader.Factory {
         }
 
         applicationScope.launch(Dispatchers.IO) {
+            // the ai translator's model used to be shared by openrouter and custom: a custom setup keeps its model, once
+            try {
+                dataStore.edit { com.mochyy.mochymusic.constants.AiTranslatorConfig.migrateLegacyCustomModel(it) }
+            } catch (e: Exception) {
+                reportException(e)
+            }
+        }
+
+        applicationScope.launch(Dispatchers.IO) {
             // the plain 5 s crossfade used to be the default and onboarding's pick, and it never mixed a thing: anyone left on it moves to crossmix once
             try {
                 if (dataStore.data.first()[CrossmixDefaultMovedKey] != true) {

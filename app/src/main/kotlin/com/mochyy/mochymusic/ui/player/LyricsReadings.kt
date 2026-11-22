@@ -115,7 +115,6 @@ fun LyricsReadings(
         customKey = customKey,
         customModel = customModel,
         legacyBaseUrl = openRouterBaseUrl,
-        legacyModel = openRouterModel,
         deeplKey = deeplKey,
     )
     val (deeplFormality) = rememberPreference(DeeplFormalityKey, defaultValue = "default")

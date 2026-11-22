@@ -81,7 +81,7 @@ fun AiTranslatorSettingsScreen(navController: NavController) {
     // every provider keeps its own key, model and address (AiTranslatorConfig decides what a request uses);
     // the address the two used to share only ever counts as Custom's
     val endpoint = customEndpoint.ifBlank { legacyEndpoint }
-    val model = if (isCustom) AiTranslatorConfig.customModel(customModel, legacyEndpoint, openRouterModel) else openRouterModel
+    val model = if (isCustom) AiTranslatorConfig.customModel(customModel) else openRouterModel
     val apiKey = when {
         isDeepL -> deeplKey
         isCustom -> customKey
