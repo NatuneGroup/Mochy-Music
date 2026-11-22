@@ -32,9 +32,11 @@ import com.mochyy.mochymusic.constants.VideoPictureInPictureKey
 import com.mochyy.mochymusic.playback.SponsorBlockDefaultCategories
 import com.mochyy.mochymusic.constants.MixWithOtherAppsKey
 import com.mochyy.mochymusic.constants.PauseOnMute
+import com.mochyy.mochymusic.constants.PauseOnMuteRecoveryPercentKey
 import com.mochyy.mochymusic.constants.PersistentQueueKey
 import com.mochyy.mochymusic.constants.PersistentShuffleAcrossQueuesKey
 import com.mochyy.mochymusic.constants.PreloadNextTrackKey
+import com.mochyy.mochymusic.constants.PreloadQueueLyricsKey
 import com.mochyy.mochymusic.constants.ResumeOnBluetoothConnectKey
 import com.mochyy.mochymusic.constants.SkipSilenceKey
 import com.mochyy.mochymusic.constants.StopPlaybackOnTaskRemovedKey
@@ -71,6 +73,8 @@ private fun listeningItems(): List<SettingsItem> {
     val (mixWithOtherApps, onMixWithOtherAppsChange) = rememberPreference(MixWithOtherAppsKey, defaultValue = false)
     val (resumeOnBluetooth, onResumeOnBluetoothChange) = rememberPreference(ResumeOnBluetoothConnectKey, defaultValue = false)
     val (pauseOnMute, onPauseOnMuteChange) = rememberPreference(PauseOnMute, defaultValue = false)
+    val (muteRecoveryPercent, onMuteRecoveryPercentChange) = rememberPreference(PauseOnMuteRecoveryPercentKey, defaultValue = 30)
+    val (preloadQueueLyrics, onPreloadQueueLyricsChange) = rememberPreference(PreloadQueueLyricsKey, defaultValue = false)
     val (persistentQueue, onPersistentQueueChange) = rememberPreference(PersistentQueueKey, defaultValue = true)
     val (persistentShuffle, onPersistentShuffleChange) = rememberPreference(PersistentShuffleAcrossQueuesKey, defaultValue = true)
     val (skipSilence, onSkipSilenceChange) = rememberPreference(SkipSilenceKey, defaultValue = false)
@@ -167,6 +171,24 @@ private fun listeningItems(): List<SettingsItem> {
             checked = pauseOnMute,
             onCheckedChange = onPauseOnMuteChange,
         ),
+        SettingsItem(
+            title = { ValueTitle(stringResource(R.string.settings_mute_recovery_volume), if (muteRecoveryPercent == 0) stringResource(R.string.mute_recovery_off) else "$muteRecoveryPercent%") },
+            highlightKey = "Mute recovery volume",
+            searchText = stringResource(R.string.settings_mute_recovery_volume),
+            description = {
+                DefaultPlayerSeekBarSlider(
+                    value = muteRecoveryPercent.toFloat(),
+                    onValueChange = { onMuteRecoveryPercentChange(it.toInt()) },
+                    valueRange = 0f..100f,
+                    steps = 9,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            },
+            icon = painterResource(R.drawable.volume_up),
+            iconShape = CircleShape,
+            isVisible = pauseOnMute,
+            isSubOption = true,
+        ),
         switchItem(
             key = "Save Player's last state",
             title = stringResource(R.string.playback_save_state),
@@ -192,6 +214,14 @@ private fun listeningItems(): List<SettingsItem> {
             icon = painterResource(R.drawable.download),
             checked = preloadNextTrack,
             onCheckedChange = onPreloadNextTrackChange,
+        ),
+        switchItem(
+            key = "Preload queue lyrics",
+            title = stringResource(R.string.playback_preload_lyrics),
+            description = stringResource(R.string.playback_preload_lyrics_desc),
+            icon = painterResource(R.drawable.lyrics),
+            checked = preloadQueueLyrics,
+            onCheckedChange = onPreloadQueueLyricsChange,
         ),
         switchItem(
             key = "Audio offload",

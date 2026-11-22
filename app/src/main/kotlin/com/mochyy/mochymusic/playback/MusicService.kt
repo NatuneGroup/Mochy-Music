@@ -111,6 +111,7 @@ import com.mochyy.mochymusic.constants.TransportFadeSecondsKey
 import com.mochyy.mochymusic.constants.CrossfadeGaplessKey
 import com.mochyy.mochymusic.constants.SkipBlendKey
 import com.mochyy.mochymusic.constants.PreloadNextTrackKey
+import com.mochyy.mochymusic.constants.PreloadQueueLyricsKey
 import com.mochyy.mochymusic.constants.SkipBlendAheadKey
 import com.mochyy.mochymusic.constants.SkipBlendAheadMax
 import com.mochyy.mochymusic.constants.StudioForVideosKey
@@ -150,6 +151,7 @@ import com.mochyy.mochymusic.constants.OfflineModeKey
 import com.mochyy.mochymusic.constants.PauseListenHistoryKey
 import com.mochyy.mochymusic.constants.MixWithOtherAppsKey
 import com.mochyy.mochymusic.constants.PauseOnMute
+import com.mochyy.mochymusic.constants.PauseOnMuteRecoveryPercentKey
 import com.mochyy.mochymusic.constants.PersistentQueueKey
 import com.mochyy.mochymusic.constants.InfiniteQueueKey
 import com.mochyy.mochymusic.constants.QueueAddInOrderKey
@@ -1099,22 +1101,9 @@ class MusicService :
         ) { mediaMetadata, showLyrics ->
             mediaMetadata to showLyrics
         }.collectLatest(scope) { (mediaMetadata, showLyrics) ->
-            if (showLyrics && mediaMetadata != null && database.lyrics(mediaMetadata.id)
-                    .first() == null
-            ) {
-                val lyricsWithProvider = lyricsHelper.getLyrics(mediaMetadata)
-                // offline: nothing was found because nothing was asked; try again when online
-                if (lyricsWithProvider.provider != com.mochyy.mochymusic.lyrics.LyricsHelper.NoConnectionProvider) {
-                    database.query {
-                        upsert(
-                            LyricsEntity(
-                                id = mediaMetadata.id,
-                                lyrics = lyricsWithProvider.lyrics,
-                                provider = lyricsWithProvider.provider,
-                            ),
-                        )
-                    }
-                }
+            if (showLyrics && mediaMetadata != null) {
+                storeLyricsIfMissing(mediaMetadata)
+                preloadQueuedLyrics()
             }
         }
 
@@ -3215,6 +3204,7 @@ class MusicService :
         if (reason == Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST) {
             if (playWhenReady) {
                 isPausedByVolumeMute = false
+                restoreMuteRecoveryVolume()
             }
 
             if (!playWhenReady && !isPausedByVolumeMute) {
@@ -3852,6 +3842,46 @@ class MusicService :
         player.currentMediaItem?.mediaId?.let { if (forceFallBack(it, includeYouTube = true)) return }
         Timber.tag(TAG).d("All recovery attempts exhausted, failing the stream")
         failStream()
+    }
+
+    // a song's lyrics are kept the first time they're fetched; an offline miss is not kept, so it's asked again online
+    private suspend fun storeLyricsIfMissing(mediaMetadata: com.mochyy.mochymusic.models.MediaMetadata) {
+        if (database.lyrics(mediaMetadata.id).first() != null) return
+        val lyricsWithProvider = lyricsHelper.getLyrics(mediaMetadata)
+        if (lyricsWithProvider.provider != com.mochyy.mochymusic.lyrics.LyricsHelper.NoConnectionProvider) {
+            database.query {
+                upsert(
+                    LyricsEntity(
+                        id = mediaMetadata.id,
+                        lyrics = lyricsWithProvider.lyrics,
+                        provider = lyricsWithProvider.provider,
+                    ),
+                )
+            }
+        }
+    }
+
+    // the next two queued songs' lyrics, so they're ready when they come up; only while playing on an unmetered network
+    private suspend fun preloadQueuedLyrics() {
+        if (!dataStore.get(PreloadQueueLyricsKey, false)) return
+        if (!player.isPlaying || connectivityManager.isActiveNetworkMetered) return
+        val first = player.currentMediaItemIndex + 1
+        val queued = (first until minOf(first + 2, player.mediaItemCount)).mapNotNull { player.getMediaItemAt(it).metadata }
+        for (metadata in queued) {
+            if (!player.isPlaying) return
+            storeLyricsIfMissing(metadata)
+        }
+    }
+
+    // play pressed while pause-on-mute finds the device at zero: raise it to the recovery level so the song is heard
+    private fun restoreMuteRecoveryVolume() {
+        if (!::audioManager.isInitialized || !dataStore.get(PauseOnMute, false)) return
+        val percent = dataStore.get(PauseOnMuteRecoveryPercentKey, 0).coerceIn(0, 100)
+        if (percent == 0 || audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) > 0) return
+        val max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        if (max <= 0) return
+        val target = kotlin.math.ceil(max * percent / 100.0).toInt().coerceIn(1, max)
+        runCatching { audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0) }
     }
 
     override fun onDeviceVolumeChanged(volume: Int, muted: Boolean) {
