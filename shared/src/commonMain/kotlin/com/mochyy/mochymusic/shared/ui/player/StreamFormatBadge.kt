@@ -55,7 +55,13 @@ fun StreamFormatBadge(
 /** The badge's words: nothing until the codec is known; the sample rate written as the design writes it. */
 fun streamBadgeText(format: StreamFormat?, showSampleRate: Boolean = true): String? {
     val codec = format?.codec ?: return null
-    val rate = format.sampleRate.takeIf { showSampleRate && it > 0 } ?: return codec
-    val tenths = (rate + 50) / 100
-    return "$codec · ${tenths / 10},${tenths % 10} KHz"
+    val rate = format.sampleRate.takeIf { showSampleRate }?.let(::formatSampleRateLabel) ?: return codec
+    return "$codec · $rate"
+}
+
+/** The same compact rate label appears in Android's richer format badge and the shared player. */
+fun formatSampleRateLabel(sampleRate: Int): String? {
+    if (sampleRate <= 0) return null
+    val tenths = (sampleRate.toLong() + 50) / 100
+    return "${tenths / 10},${tenths % 10} KHz"
 }

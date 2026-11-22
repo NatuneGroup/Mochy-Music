@@ -3,7 +3,6 @@ package com.mochyy.mochymusic.shared.settings
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -15,12 +14,6 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import okio.IOException
 import okio.Path.Companion.toPath
-
-// Android uses these keys in its existing encrypted settings store.
-object PlaybackPreferenceKeys {
-    val showFormatBadge = booleanPreferencesKey("showFormatBadge")
-    val showSampleRate = booleanPreferencesKey("showFormatSampleRate")
-}
 
 internal sealed interface UpcomingQueueRead {
     data object Loading : UpcomingQueueRead
@@ -42,7 +35,7 @@ internal class PlaybackPreferences(private val store: DataStore<Preferences>) {
             if (error is IOException) emit(UpcomingQueueRead.Unavailable) else throw error
         }
 
-    suspend fun set(key: Preferences.Key<Boolean>, value: Boolean) {
+    suspend fun <T> set(key: Preferences.Key<T>, value: T) {
         store.edit { it[key] = value }
     }
 

@@ -14,6 +14,10 @@ on:
         type: choice
         options: [none, Foss, Gms]
         default: none
+      compress_native_libs:
+        description: "Compress native libraries for a smaller sideload APK"
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -90,8 +94,12 @@ jobs:
 
       - name: Build signed arm64 release
         if: ${{ inputs.release == 'Foss' || inputs.release == 'Gms' }}
-        run: ./gradlew --console=plain assembleArm64${{ inputs.release }}Release --warning-mode summary
+        run: >-
+          ./gradlew --console=plain "assembleArm64${RELEASE_FLAVOUR}Release"
+          -Pmochy.compressNativeLibs="$COMPRESS_NATIVE_LIBS" --warning-mode summary
         env:
+          RELEASE_FLAVOUR: ${{ inputs.release }}
+          COMPRESS_NATIVE_LIBS: ${{ inputs.compress_native_libs }}
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
@@ -106,17 +114,31 @@ jobs:
       - name: Check the release is signed with the repository key
         if: ${{ inputs.release == 'Foss' || inputs.release == 'Gms' }}
         run: |
+          set -euo pipefail
           apksigner="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
           for apk in app/build/outputs/apk/arm64*/release/*.apk; do
             "$apksigner" verify --print-certs "$apk" | tee signer.txt
             grep -q 'CN=Mochy (NatuneGroup)' signer.txt || { echo "not signed with the repository key"; exit 1; }
             ls -l "$apk"; sha256sum "$apk"
+            python3 - "$apk" <<'PY'
+          import sys
+          from collections import Counter
+          from zipfile import ZipFile
+
+          sizes = Counter()
+          with ZipFile(sys.argv[1]) as package:
+              for entry in package.infolist():
+                  group = 'DEX' if entry.filename.endswith('.dex') else entry.filename.split('/')[0]
+                  sizes[group] += entry.compress_size
+          for name, size in sizes.most_common(5):
+              print(f'{name}: {size:,} bytes in the APK')
+          PY
           done
 
       - name: Upload release APK
         if: ${{ inputs.release == 'Foss' || inputs.release == 'Gms' }}
         uses: actions/upload-artifact@v6
         with:
-          name: mochy-arm64-${{ inputs.release }}-release-${{ github.sha }}
+          name: mochy-arm64-${{ inputs.release }}-release${{ inputs.compress_native_libs && '-compressed' || '' }}-${{ github.sha }}
           path: app/build/outputs/apk/arm64*/release/*.apk
           retention-days: 30

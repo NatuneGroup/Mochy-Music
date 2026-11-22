@@ -1,4 +1,5 @@
 // Mochy for iOS: a SwiftUI shell around the shared Compose UI (MainViewController in :shared).
+// Everything else on iOS uses the shared Compose UI; CarPlay (MochyCarPlayScene) is the only other native UI.
 // Based on Mochy (github.com/realidkroo/mochy-music); the host follows Metrolist's iOS app (GPL-3.0).
 
 import Shared

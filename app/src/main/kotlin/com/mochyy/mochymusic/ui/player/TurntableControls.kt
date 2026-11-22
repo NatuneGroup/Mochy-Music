@@ -50,6 +50,7 @@ import com.mochyy.mochymusic.constants.ShowFormatBadgeKey
 import com.mochyy.mochymusic.constants.ShowFormatBitDepthKey
 import com.mochyy.mochymusic.constants.ShowFormatSampleRateKey
 import com.mochyy.mochymusic.extensions.togglePlayPause
+import com.mochyy.mochymusic.shared.ui.player.StreamFormatBadge
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import com.mochyy.mochymusic.utils.rememberPreference
 import com.mochyy.mochymusic.ui.component.RemoteFocus

@@ -34,6 +34,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -56,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.theme.LocalChromeAccent
 import com.mochyy.mochymusic.scrobble.ScrobbleSite
 import com.mochyy.mochymusic.ui.screens.devices.showDeviceIntegration
 import com.mochyy.mochymusic.ui.screens.settings.importsync.YouTubeSyncRoute
@@ -300,7 +302,7 @@ private val SettingsIndex = listOf(
     SettingsEntry("Apple Music", "Modules", "module/applemusic", "apple music itunes subscription stream aac"),
     SettingsEntry("Monochrome", "Modules", "module/monochrome", "monochrome lossless flac hi-res tidal"),
     SettingsEntry("Provider order", "Audio Lab", "audio_quality", "source order apple music monochrome youtube priority"),
-    SettingsEntry("YouTube Music", "Audio Lab", "audio_quality", "youtube turn off disable provider only monochrome apple music"),
+    SettingsEntry("YouTube Music as a source", "Audio Lab", "audio_quality", "youtube turn off disable provider only monochrome apple music", R.string.settings_index_youtube_source),
 
     // Integrations
     SettingsEntry("Android Auto", "Integrations", AndroidAutoSettingsRoute, "car carplay driving upcoming recommendations voice artwork lyrics mobile data"),
@@ -312,7 +314,7 @@ private val SettingsIndex = listOf(
     SettingsEntry("Libre.fm", "Integrations", scrobbleServiceRoute(ScrobbleSite.LIBREFM), "librefm scrobble scrobbling history stats account sign in"),
     SettingsEntry("Now Playing", "Integrations", scrobbleServiceRoute(ScrobbleSite.LASTFM), "scrobble now playing status profile lastfm librefm"),
     SettingsEntry("Send likes", "Integrations", scrobbleServiceRoute(ScrobbleSite.LASTFM), "love loved songs lastfm librefm scrobble"),
-    SettingsEntry("YouTube Music", "Integrations", YouTubeSyncRoute, "youtube ytm sync account sign in likes library playlists history"),
+    SettingsEntry("YouTube Music sync", "Integrations", YouTubeSyncRoute, "youtube ytm sync account sign in likes library playlists history", R.string.settings_index_youtube_sync),
 
     // Storage
     SettingsEntry("Storage", "Storage", "storage_settings", "space disk size cache downloads clear free junk delete"),
@@ -406,7 +408,7 @@ fun MochySettingsScreen(navController: NavController, pane: SettingsPane? = null
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black),
+            .background(MaterialTheme.colorScheme.background),
     ) {
         Box(
             modifier = Modifier
@@ -447,7 +449,7 @@ fun MochySettingsScreen(navController: NavController, pane: SettingsPane? = null
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(20.dp))
-                                    .background(BubbleColor)
+                                    .background(settingsBubbleColor(selected = false))
                                     .clickable {
                                         SettingsHighlight.pending = entry.highlightKey
                                         open(entry.route)
@@ -691,6 +693,14 @@ fun MochySettingsScreen(navController: NavController, pane: SettingsPane? = null
 }
 
 @Composable
+private fun settingsBubbleColor(selected: Boolean): Color = when {
+    LocalChromeAccent.current != null && selected -> MaterialTheme.colorScheme.primaryContainer
+    LocalChromeAccent.current != null -> MaterialTheme.colorScheme.surfaceContainer
+    selected -> SelectedBubbleColor
+    else -> BubbleColor
+}
+
+@Composable
 internal fun CategoryBubble(
     title: String,
     iconRes: Int,
@@ -703,7 +713,7 @@ internal fun CategoryBubble(
             .fillMaxWidth()
             .height(64.dp)
             .clip(RoundedCornerShape(22.dp))
-            .background(if (selected) SelectedBubbleColor else BubbleColor)
+            .background(settingsBubbleColor(selected))
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp),
         contentAlignment = Alignment.CenterStart

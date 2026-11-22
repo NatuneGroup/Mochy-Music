@@ -20,6 +20,7 @@ plugins {
 
 extensions.configure<ApplicationExtension> {
     val compactApk = providers.gradleProperty("mochy.compactApk").map(String::toBoolean).getOrElse(true)
+    val compressNativeLibs = providers.gradleProperty("mochy.compressNativeLibs").map(String::toBoolean).getOrElse(false)
 
     namespace = "com.mochyy.mochymusic"
     compileSdk = 37
@@ -275,7 +276,8 @@ extensions.configure<ApplicationExtension> {
 
     packaging {
         jniLibs {
-            useLegacyPackaging = false
+            // Sideloaders can choose a smaller download with native libraries extracted at install time.
+            useLegacyPackaging = compressNativeLibs
             keepDebugSymbols += listOf(
                 "**/libandroidx.graphics.path.so",
                 "**/libdatastore_shared_counter.so"

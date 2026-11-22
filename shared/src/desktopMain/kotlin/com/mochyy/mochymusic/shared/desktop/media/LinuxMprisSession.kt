@@ -65,6 +65,17 @@ internal class LinuxMprisSession(
                 .distinctUntilChanged()
                 .collect { publish() }
         }
+        scope.launch {
+            player.queueState
+                .map { it.canSkipNext }
+                .distinctUntilChanged()
+                .collect { publish() }
+        }
+        controls.queueTransport?.let { transport ->
+            scope.launch {
+                transport.canGoNext.collect { publish() }
+            }
+        }
         scope.launch { connect() }
     }
 
@@ -143,10 +154,13 @@ internal class LinuxMprisSession(
             else -> "Paused"
         }
         val durationMs = state.durationMs.takeIf { it > 0 } ?: ((song?.duration ?: 0) * 1000L)
+        val canGoNext = player.queueState.value.canSkipNext ||
+            controls.queueTransport?.canGoNext?.value == true ||
+            controls.onNext != null
         return mapOf(
             "PlaybackStatus" to Variant(status),
             "Metadata" to Variant(metadata(state, durationMs), "a{sv}"),
-            "CanGoNext" to Variant(song != null && controls.onNext != null),
+            "CanGoNext" to Variant(canGoNext),
             "CanGoPrevious" to Variant(song != null),
             "CanPlay" to Variant(song != null),
             "CanPause" to Variant(song != null),

@@ -45,17 +45,21 @@ import com.mochyy.mochymusic.shared.resources.nav_lib
 import com.mochyy.mochymusic.shared.resources.nav_lib_fill
 import com.mochyy.mochymusic.shared.resources.nav_search
 import com.mochyy.mochymusic.shared.resources.nav_search_filled
+import com.mochyy.mochymusic.shared.resources.nav_settings
+import com.mochyy.mochymusic.shared.resources.nav_settings_filled
 import com.mochyy.mochymusic.shared.resources.search
+import com.mochyy.mochymusic.shared.resources.settings
 import com.mochyy.mochymusic.shared.resources.shell_coming_body
 import com.mochyy.mochymusic.shared.resources.shell_coming_title
 import com.mochyy.mochymusic.shared.resources.shell_credit
 import com.mochyy.mochymusic.shared.resources.your_library
+import com.mochyy.mochymusic.shared.ui.theme.LocalMochyAccent
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
-/** Mochy's three main tabs, with the Android app's own icons. Settings joins when its screen moves over. */
+/** Mochy's shared destinations, with the Android app's own icons. */
 enum class ShellTab(
     val title: StringResource,
     val icon: DrawableResource,
@@ -64,6 +68,7 @@ enum class ShellTab(
     Home(Res.string.home, Res.drawable.nav_home, Res.drawable.nav_home_filled),
     Search(Res.string.search, Res.drawable.nav_search, Res.drawable.nav_search_filled),
     Library(Res.string.your_library, Res.drawable.nav_lib, Res.drawable.nav_lib_fill),
+    Settings(Res.string.settings, Res.drawable.nav_settings, Res.drawable.nav_settings_filled),
 }
 
 // at or above this width the tabs stand in a rail on the left, the way a desktop window reads them
@@ -83,7 +88,7 @@ fun MochyShell(
     content: @Composable (ShellTab) -> Boolean = { false },
 ) {
     var selected by rememberSaveable { mutableStateOf(initialTab) }
-    BoxWithConstraints(modifier.fillMaxSize().background(Color.Black)) {
+    BoxWithConstraints(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         val wide = maxWidth >= RailBreakpoint
         val screen: @Composable (Modifier) -> Unit = { m ->
             Box(m) { if (!content(selected)) ComingSoon(selected) }
@@ -123,8 +128,8 @@ fun MochyShell(
 
 @Composable
 private fun TabButton(tab: ShellTab, active: Boolean, onClick: () -> Unit) {
-    // the Android bar's look: white when chosen, a dimmed white otherwise, no ripple
-    val tint = if (active) Color.White else Color.White.copy(alpha = 0.5f)
+    val onSurface = MaterialTheme.colorScheme.onSurface
+    val tint = if (active) LocalMochyAccent.current ?: onSurface else onSurface.copy(alpha = 0.5f)
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier

@@ -42,6 +42,7 @@ import com.mochyy.mochymusic.constants.HideNavOnScrollKey
 import com.mochyy.mochymusic.constants.SystemFontKey
 import com.mochyy.mochymusic.constants.TabletLayoutKey
 import com.mochyy.mochymusic.constants.UiScalePercentKey
+import com.mochyy.mochymusic.shared.ui.theme.MochyAccentPresets
 import com.mochyy.mochymusic.ui.component.DefaultPlayerSeekBarSlider
 import com.mochyy.mochymusic.ui.component.SettingsItem
 import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
@@ -108,17 +109,6 @@ private fun navBarItems(navController: NavController): List<SettingsItem> {
         ),
     )
 }
-
-// the accent presets are bright enough to read on black; the first swatch goes back to mochy's own grey
-private val AccentPresets = listOf(
-    0xFFFF6B6B.toInt(),
-    0xFFFFB300.toInt(),
-    0xFF9CCC65.toInt(),
-    0xFF26C6DA.toInt(),
-    0xFF42A5F5.toInt(),
-    0xFFAB78FF.toInt(),
-    0xFFF06292.toInt(),
-)
 
 // the steps the scale slider stops on, from smaller than a phone's own size to a little bigger
 private val UiScaleSteps = listOf(85, 90, 95, 100, 105, 110, 115)
@@ -220,7 +210,7 @@ private fun AccentChoices(picked: Int, fromArt: Boolean, onPick: (Int) -> Unit, 
         ) {
             // 0 is mochy's own grey, the first swatch puts it back
             Swatch(color = Color(0xFF8E8E8E), selected = !fromArt && picked == 0) { onPick(0) }
-            AccentPresets.forEach { argb ->
+            MochyAccentPresets.forEach { argb ->
                 Swatch(color = Color(argb), selected = !fromArt && picked == argb) { onPick(argb) }
             }
         }

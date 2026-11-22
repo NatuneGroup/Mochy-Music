@@ -107,7 +107,7 @@ private fun ClassicItems(items: List<SettingsItem>) {
                         .padding(bottom = 8.dp),
                     shape = shape,
                     colors = CardDefaults.cardColors(
-                        containerColor = com.mochyy.mochymusic.ui.screens.search.SearchColors.Field
+                        containerColor = settingsContainerColor(),
                     ),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
@@ -143,7 +143,7 @@ private fun GroupedItems(items: List<SettingsItem>) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(
-            containerColor = com.mochyy.mochymusic.ui.screens.search.SearchColors.Field
+            containerColor = settingsContainerColor(),
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -160,6 +160,14 @@ private fun GroupedItems(items: List<SettingsItem>) {
         }
     }
 }
+
+@Composable
+private fun settingsContainerColor(): Color =
+    if (com.mochyy.mochymusic.ui.theme.LocalChromeAccent.current != null) {
+        MaterialTheme.colorScheme.surfaceContainer
+    } else {
+        com.mochyy.mochymusic.ui.screens.search.SearchColors.Field
+    }
 
 @Composable
 private fun ClusterRows(cluster: ItemCluster) {

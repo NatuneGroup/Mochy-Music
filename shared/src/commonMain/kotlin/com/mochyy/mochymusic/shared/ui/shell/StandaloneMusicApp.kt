@@ -25,12 +25,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -55,6 +55,7 @@ import com.mochyy.mochymusic.shared.lyrics.findPlayerLyrics
 import com.mochyy.mochymusic.shared.lyrics.suspendRunCatching
 import com.mochyy.mochymusic.shared.media.SearchSource
 import com.mochyy.mochymusic.shared.playback.PlayerController
+import com.mochyy.mochymusic.shared.playback.QueueTransport
 import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.shared.resources.library_empty
 import com.mochyy.mochymusic.shared.resources.library_filter_hint
@@ -91,6 +92,8 @@ import com.mochyy.mochymusic.shared.settings.UpcomingQueueRead
 import com.mochyy.mochymusic.shared.ui.player.MiniPlayerBar
 import com.mochyy.mochymusic.shared.ui.search.SearchScreen
 import com.mochyy.mochymusic.shared.ui.search.SongRow
+import com.mochyy.mochymusic.shared.ui.settings.PlaybackSettingRow
+import com.mochyy.mochymusic.shared.ui.settings.SharedSettingsScreen
 import com.music.innertube.models.SongItem
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -101,6 +104,7 @@ import org.jetbrains.compose.resources.stringResource
 
 private enum class PlayerPanel { Queue, Lyrics, Settings }
 private const val PreloadStartDelayMs = 2_000L
+private const val PreviousRestartThresholdMs = 3_000L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -111,6 +115,7 @@ internal fun StandaloneMusicApp(
     settings: PlaybackPreferences,
     library: LocalLibrary,
     modifier: Modifier = Modifier,
+    queueTransport: QueueTransport? = null,
 ) {
     val playback by player.state.collectAsState()
     var queued by remember { mutableStateOf<List<SongItem>>(emptyList()) }
@@ -202,6 +207,31 @@ internal fun StandaloneMusicApp(
         queued.firstOrNull()?.let(::play)
     }
 
+    fun playPrevious() {
+        val current = playback.song ?: return
+        if (playback.positionMs > PreviousRestartThresholdMs) {
+            player.seekTo(0L)
+            return
+        }
+
+        val currentIndex = recent.indexOfFirst { it.id == current.id }
+        val previous = if (currentIndex >= 0) {
+            recent.getOrNull(currentIndex + 1)
+        } else {
+            recent.firstOrNull { it.id != current.id }
+        }
+        if (previous != null) player.play(previous) else player.seekTo(0L)
+    }
+
+    DisposableEffect(queueTransport) {
+        val unbind = queueTransport?.bind(::playNext, ::playPrevious)
+        onDispose { unbind?.invoke() }
+    }
+
+    SideEffect {
+        queueTransport?.setCanGoNext(queueReady && queued.isNotEmpty())
+    }
+
     LaunchedEffect(playback.hasEnded) {
         if (playback.hasEnded) playNext()
     }
@@ -252,6 +282,7 @@ internal fun StandaloneMusicApp(
                 onRemove = { setSaved(it, false) },
                 updateFailed = libraryUpdateFailed,
             )
+            ShellTab.Settings -> SharedSettingsScreen(settings)
         }
         true
     }
@@ -424,24 +455,6 @@ private fun LibrarySongs(
                 modifier = Modifier.padding(vertical = 24.dp),
             )
         }
-    }
-}
-
-@Composable
-private fun PlaybackSettingRow(
-    label: String,
-    checked: Boolean,
-    enabled: Boolean = true,
-    onChange: (Boolean) -> Unit,
-) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, Modifier.weight(1f))
-        Switch(
-            checked = checked,
-            onCheckedChange = onChange,
-            enabled = enabled,
-            modifier = Modifier.semantics { contentDescription = label },
-        )
     }
 }
 

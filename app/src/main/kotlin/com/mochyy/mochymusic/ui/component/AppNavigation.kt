@@ -454,7 +454,11 @@ internal fun RowScope.NavTab(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color.White.copy(alpha = if (isSelected) 1f else UnlitIconAlpha),
+                    color = if (isSelected) {
+                        com.mochyy.mochymusic.ui.theme.LocalChromeAccent.current ?: Color.White
+                    } else {
+                        Color.White.copy(alpha = UnlitIconAlpha)
+                    },
                     fontSize = 10.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -488,7 +492,7 @@ private fun TabIcons(
         Icon(
             painter = litIcon,
             contentDescription = null,
-            tint = Color.White,
+            tint = com.mochyy.mochymusic.ui.theme.LocalChromeAccent.current ?: Color.White,
             modifier = Modifier
                 .size(iconSize)
                 .graphicsLayer {

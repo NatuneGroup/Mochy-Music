@@ -52,11 +52,12 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            api(project(":shared:preferences"))
+            api(project(":shared:theme"))
             api(libs.cmp.runtime)
             api(libs.cmp.foundation)
             api(libs.cmp.ui)
             api(libs.cmp.material3)
-            api(libs.datastore)
             implementation(libs.room.runtime)
             implementation(libs.cmp.components.resources)
             // the YouTube Music models (songs, albums, artists) every platform's screens show

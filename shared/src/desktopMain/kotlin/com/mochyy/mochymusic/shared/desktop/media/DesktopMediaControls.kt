@@ -6,19 +6,23 @@
 package com.mochyy.mochymusic.shared.desktop.media
 
 import com.mochyy.mochymusic.shared.playback.PlayerController
+import com.mochyy.mochymusic.shared.playback.QueueTransport
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
-class DesktopMediaControls(private val player: PlayerController) {
+class DesktopMediaControls(
+    private val player: PlayerController,
+    val queueTransport: QueueTransport? = null,
+) {
     private val main = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
-    /** Set by the shared UI to play the next queued song. Null until it is wired; Next then does nothing. */
+    /** Existing hook for hosts with their own queue; the shared queue transport is the fallback. */
     @Volatile var onNext: (() -> Unit)? = null
 
-    /** Set by the shared UI to go back a song. Null means Previous restarts the current song instead. */
+    /** Existing hook for hosts with their own history; the shared queue transport is the fallback. */
     @Volatile var onPrevious: (() -> Unit)? = null
 
     fun playPause() = onMain { player.togglePlayPause() }
@@ -27,11 +31,15 @@ class DesktopMediaControls(private val player: PlayerController) {
 
     fun pause() = onMain { if (player.state.value.isPlaying) player.togglePlayPause() }
 
-    fun next() = onMain { onNext?.invoke() }
+    fun next() = onMain {
+        val handler = onNext
+        if (handler != null) handler()
+        else if (queueTransport?.next() != true) player.skipToNext()
+    }
 
     fun previous() = onMain {
         val handler = onPrevious
-        if (handler != null) handler() else player.seekTo(0L)
+        if (handler != null) handler() else if (queueTransport?.previous() != true) player.skipToPrevious()
     }
 
     fun seekTo(positionMs: Long) = onMain { player.seekTo(positionMs) }

@@ -174,4 +174,5 @@
     <string name="import_component_mirror_yt_title">Also create on YouTube</string>
     <string name="import_component_mirror_yt_desc">Playlists and likes are added to your YouTube account too.</string>
     <string name="import_component_mirror_yt_sync_likes">YouTube sync keeps likes the same on both sides, so these likes will still be added to YouTube the next time it syncs.</string>
+    <string name="settings_index_youtube_sync">YouTube Music sync</string>
 </resources>

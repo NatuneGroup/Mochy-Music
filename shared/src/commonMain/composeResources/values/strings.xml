@@ -1,10 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Strings for the shared (desktop and iOS) UI. The Android app keeps app/src/main/res for its own screens. -->
 <resources>
+    <string name="settings_appearance_category">Appearance</string>
+    <string name="settings_accent_color">Accent color</string>
+    <string name="settings_default_accent">Default gray</string>
+    <string name="settings_pure_black">Pure black</string>
     <string name="app_name">Mochy</string>
     <string name="home">Home</string>
     <string name="search">Search</string>
     <string name="your_library">Your Library</string>
+    <string name="settings">Settings</string>
+    <string name="settings_playback_category">Playback</string>
+    <string name="settings_player_display">Player display</string>
     <string name="play">Play</string>
     <string name="pause">Pause</string>
     <string name="search_hint">Search songs</string>
