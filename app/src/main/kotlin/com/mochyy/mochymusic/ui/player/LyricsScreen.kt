@@ -103,6 +103,8 @@ import com.mochyy.mochymusic.extensions.toggleRepeatMode
 import com.mochyy.mochymusic.constants.AiProviderKey
 import com.mochyy.mochymusic.constants.DeeplApiKey
 import com.mochyy.mochymusic.constants.DeeplFormalityKey
+import com.mochyy.mochymusic.constants.LyricsClickKey
+import com.mochyy.mochymusic.constants.LyricsScrollKey
 import com.mochyy.mochymusic.constants.LyricsHighBloomKey
 import com.mochyy.mochymusic.constants.LyricsInterludeDotsKey
 import com.mochyy.mochymusic.constants.LyricsLineBounceKey
@@ -355,6 +357,9 @@ fun LyricsScreen(
     }
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialRow)
     var followPlayback by remember { mutableStateOf(true) }
+    // both on by default; tap-to-seek off makes a line tap do nothing, auto-scroll off keeps the list still until the back pill
+    val (tapToSeek) = rememberPreference(LyricsClickKey, defaultValue = true)
+    val (autoScroll) = rememberPreference(LyricsScrollKey, defaultValue = true)
 
     // What the card is showing: the page's copy of it (a line, or the dots of a gap) is what the card grows into.
     val cardSlot by remember(lines) { derivedStateOf { tickerSlot(lines, progress.value.position + lyricsOffsetMs) } }
@@ -386,8 +391,8 @@ fun LyricsScreen(
         if (userScrolling) followPlayback = false
     }
 
-    LaunchedEffect(userScrolling, followPlayback) {
-        if (!followPlayback && !userScrolling) {
+    LaunchedEffect(userScrolling, followPlayback, autoScroll) {
+        if (!followPlayback && !userScrolling && autoScroll) {
             delay(IdleRecenterDelayMs)
             followPlayback = true
         }
@@ -490,6 +495,8 @@ fun LyricsScreen(
         }
         } finally {
             isAutoScrolling = false
+            // auto-scroll off: one recentre, then the list stays where it is
+            if (!autoScroll) followPlayback = false
         }
         }
     }
@@ -824,7 +831,7 @@ fun LyricsScreen(
                                     blend = blend,
                                     onClick = {
                                         // Untimed lines have nowhere to seek to.
-                                        if (!unsynced) {
+                                        if (!unsynced && tapToSeek) {
                                             playerConnection.player.seekTo(entry.time)
                                             followPlayback = true
                                         }
@@ -858,6 +865,22 @@ fun LyricsScreen(
                         }
                     }
                 }
+            }
+
+            // auto-scroll off: the list stays put after a scroll, this brings it back to the playing line
+            if (!autoScroll && !followPlayback && lines.isNotEmpty()) {
+                Text(
+                    text = stringResource(R.string.lyrics_back_to_current),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Color.White,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 12.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(Color.White.copy(alpha = 0.15f))
+                        .clickable { followPlayback = true }
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                )
             }
 
             // Repeat and like used to float here at the top right; they now sit under the playback
