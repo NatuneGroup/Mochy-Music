@@ -25,6 +25,9 @@
     <string name="add_to_queue">Add to queue</string>
     <string name="remove_from_queue">Remove from queue</string>
     <string name="queue_empty">Your queue is empty</string>
+    <string name="queue_loading">Loading saved queue…</string>
+    <string name="queue_load_failed">Couldn’t load the saved queue. Queue changes won’t be saved.</string>
+    <string name="queue_write_failed">Couldn’t save the queue. Your current queue is still available until the app closes.</string>
     <string name="skip_next">Skip to next song</string>
     <string name="now_playing_settings">Player settings</string>
     <string name="show_format_badge">Show codec badge</string>
@@ -33,6 +36,9 @@
     <string name="recently_played">Recently played</string>
     <string name="recently_played_empty">Songs you play will appear here.</string>
     <string name="library_empty">Save a song from Now playing to find it here.</string>
+    <string name="library_filter_hint">Filter songs by title or artist</string>
+    <string name="library_filter_no_results">No songs match this filter</string>
+    <string name="library_clear_filter">Clear song filter</string>
     <string name="library_save">Save to library</string>
     <string name="library_remove">Remove from library</string>
     <string name="library_update_failed">Couldn’t update your library</string>

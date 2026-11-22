@@ -71,6 +71,7 @@ fun SearchScreen(
     source: SearchSource,
     onPlay: (SongItem) -> Unit,
     onQueue: (SongItem) -> Unit,
+    queueEnabled: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     var query by remember { mutableStateOf("") }
@@ -142,6 +143,7 @@ fun SearchScreen(
                                 val label = stringResource(Res.string.add_to_queue)
                                 IconButton(
                                     onClick = { onQueue(song) },
+                                    enabled = queueEnabled,
                                     modifier = Modifier.semantics { contentDescription = label },
                                 ) {
                                     Text("+", style = MaterialTheme.typography.headlineSmall)

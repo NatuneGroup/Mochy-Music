@@ -18,6 +18,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import platform.AVFoundation.AVPlayer
 import platform.AVFoundation.AVPlayerItem
 import platform.AVFoundation.AVPlayerItemDidPlayToEndTimeNotification
@@ -55,11 +61,42 @@ internal class IosPlayerController(
     private var playbackJob: Job? = null
     private var endObserver: NSObjectProtocol? = null
     private var failObserver: NSObjectProtocol? = null
+    private val bridgeObservers = mutableListOf<NSObjectProtocol>()
+    private var interruptionActive = false
+    private var resumeAfterInterruption = false
+    private var interruptedSongId: String? = null
+
+    init {
+        observeBridgeEvent(IosPlaybackBridgeEvents.remoteToggle) { togglePlayPause() }
+        observeBridgeEvent(IosPlaybackBridgeEvents.remotePlay) { resumeFromSystemControl() }
+        observeBridgeEvent(IosPlaybackBridgeEvents.remotePause) { pauseFromSystemControl() }
+        observeBridgeEvent(IosPlaybackBridgeEvents.remoteSeek) { payload ->
+            val seconds = payload?.let {
+                runCatching {
+                    Json.parseToJsonElement(it).jsonObject["positionSeconds"]?.jsonPrimitive?.doubleOrNull
+                }.getOrNull()
+            }
+            if (seconds != null && seconds.isFinite()) seekTo((seconds * 1000).toLong())
+        }
+        observeBridgeEvent(IosPlaybackBridgeEvents.interruptionBegan) { pauseForInterruption() }
+        observeBridgeEvent(IosPlaybackBridgeEvents.interruptionEnded) { payload ->
+            val shouldResume = payload?.let {
+                runCatching {
+                    Json.parseToJsonElement(it).jsonObject["shouldResume"]?.jsonPrimitive?.content == "true"
+                }.getOrNull()
+            } == true
+            finishInterruption(shouldResume)
+        }
+        observeBridgeEvent(IosPlaybackBridgeEvents.outputRemoved) { pauseFromSystemControl() }
+    }
 
     override fun play(song: SongItem) {
         playbackJob?.cancel()
         clearItem()
+        resumeAfterInterruption = interruptionActive
+        interruptedSongId = song.id.takeIf { interruptionActive }
         mutableState.value = PlayerState(song = song, isLoading = true, durationMs = (song.duration ?: 0) * 1000L)
+        publishNowPlaying()
         playbackJob = scope.launch {
             try {
                 val stream = checkNotNull(youtube.resolve(song))
@@ -81,6 +118,8 @@ internal class IosPlayerController(
                             hasEnded = true,
                             positionMs = mutableState.value.durationMs,
                         )
+                        deactivateAudioSession()
+                        publishNowPlaying()
                     }
                 }
                 failObserver = NSNotificationCenter.defaultCenter.addObserverForName(
@@ -95,7 +134,7 @@ internal class IosPlayerController(
                 }
                 player.replaceCurrentItemWithPlayerItem(item)
                 mutableState.value = mutableState.value.copy(
-                    isPlaying = true,
+                    isPlaying = !interruptionActive,
                     format = stream.codecs?.takeIf { it.isNotBlank() }?.let { codec ->
                         StreamFormat(
                             codec = if (codec.startsWith("mp4a")) "AAC" else codec.uppercase(),
@@ -104,10 +143,23 @@ internal class IosPlayerController(
                         )
                     },
                 )
-                player.play()
+                if (interruptionActive) {
+                    resumeAfterInterruption = true
+                    interruptedSongId = song.id
+                    player.pause()
+                } else {
+                    activateAudioSession()
+                    player.play()
+                }
+                publishNowPlaying()
+                var nowPlayingTicks = 0
                 while (isActive) {
                     check(item.status != AVPlayerItemStatusFailed)
                     updatePosition(item)
+                    if (++nowPlayingTicks >= 4) {
+                        publishNowPlaying()
+                        nowPlayingTicks = 0
+                    }
                     delay(250)
                 }
             } catch (cancelled: CancellationException) {
@@ -126,11 +178,22 @@ internal class IosPlayerController(
         if (mutableState.value.isPlaying) {
             player.pause()
             mutableState.value = mutableState.value.copy(isPlaying = false, isLoading = false)
+            resumeAfterInterruption = false
+            interruptedSongId = null
+            if (!interruptionActive) deactivateAudioSession()
         } else {
             if (mutableState.value.hasEnded) seekTo(0)
+            if (interruptionActive) {
+                resumeAfterInterruption = true
+                interruptedSongId = mutableState.value.song?.id
+                publishNowPlaying()
+                return
+            }
+            activateAudioSession()
             player.play()
             mutableState.value = mutableState.value.copy(isPlaying = true)
         }
+        publishNowPlaying()
     }
 
     override fun seekTo(positionMs: Long) {
@@ -139,11 +202,16 @@ internal class IosPlayerController(
         val target = positionMs.coerceIn(0L, duration.takeIf { it > 0 } ?: Long.MAX_VALUE)
         player.seekToTime(CMTimeMakeWithSeconds(target / 1000.0, 1000))
         mutableState.value = mutableState.value.copy(positionMs = target, hasEnded = false)
+        publishNowPlaying()
     }
 
     override fun release() {
         scope.cancel()
         clearItem()
+        deactivateAudioSession()
+        postBridgeEvent(IosPlaybackBridgeEvents.clearNowPlaying)
+        bridgeObservers.forEach { NSNotificationCenter.defaultCenter.removeObserver(it) }
+        bridgeObservers.clear()
     }
 
     private fun updatePosition(item: AVPlayerItem) {
@@ -165,6 +233,87 @@ internal class IosPlayerController(
         mutableState.value = mutableState.value.copy(
             isLoading = false, isPlaying = false, error = playbackFailedText(),
         )
+        deactivateAudioSession()
+        postBridgeEvent(IosPlaybackBridgeEvents.clearNowPlaying)
+    }
+
+    private fun observeBridgeEvent(name: String, action: (String?) -> Unit) {
+        bridgeObservers += NSNotificationCenter.defaultCenter.addObserverForName(
+            name = name,
+            `object` = null,
+            queue = NSOperationQueue.mainQueue,
+        ) { notification -> action(notification?.`object` as? String) }
+    }
+
+    private fun postBridgeEvent(name: String, payload: String? = null) {
+        NSNotificationCenter.defaultCenter.postNotificationName(name, payload)
+    }
+
+    private fun activateAudioSession() = postBridgeEvent(IosPlaybackBridgeEvents.activateAudioSession)
+
+    private fun deactivateAudioSession() = postBridgeEvent(IosPlaybackBridgeEvents.deactivateAudioSession)
+
+    private fun publishNowPlaying() {
+        val current = mutableState.value
+        val song = current.song
+        val payload = buildJsonObject {
+            put("available", song != null && player.currentItem != null)
+            put("title", song?.title.orEmpty())
+            put("artist", song?.artists?.joinToString { it.name }.orEmpty())
+            put("album", song?.album?.name.orEmpty())
+            put("artworkURL", song?.thumbnail.orEmpty())
+            put("durationSeconds", current.durationMs / 1000.0)
+            put("elapsedSeconds", current.positionMs / 1000.0)
+            put("isPlaying", current.isPlaying)
+        }
+        postBridgeEvent(IosPlaybackBridgeEvents.publishNowPlaying, payload.toString())
+    }
+
+    private fun resumeFromSystemControl() {
+        if (player.currentItem == null || mutableState.value.isPlaying) return
+        if (mutableState.value.hasEnded) seekTo(0)
+        if (interruptionActive) {
+            resumeAfterInterruption = true
+            interruptedSongId = mutableState.value.song?.id
+            return
+        }
+        resumeAfterInterruption = false
+        interruptedSongId = null
+        activateAudioSession()
+        player.play()
+        mutableState.value = mutableState.value.copy(isPlaying = true, isLoading = false)
+        publishNowPlaying()
+    }
+
+    private fun pauseFromSystemControl() {
+        resumeAfterInterruption = false
+        interruptedSongId = null
+        if (player.currentItem == null || !mutableState.value.isPlaying) return
+        player.pause()
+        mutableState.value = mutableState.value.copy(isPlaying = false, isLoading = false)
+        if (!interruptionActive) deactivateAudioSession()
+        publishNowPlaying()
+    }
+
+    private fun pauseForInterruption() {
+        interruptionActive = true
+        val current = mutableState.value
+        resumeAfterInterruption = current.isPlaying
+        interruptedSongId = current.song?.id
+        if (current.isPlaying && player.currentItem != null) {
+            player.pause()
+            mutableState.value = current.copy(isPlaying = false, isLoading = false)
+            publishNowPlaying()
+        }
+    }
+
+    private fun finishInterruption(shouldResume: Boolean) {
+        interruptionActive = false
+        val shouldPlay = resumeAfterInterruption && shouldResume &&
+            mutableState.value.song?.id == interruptedSongId && player.currentItem != null
+        resumeAfterInterruption = false
+        interruptedSongId = null
+        if (shouldPlay) resumeFromSystemControl()
     }
 
     private fun clearItem() {
@@ -175,4 +324,20 @@ internal class IosPlayerController(
         player.pause()
         player.replaceCurrentItemWithPlayerItem(null)
     }
+}
+
+/** Notification names shared with the Swift system-media bridge. */
+private object IosPlaybackBridgeEvents {
+    private const val prefix = "com.mochyy.mochymusic.ios."
+    const val publishNowPlaying = "${prefix}publishNowPlaying"
+    const val clearNowPlaying = "${prefix}clearNowPlaying"
+    const val activateAudioSession = "${prefix}activateAudioSession"
+    const val deactivateAudioSession = "${prefix}deactivateAudioSession"
+    const val remoteToggle = "${prefix}remoteToggle"
+    const val remotePlay = "${prefix}remotePlay"
+    const val remotePause = "${prefix}remotePause"
+    const val remoteSeek = "${prefix}remoteSeek"
+    const val interruptionBegan = "${prefix}interruptionBegan"
+    const val interruptionEnded = "${prefix}interruptionEnded"
+    const val outputRemoved = "${prefix}outputRemoved"
 }

@@ -11,6 +11,7 @@ import com.music.innertube.models.SongItem
 import com.music.innertube.models.WatchEndpoint
 import com.music.innertube.models.YTItem
 import com.mochyy.mochymusic.constants.HideVideoSongsKey
+import com.mochyy.mochymusic.constants.CarOnlineRecommendationsKey
 import com.mochyy.mochymusic.constants.SongSortType
 import com.mochyy.mochymusic.db.MusicDatabase
 import com.mochyy.mochymusic.db.entities.Album
@@ -78,6 +79,7 @@ class CarCatalog(
 
     // home's categories as the phone last worked them out, then youtube's own home, so the car never waits on the recommender
     suspend fun shelves(): List<CarShelf> = io {
+        if (!context.dataStore.get(CarOnlineRecommendationsKey, true)) return@io emptyList()
         val cache = HomeFeedCache(context)
         val categories = cache.loadCategories().orEmpty().map { Triple(it.title, it.thumbnailUrl, it.items) }
         val sections = categories.ifEmpty {

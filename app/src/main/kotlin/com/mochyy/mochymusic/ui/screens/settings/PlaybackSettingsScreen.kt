@@ -23,6 +23,7 @@ import com.mochyy.mochymusic.constants.MixWithOtherAppsKey
 import com.mochyy.mochymusic.constants.PauseOnMute
 import com.mochyy.mochymusic.constants.PersistentQueueKey
 import com.mochyy.mochymusic.constants.PersistentShuffleAcrossQueuesKey
+import com.mochyy.mochymusic.constants.PreloadNextTrackKey
 import com.mochyy.mochymusic.constants.ResumeOnBluetoothConnectKey
 import com.mochyy.mochymusic.constants.SkipSilenceKey
 import com.mochyy.mochymusic.constants.StopPlaybackOnTaskRemovedKey
@@ -61,6 +62,7 @@ private fun listeningItems(): List<SettingsItem> {
     val (persistentQueue, onPersistentQueueChange) = rememberPreference(PersistentQueueKey, defaultValue = true)
     val (persistentShuffle, onPersistentShuffleChange) = rememberPreference(PersistentShuffleAcrossQueuesKey, defaultValue = true)
     val (skipSilence, onSkipSilenceChange) = rememberPreference(SkipSilenceKey, defaultValue = false)
+    val (preloadNextTrack, onPreloadNextTrackChange) = rememberPreference(PreloadNextTrackKey, defaultValue = true)
     return listOf(
         switchItem(
             key = "Keep playing even when closed",
@@ -113,6 +115,14 @@ private fun listeningItems(): List<SettingsItem> {
             icon = painterResource(R.drawable.shuffle),
             checked = persistentShuffle,
             onCheckedChange = onPersistentShuffleChange,
+        ),
+        switchItem(
+            key = "Preload next song",
+            title = stringResource(R.string.playback_preload_next),
+            description = stringResource(R.string.playback_preload_next_desc),
+            icon = painterResource(R.drawable.download),
+            checked = preloadNextTrack,
+            onCheckedChange = onPreloadNextTrackChange,
         ),
         switchItem(
             key = "Skip Silence",

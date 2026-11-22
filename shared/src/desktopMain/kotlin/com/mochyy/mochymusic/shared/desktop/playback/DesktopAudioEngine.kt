@@ -38,7 +38,10 @@ class DesktopAudioEngine(
 
     @Volatile private var paused = false
     @Volatile private var closed = false
-    @Volatile private var pendingSeekMs: Long = -1L
+    // Guarded by [lock]. Keep the display value until the decoder applies the latest queued seek;
+    // otherwise the controller's position poll can briefly move the UI back to the old position.
+    private var pendingSeekMs: Long? = null
+    private var seekingPositionMs: Long? = null
 
     // the played position is the line's frame count since the last seek, plus where that seek landed
     @Volatile private var seekBaseMs = 0L
@@ -111,12 +114,17 @@ class DesktopAudioEngine(
     }
 
     fun seekTo(positionMs: Long) {
-        pendingSeekMs = positionMs.coerceAtLeast(0L)
-        synchronized(lock) { lock.notifyAll() }
+        val target = positionMs.coerceAtLeast(0L)
+        synchronized(lock) {
+            pendingSeekMs = target
+            seekingPositionMs = target
+            lock.notifyAll()
+        }
     }
 
     val positionMs: Long
         get() {
+            synchronized(lock) { seekingPositionMs?.let { return it } }
             val l = line ?: return 0L
             val rate = sampleRate.takeIf { it > 0 } ?: return 0L
             val frames = (l.longFramePosition - seekBaseFrames).coerceAtLeast(0L)
@@ -138,16 +146,22 @@ class DesktopAudioEngine(
         try {
             l.start()
             while (!closed) {
-                val seek = pendingSeekMs
-                if (seek >= 0) {
-                    pendingSeekMs = -1L
+                val seek = synchronized(lock) {
+                    pendingSeekMs.also { pendingSeekMs = null }
+                }
+                if (seek != null) {
                     l.flush()
                     g.setTimestamp(seek * 1000L, true)
                     seekBaseFrames = l.longFramePosition
                     seekBaseMs = seek
+                    synchronized(lock) {
+                        // A newer request may have arrived while FFmpeg was seeking. Leave its
+                        // optimistic position in place until that request is applied as well.
+                        if (pendingSeekMs == null) seekingPositionMs = null
+                    }
                 }
                 if (paused) {
-                    synchronized(lock) { if (paused && !closed && pendingSeekMs < 0) lock.wait(200) }
+                    synchronized(lock) { if (paused && !closed && pendingSeekMs == null) lock.wait(200) }
                     continue
                 }
                 val frame = g.grabSamples() ?: break

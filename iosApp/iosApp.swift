@@ -1,7 +1,6 @@
 // Mochy for iOS: a SwiftUI shell around the shared Compose UI (MainViewController in :shared).
 // Based on Mochy (github.com/realidkroo/mochy-music); the host follows Metrolist's iOS app (GPL-3.0).
 
-import AVFoundation
 import Shared
 import SwiftUI
 import UIKit
@@ -9,8 +8,8 @@ import UIKit
 @main
 struct MochyApp: App {
     init() {
-        // playback keeps going with the screen locked, like the Android app
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+        // Retain the audio-session and lock-screen bridge for the lifetime of the app.
+        _ = IosSystemMediaBridge.shared
     }
 
     var body: some Scene {
