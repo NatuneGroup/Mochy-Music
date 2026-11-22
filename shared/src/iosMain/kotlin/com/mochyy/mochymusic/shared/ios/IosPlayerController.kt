@@ -228,8 +228,10 @@ internal class IosPlayerController(
             durationMs = durationMs,
             positionMs = if (current.hasEnded && durationMs > 0) durationMs else positionMs,
         )
-        // Lock-screen duration arrives after the first poll; publish it once, not on every tick.
-        if (durationMs != current.durationMs) publishNowPlaying()
+        // lock-screen duration arrives after the first poll, and a stall starting or ending changes the
+        // rate the lock screen counts at; publish on those changes, not on every tick
+        val updated = mutableState.value
+        if (durationMs != current.durationMs || updated.isLoading != current.isLoading) publishNowPlaying()
     }
 
     private fun failPlayback() {
@@ -269,6 +271,8 @@ internal class IosPlayerController(
             put("durationSeconds", current.durationMs / 1000.0)
             put("elapsedSeconds", current.positionMs / 1000.0)
             put("isPlaying", current.isPlaying)
+            // the rate the lock screen advances its clock at: zero while waiting on the network, so it doesn't run ahead of the audio
+            put("playbackRate", if (current.isPlaying && !current.isLoading) 1.0 else 0.0)
             put("canGoNext", queueTransport.canGoNext.value)
             // previous always has an action (restart the song, or step back), so it is on whenever a song is loaded
             put("canGoPrevious", song != null && player.currentItem != null)

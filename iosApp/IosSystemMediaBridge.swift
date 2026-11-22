@@ -100,6 +100,7 @@ final class IosSystemMediaBridge {
         let nextArtworkURL = payload["artworkURL"] as? String ?? ""
         let canGoNext = payload["canGoNext"] as? Bool ?? false
         let canGoPrevious = payload["canGoPrevious"] as? Bool ?? false
+        let playbackRate = payload["playbackRate"] as? Double ?? (isPlaying ? 1.0 : 0.0)
 
         if title.isEmpty {
             clearNowPlaying()
@@ -111,7 +112,7 @@ final class IosSystemMediaBridge {
             MPMediaItemPropertyTitle: title,
             MPMediaItemPropertyArtist: artist,
             MPNowPlayingInfoPropertyElapsedPlaybackTime: max(0, elapsed),
-            MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? 1.0 : 0.0,
+            MPNowPlayingInfoPropertyPlaybackRate: playbackRate,
             MPNowPlayingInfoPropertyDefaultPlaybackRate: 1.0,
         ]
         if !album.isEmpty { info[MPMediaItemPropertyAlbumTitle] = album }
