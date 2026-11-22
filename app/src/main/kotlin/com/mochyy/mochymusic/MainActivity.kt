@@ -469,12 +469,22 @@ class MainActivity : ComponentActivity() {
             lifecycle,
         )
         setContent(parent = motionRecomposer) {
-            mochyApp(
-                playerConnection = playerConnection,
-                database = database,
-                downloadUtil = downloadUtil,
-                syncUtils = syncUtils,
-            )
+            // the UI scale is applied once here, at the root: every dp and sp in the app grows or shrinks with it
+            val (uiScale) = rememberPreference(com.mochyy.mochymusic.constants.UiScalePercentKey, defaultValue = 100)
+            val baseDensity = LocalDensity.current
+            CompositionLocalProvider(
+                LocalDensity provides androidx.compose.ui.unit.Density(
+                    density = baseDensity.density * uiScale / 100f,
+                    fontScale = baseDensity.fontScale,
+                ),
+            ) {
+                mochyApp(
+                    playerConnection = playerConnection,
+                    database = database,
+                    downloadUtil = downloadUtil,
+                    syncUtils = syncUtils,
+                )
+            }
         }
     }
 

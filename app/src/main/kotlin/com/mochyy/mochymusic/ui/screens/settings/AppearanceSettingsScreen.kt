@@ -35,6 +35,8 @@ import com.mochyy.mochymusic.constants.AccentColorKey
 import com.mochyy.mochymusic.constants.AccentFromArtKey
 import com.mochyy.mochymusic.constants.DefaultOpenTabKey
 import com.mochyy.mochymusic.constants.HideNavOnScrollKey
+import com.mochyy.mochymusic.constants.UiScalePercentKey
+import com.mochyy.mochymusic.ui.component.DefaultPlayerSeekBarSlider
 import com.mochyy.mochymusic.ui.component.SettingsItem
 import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
 import com.mochyy.mochymusic.ui.component.SubSettingsSearchBar
@@ -42,6 +44,7 @@ import com.mochyy.mochymusic.ui.screens.NavigationTab
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import com.mochyy.mochymusic.utils.rememberEnumPreference
 import com.mochyy.mochymusic.utils.rememberPreference
+import kotlin.math.roundToInt
 
 // settings > appearance: the tabs, the layout and the colours the app opens with
 @Composable
@@ -54,6 +57,7 @@ fun AppearanceSettingsScreen(navController: NavController) {
         searchBar = { SubSettingsSearchBar(query = query, onQueryChange = { query = it }) },
     ) {
         SettingsSection(title = null, items = (startItems() + navBarItems() + accentItems()).matching(query))
+        SettingsSection(title = null, items = scaleItems().matching(query))
         Spacer(Modifier.height(140.dp))
     }
 }
@@ -100,6 +104,33 @@ private val AccentPresets = listOf(
     0xFFAB78FF.toInt(),
     0xFFF06292.toInt(),
 )
+
+// the steps the scale slider stops on, from smaller than a phone's own size to a little bigger
+private val UiScaleSteps = listOf(85, 90, 95, 100, 105, 110, 115)
+
+@Composable
+private fun scaleItems(): List<SettingsItem> {
+    val (scale, setScale) = rememberPreference(UiScalePercentKey, defaultValue = 100)
+    val title = stringResource(R.string.settings_ui_scale)
+    return listOf(
+        SettingsItem(
+            title = { ValueTitle(title, "$scale%") },
+            highlightKey = "UI scale",
+            searchText = title,
+            description = {
+                DefaultPlayerSeekBarSlider(
+                    value = scale.toFloat(),
+                    onValueChange = { setScale(it.roundToInt()) },
+                    valueRange = 85f..115f,
+                    steps = UiScaleSteps.size - 2,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            },
+            icon = painterResource(R.drawable.fullscreen),
+            iconShape = CircleShape,
+        ),
+    )
+}
 
 @Composable
 private fun accentItems(): List<SettingsItem> {

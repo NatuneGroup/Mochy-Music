@@ -10,4 +10,6 @@
     <string name="settings_accent">Accent colour</string>
     <string name="settings_accent_desc">Colours the switches, sliders and selected items. The player keeps its own colours.</string>
     <string name="settings_accent_art">From album art</string>
+    <string name="settings_ui_scale">UI scale</string>
+    <string name="settings_ui_scale_desc">Makes everything in the app bigger or smaller.</string>
 </resources>

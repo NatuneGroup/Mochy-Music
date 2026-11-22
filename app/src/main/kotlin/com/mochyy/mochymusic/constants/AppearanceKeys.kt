@@ -13,3 +13,6 @@ val AccentColorKey = intPreferencesKey("accentColor")
 
 // take the accent from the playing song's cover instead of the picked colour
 val AccentFromArtKey = booleanPreferencesKey("accentFromArt")
+
+// the whole app's size as a percentage, 100 is the phone's own size
+val UiScalePercentKey = intPreferencesKey("uiScalePercent")
