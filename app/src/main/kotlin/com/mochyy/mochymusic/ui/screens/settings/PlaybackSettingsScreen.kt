@@ -28,6 +28,7 @@ import com.mochyy.mochymusic.constants.QueueEditLockKey
 import com.mochyy.mochymusic.constants.QueuePreventDuplicatesKey
 import com.mochyy.mochymusic.constants.SponsorBlockCategoriesKey
 import com.mochyy.mochymusic.constants.SponsorBlockEnabledKey
+import com.mochyy.mochymusic.constants.VideoPictureInPictureKey
 import com.mochyy.mochymusic.playback.SponsorBlockDefaultCategories
 import com.mochyy.mochymusic.constants.MixWithOtherAppsKey
 import com.mochyy.mochymusic.constants.PauseOnMute
@@ -79,6 +80,7 @@ private fun listeningItems(): List<SettingsItem> {
     val (infiniteQueue, onInfiniteQueueChange) = rememberPreference(InfiniteQueueKey, defaultValue = true)
     val (keepCpuAwake, onKeepCpuAwakeChange) = rememberPreference(KeepCpuAwakeKey, defaultValue = false)
     val (preventDuplicates, onPreventDuplicatesChange) = rememberPreference(QueuePreventDuplicatesKey, defaultValue = false)
+    val (videoPip, onVideoPipChange) = rememberPreference(VideoPictureInPictureKey, defaultValue = false)
     val (addInOrder, onAddInOrderChange) = rememberPreference(QueueAddInOrderKey, defaultValue = true)
     val (queueLocked, onQueueLockedChange) = rememberPreference(QueueEditLockKey, defaultValue = false)
     return listOf(
@@ -148,6 +150,14 @@ private fun listeningItems(): List<SettingsItem> {
             icon = painterResource(R.drawable.bluetooth),
             checked = resumeOnBluetooth,
             onCheckedChange = onResumeOnBluetoothChange,
+        ),
+        switchItem(
+            key = "Picture-in-picture",
+            title = stringResource(R.string.playback_pip),
+            description = stringResource(R.string.playback_pip_desc),
+            icon = painterResource(R.drawable.slow_motion_video),
+            checked = videoPip,
+            onCheckedChange = onVideoPipChange,
         ),
         switchItem(
             key = "Pause when muted",
