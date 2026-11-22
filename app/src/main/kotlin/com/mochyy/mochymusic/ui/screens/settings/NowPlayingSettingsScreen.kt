@@ -89,7 +89,7 @@ fun NowPlayingSettingsScreen(navController: NavController) {
         searchBar = { SubSettingsSearchBar(query = query, onQueryChange = { query = it }) },
     ) {
         SettingsSection(stringResource(R.string.settings_on_the_player), badgeItems().matching(query))
-        SettingsSection(stringResource(R.string.settings_section_lyrics), lyricsItems().matching(query))
+        SettingsSection(stringResource(R.string.settings_section_lyrics), lyricsItems(navController).matching(query))
         SettingsSection(stringResource(R.string.settings_section_videos), videoItems().matching(query))
         SettingsSection(stringResource(R.string.settings_section_canvas), canvasItems(navController).matching(query))
         SettingsSection(stringResource(R.string.settings_related), relatedItems(navController).matching(query))
@@ -133,7 +133,7 @@ private fun badgeItems(): List<SettingsItem> {
 }
 
 @Composable
-private fun lyricsItems(): List<SettingsItem> {
+private fun lyricsItems(navController: NavController): List<SettingsItem> {
     val (youtubeTranslations, onYoutubeTranslationsChange) = rememberPreference(YouTubeCaptionTranslationKey, defaultValue = true)
     val (syncLyricsToVideo, onSyncLyricsToVideoChange) = rememberPreference(SyncLyricsToVideoKey, defaultValue = true)
     val (romanizeAsMain, onRomanizeAsMainChange) = rememberPreference(LyricsRomanizeAsMainKey, defaultValue = false)
@@ -146,6 +146,12 @@ private fun lyricsItems(): List<SettingsItem> {
     val (lyricsStyle) = rememberEnumPreference(LyricsMotionStyleKey, defaultValue = LyricsMotionStyle.MOTION)
     val (floatingLyrics, onFloatingLyricsChange) = rememberFloatingLyricsSwitch()
     return listOf(
+        SettingsItem(
+            title = { Text(stringResource(R.string.settings_ai_translator)) },
+            descriptionText = stringResource(R.string.settings_ai_translator_desc),
+            icon = painterResource(R.drawable.translate),
+            onClick = { navController.navigate(AiTranslatorSettingsRoute) },
+        ),
         switchItem(
             key = "Translations from YouTube",
             title = stringResource(R.string.settings_youtube_translations),

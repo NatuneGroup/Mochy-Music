@@ -251,6 +251,8 @@ private val SettingsIndex = listOf(
     SettingsEntry("Audio format badge", "Now playing", NowPlayingSettingsRoute, "format codec opus aac flac badge title quality"),
     SettingsEntry("Show sample rate", "Now playing", NowPlayingSettingsRoute, "sample rate khz hz format badge quality"),
     SettingsEntry("Translations from YouTube", "Now playing", NowPlayingSettingsRoute, "captions translate lyrics language"),
+    SettingsEntry("AI translator", "Now playing", AiTranslatorSettingsRoute, "translate lyrics ai openrouter deepl custom endpoint model api key provider openai", R.string.settings_ai_translator),
+    SettingsEntry("Translate lyrics automatically", "Now playing", AiTranslatorSettingsRoute, "translate lyrics automatic auto language on load", R.string.settings_translate_auto),
     SettingsEntry("Sync lyrics to music videos", "Now playing", NowPlayingSettingsRoute, "lyrics video timing intro skit"),
     SettingsEntry("Romanisation as the main line", "Now playing", NowPlayingSettingsRoute, "romaji romanization pinyin latin lyrics japanese korean chinese", R.string.settings_romanize_as_main),
     SettingsEntry("Romanize Japanese lyrics", "Now playing", NowPlayingSettingsRoute, "romanize romanise lyrics japanese romaji japanese kana kanji", R.string.lyrics_romanize_japanese),
