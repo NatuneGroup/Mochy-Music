@@ -16,6 +16,7 @@ import com.mochyy.mochymusic.shared.desktop.media.YouTubeSearchSource
 import com.mochyy.mochymusic.shared.desktop.media.createSystemMediaSession
 import com.mochyy.mochymusic.shared.desktop.playback.DesktopPlayerController
 import com.mochyy.mochymusic.shared.lyrics.playerLyricsProviders
+import com.mochyy.mochymusic.shared.playback.QueueTransport
 import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.shared.resources.app_name
 import com.mochyy.mochymusic.shared.resources.playback_failed
@@ -39,7 +40,8 @@ fun runDesktopApp(font: FontFamily) = application {
     val providers = remember(http) { playerLyricsProviders(http) }
     DisposableEffect(player) { onDispose { player.release() } }
     // OS media keys and widgets: started with the player, closed when the app exits.
-    val mediaControls = remember(player) { DesktopMediaControls(player) }
+    val queueTransport = remember { QueueTransport() }
+    val mediaControls = remember(player, queueTransport) { DesktopMediaControls(player, queueTransport) }
     DisposableEffect(player, mediaControls) {
         val session = createSystemMediaSession(player, mediaControls)
         onDispose {
@@ -55,7 +57,14 @@ fun runDesktopApp(font: FontFamily) = application {
         state = rememberWindowState(width = 1100.dp, height = 720.dp),
     ) {
         StandaloneMochyTheme(font, desktopPlaybackPreferences) {
-            StandaloneMusicApp(search, player, providers, desktopPlaybackPreferences, desktopLibrary)
+            StandaloneMusicApp(
+                search,
+                player,
+                providers,
+                desktopPlaybackPreferences,
+                desktopLibrary,
+                queueTransport = queueTransport,
+            )
         }
     }
 }
