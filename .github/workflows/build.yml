@@ -11,6 +11,12 @@ on:
       - 'assets/**'
       - '.github/**/*.md'
   workflow_dispatch:
+    inputs:
+      flavor:
+        description: "Gms (Google Cast) or Foss (no Google services)"
+        type: choice
+        options: [Gms, Foss]
+        default: Gms
 
 # The Gradle wrapper JVM does not read gradle.properties, and its own
 # connect timeout is a hardcoded 10s. Runners whose IPv6 route to the
@@ -84,14 +90,14 @@ jobs:
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
           ONEDRIVE_CLIENT_ID: ${{ secrets.ONEDRIVE_CLIENT_ID }}
         run: |
-          ./gradlew assembleArm64GmsRelease --no-configuration-cache --console=plain --warning-mode summary
+          ./gradlew assembleArm64${{ inputs.flavor || 'Gms' }}Release --no-configuration-cache --console=plain --warning-mode summary
 
       - name: Verify APK signature
         run: |
           SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
           APKSIGNER="$(find "$SDK/build-tools" -name apksigner -type f | sort | tail -1)"
           echo "Using $APKSIGNER"
-          for apk in app/build/outputs/apk/arm64Gms/release/*.apk; do
+          for apk in app/build/outputs/apk/arm64*/release/*.apk; do
             echo "--- $apk"
             "$APKSIGNER" verify --print-certs "$apk"
             sha256sum "$apk"
@@ -101,5 +107,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sora-arm64-v8a-release
-          path: app/build/outputs/apk/arm64Gms/release/*.apk
+          path: app/build/outputs/apk/arm64*/release/*.apk
           retention-days: 30
