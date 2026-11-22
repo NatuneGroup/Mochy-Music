@@ -663,6 +663,8 @@ class MainActivity : ComponentActivity() {
                 val (slimNav) = rememberPreference(SlimNavBarKey, defaultValue = false)
                 // flipped in Experimental while the app is open: it starts (or stops) turning right away
                 val (landscapeUnlocked) = rememberPreference(com.mochyy.mochymusic.constants.LandscapeUnlockedKey, defaultValue = false)
+                val (tabletLayout) = rememberPreference(com.mochyy.mochymusic.constants.TabletLayoutKey, defaultValue = false)
+                LaunchedEffect(tabletLayout) { com.mochyy.mochymusic.ui.utils.TabletLayout.forced = tabletLayout }
                 LaunchedEffect(landscapeUnlocked) {
                     if (!isTelevision()) com.mochyy.mochymusic.ui.utils.WindowTurning.setUnlocked(this@MainActivity, landscapeUnlocked)
                 }

@@ -16,3 +16,6 @@ val AccentFromArtKey = booleanPreferencesKey("accentFromArt")
 
 // the whole app's size as a percentage, 100 is the phone's own size
 val UiScalePercentKey = intPreferencesKey("uiScalePercent")
+
+// use the tablet (wide) layout on any screen size, not only on a wide one
+val TabletLayoutKey = booleanPreferencesKey("tabletLayout")

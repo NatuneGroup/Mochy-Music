@@ -35,6 +35,7 @@ import com.mochyy.mochymusic.constants.AccentColorKey
 import com.mochyy.mochymusic.constants.AccentFromArtKey
 import com.mochyy.mochymusic.constants.DefaultOpenTabKey
 import com.mochyy.mochymusic.constants.HideNavOnScrollKey
+import com.mochyy.mochymusic.constants.TabletLayoutKey
 import com.mochyy.mochymusic.constants.UiScalePercentKey
 import com.mochyy.mochymusic.ui.component.DefaultPlayerSeekBarSlider
 import com.mochyy.mochymusic.ui.component.SettingsItem
@@ -57,7 +58,7 @@ fun AppearanceSettingsScreen(navController: NavController) {
         searchBar = { SubSettingsSearchBar(query = query, onQueryChange = { query = it }) },
     ) {
         SettingsSection(title = null, items = (startItems() + navBarItems() + accentItems()).matching(query))
-        SettingsSection(title = null, items = scaleItems().matching(query))
+        SettingsSection(title = null, items = (scaleItems() + tabletItems()).matching(query))
         Spacer(Modifier.height(140.dp))
     }
 }
@@ -128,6 +129,21 @@ private fun scaleItems(): List<SettingsItem> {
             },
             icon = painterResource(R.drawable.fullscreen),
             iconShape = CircleShape,
+        ),
+    )
+}
+
+@Composable
+private fun tabletItems(): List<SettingsItem> {
+    val (tablet, setTablet) = rememberPreference(TabletLayoutKey, defaultValue = false)
+    return listOf(
+        switchItem(
+            key = "Tablet layout",
+            title = stringResource(R.string.settings_tablet_layout),
+            description = stringResource(R.string.settings_tablet_layout_desc),
+            icon = painterResource(R.drawable.screen_rotation),
+            checked = tablet,
+            onCheckedChange = setTablet,
         ),
     )
 }
