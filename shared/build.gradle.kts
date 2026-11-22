@@ -4,6 +4,12 @@
 // and add nothing to it. Code moves here from :app one area at a time.
 import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryExtension
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.w3c.dom.Element
+import javax.xml.parsers.DocumentBuilderFactory
+import javax.xml.transform.OutputKeys
+import javax.xml.transform.TransformerFactory
+import javax.xml.transform.dom.DOMSource
+import javax.xml.transform.stream.StreamResult
 
 plugins {
     kotlin("multiplatform")
@@ -122,8 +128,173 @@ val prepareIosFonts = tasks.register<Sync>("prepareIosFonts") {
     into(layout.buildDirectory.dir("generated/iosComposeFonts"))
 }
 
+/**
+ * The app's strings and plain vector icons, rewritten as Compose resources, so shared screens read the
+ * same text the Android app does: `app/src/main/res` stays the one place a string is written or
+ * translated. Android and Compose unescape differently (Compose knows only \n, \t, \uXXXX and
+ * \\), so each value is decoded the way aapt2 reads it and written back in Compose's form.
+ */
+@CacheableTask
+abstract class BridgeAppResources : DefaultTask() {
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val appRes: DirectoryProperty
+
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val sharedResources: DirectoryProperty
+
+    @get:OutputDirectory
+    abstract val output: DirectoryProperty
+
+    private val localeDir = Regex("values(-([a-z]{2,3})(-r([A-Z]{2}))?)?")
+
+    // compose matches the platform locale's language, and ios and desktop say "he" and "id"
+    private val legacyLanguages = mapOf("iw" to "he", "in" to "id")
+
+    @TaskAction
+    fun bridge() {
+        val out = output.get().asFile
+        out.deleteRecursively()
+        sharedResources.get().asFile.copyRecursively(out)
+        val res = appRes.get().asFile
+
+        val locales = res.listFiles().orEmpty().filter { it.isDirectory && localeDir.matches(it.name) }
+        val parsed = locales.associate { dir -> dir.name to readValues(dir) }
+        val defaults = parsed["values"].orEmpty()
+        val taken = locales.map { it.name }.toSet()
+        for ((dirName, values) in parsed) {
+            if (values.isEmpty()) continue
+            val match = localeDir.matchEntire(dirName)!!
+            val language = match.groupValues[2]
+            val target = legacyLanguages[language]
+                ?.let { dirName.replaceFirst("values-$language", "values-$it") }
+                ?.takeIf { it !in taken } ?: dirName
+            write(File(out, "$target/app_strings.xml"), values) { ref -> values[ref] ?: defaults[ref] }
+        }
+
+        val drawables = File(out, "drawable").apply { mkdirs() }
+        res.resolve("drawable").listFiles().orEmpty().forEach { file ->
+            val plainVector = file.extension == "xml" && file.readText().let { text ->
+                "<vector" in text && "?attr" !in text && "@color/" !in text && "@android:" !in text && "@drawable/" !in text
+            }
+            val raster = file.extension in setOf("png", "webp", "jpg")
+            if ((plainVector || raster) && !File(drawables, file.name).exists() &&
+                drawables.listFiles().orEmpty().none { it.nameWithoutExtension == file.nameWithoutExtension }
+            ) {
+                file.copyTo(File(drawables, file.name))
+            }
+        }
+    }
+
+    private sealed interface Value
+    private data class Text(val text: String) : Value
+    private data class Plural(val items: List<Pair<String, String>>) : Value
+    private data class StringList(val items: List<String>) : Value
+
+    private fun readValues(dir: File): Map<String, Value> {
+        val values = linkedMapOf<String, Value>()
+        val factory = DocumentBuilderFactory.newInstance().apply { isNamespaceAware = true }
+        dir.listFiles { f -> f.extension == "xml" }.orEmpty().sortedBy { it.name }.forEach { file ->
+            val root = runCatching { factory.newDocumentBuilder().parse(file).documentElement }.getOrNull() ?: return@forEach
+            if (root.tagName != "resources") return@forEach
+            val children = root.childNodes
+            for (i in 0 until children.length) {
+                val node = children.item(i) as? Element ?: continue
+                val name = node.getAttribute("name").takeIf { it.isNotEmpty() } ?: continue
+                values[name] = when (node.tagName) {
+                    "string" -> Text(decode(node.textContent))
+                    "plurals" -> Plural(node.items().map { it.getAttribute("quantity") to decode(it.textContent) })
+                    "string-array" -> StringList(node.items().map { decode(it.textContent) })
+                    else -> continue
+                }
+            }
+        }
+        return values
+    }
+
+    private fun Element.items(): List<Element> =
+        (0 until childNodes.length).mapNotNull { childNodes.item(it) as? Element }.filter { it.tagName == "item" }
+
+    // aapt2's reading: backslash escapes, double quotes keep whitespace and are dropped, other whitespace runs become one space
+    private fun decode(raw: String): String {
+        val out = StringBuilder()
+        var quoted = false
+        var space = false
+        var i = 0
+        fun emit(c: Char) {
+            if (space) out.append(' ')
+            space = false
+            out.append(c)
+        }
+        while (i < raw.length) {
+            val c = raw[i]
+            when {
+                c == '\\' && i + 1 < raw.length -> {
+                    val next = raw[i + 1]
+                    if (next == 'u' && i + 6 <= raw.length && raw.substring(i + 2, i + 6).all { it.isLetterOrDigit() }) {
+                        raw.substring(i + 2, i + 6).toIntOrNull(16)?.let { emit(it.toChar()) }
+                        i += 6
+                        continue
+                    }
+                    emit(when (next) { 'n' -> '\n'; 't' -> '\t'; else -> next })
+                    i += 2
+                    continue
+                }
+                c == '"' -> quoted = !quoted
+                !quoted && c.isWhitespace() -> if (out.isNotEmpty()) space = true
+                else -> emit(c)
+            }
+            i++
+        }
+        return out.toString()
+    }
+
+    // the inverse of compose's handleSpecialCharacters
+    private fun encode(text: String): String =
+        text.replace("\\", "\\\\").replace("\n", "\\n").replace("\t", "\\t")
+
+    private fun write(file: File, values: Map<String, Value>, lookup: (String) -> Value?) {
+        fun resolve(text: String, depth: Int = 0): String =
+            if (depth < 4 && text.startsWith("@string/")) {
+                (lookup(text.removePrefix("@string/")) as? Text)?.let { resolve(it.text, depth + 1) } ?: text
+            } else {
+                text
+            }
+        val doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument()
+        val root = doc.createElement("resources").also(doc::appendChild)
+        for ((name, value) in values) {
+            val element = when (value) {
+                is Text -> doc.createElement("string").apply { textContent = encode(resolve(value.text)) }
+                is Plural -> doc.createElement("plurals").apply {
+                    value.items.forEach { (quantity, text) ->
+                        appendChild(doc.createElement("item").apply { setAttribute("quantity", quantity); textContent = encode(resolve(text)) })
+                    }
+                }
+                is StringList -> doc.createElement("string-array").apply {
+                    value.items.forEach { text -> appendChild(doc.createElement("item").apply { textContent = encode(resolve(text)) }) }
+                }
+            }
+            element.setAttribute("name", name)
+            root.appendChild(element)
+        }
+        file.parentFile.mkdirs()
+        TransformerFactory.newInstance().newTransformer().apply {
+            setOutputProperty(OutputKeys.INDENT, "yes")
+            setOutputProperty(OutputKeys.ENCODING, "UTF-8")
+        }.transform(DOMSource(doc), StreamResult(file))
+    }
+}
+
+val bridgeAppResources = tasks.register<BridgeAppResources>("bridgeAppResources") {
+    appRes.set(rootProject.layout.projectDirectory.dir("app/src/main/res"))
+    sharedResources.set(layout.projectDirectory.dir("src/commonMain/composeResources"))
+    output.set(layout.buildDirectory.dir("generated/mochyComposeResources/commonMain"))
+}
+
 compose.resources {
     customDirectory("iosMain", layout.dir(prepareIosFonts.map { it.destinationDir }))
+    customDirectory("commonMain", bridgeAppResources.flatMap { it.output })
     // a library does not generate Res by default; every platform's UI reads strings through it
     generateResClass = always
     publicResClass = false
