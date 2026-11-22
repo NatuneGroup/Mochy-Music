@@ -8,6 +8,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.PlayerMessage
 import com.mochyy.mochymusic.constants.SponsorBlockCategoriesKey
 import com.mochyy.mochymusic.constants.SponsorBlockEnabledKey
+import com.mochyy.mochymusic.utils.get
 import com.mochyy.mochymusic.utils.dataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -62,12 +63,12 @@ class SponsorBlockSkipper(private val context: Context) {
         lookup = scope.launch(Dispatchers.IO) {
             val prefs = context.dataStore.data.first()
             if (prefs[SponsorBlockEnabledKey] != true) return@launch
-            val wanted = prefs[SponsorBlockCategoriesKey] ?: SponsorBlockDefaultCategories
             val segments = segmentsFor(id) ?: return@launch
             withContext(Dispatchers.Main) {
                 // the song may have changed while the lookup was out
                 if (currentId != id || player.currentMediaItem?.mediaId != id) return@withContext
-                schedule(player, segments.filter { it.category in wanted })
+                // every category is scheduled; each skip checks the switches when it's reached
+                schedule(player, segments)
             }
         }
     }
@@ -89,13 +90,19 @@ class SponsorBlockSkipper(private val context: Context) {
         scheduled = segments
             .filter { it.endMs > it.startMs && (duration == C.TIME_UNSET || it.endMs < duration - TAIL_MS) }
             .map { segment ->
-                player.createMessage { _, _ -> player.seekTo(segment.endMs) }
+                player.createMessage { _, _ -> if (wantsSkip(segment)) player.seekTo(segment.endMs) }
                     .setPosition(index, segment.startMs)
                     .setLooper(Looper.getMainLooper())
                     .setDeleteAfterDelivery(true)
                     .send()
             }
     }
+
+    // read when the skip is due, not when the song started, so switching SponsorBlock or a category off (or a
+    // category on) partway through a song counts; the settings cache answers this without touching disk
+    private fun wantsSkip(segment: SponsorSegment): Boolean =
+        context.dataStore.get(SponsorBlockEnabledKey, false) &&
+            segment.category in context.dataStore.get(SponsorBlockCategoriesKey, SponsorBlockDefaultCategories)
 
     // cached result, or one request for all categories (so changing the picks needs no new lookup)
     private fun segmentsFor(id: String): List<SponsorSegment>? {
