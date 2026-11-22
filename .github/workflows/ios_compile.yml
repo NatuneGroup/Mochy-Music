@@ -6,6 +6,7 @@ name: iOS compile
 on:
   pull_request:
     branches: [dev]
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'shared/**'
       - 'providers/innertube/**'
@@ -20,8 +21,10 @@ concurrency:
   group: ios-compile-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+# drafts skip the paid macOS/Windows runners; marking a pull request ready runs them
 jobs:
   ios:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     name: iOS simulator compile and Swift type-check
     runs-on: blacksmith-12vcpu-macos-26
     timeout-minutes: 45

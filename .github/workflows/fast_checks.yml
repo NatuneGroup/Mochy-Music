@@ -34,7 +34,7 @@ jobs:
         run: python3 scripts/ci/check_string_resources.py
       - run: chmod +x gradlew
       - name: Compile
-        run: ./gradlew --console=plain :app:compileArm64FossDebugKotlin :desktopApp:compileKotlinJvm --warning-mode summary
+        run: ./gradlew --console=plain :app:compileArm64FossDebugKotlin :desktopApp:compileKotlinJvm :shared:compileCommonMainKotlinMetadata --warning-mode summary
 
   unit-tests:
     name: Shared and provider unit tests
