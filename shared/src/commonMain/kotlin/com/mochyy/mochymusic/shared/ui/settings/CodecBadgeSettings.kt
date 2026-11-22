@@ -1,7 +1,3 @@
-// CodecBadgeSettings.kt
-// The codec badge switches, shown in the Settings tab and in the Now Playing sheet. Both read their
-// defaults from codecBadgePrefs and write through one CodecBadgeWriter, so they can't drift apart.
-
 package com.mochyy.mochymusic.shared.ui.settings
 
 import androidx.compose.material3.MaterialTheme
@@ -22,6 +18,8 @@ import kotlinx.coroutines.launch
 import okio.IOException
 import org.jetbrains.compose.resources.stringResource
 
+// The codec badge switches, shown in the Settings tab and in the Now Playing sheet. Both read their
+// defaults from codecBadgePrefs and write through one CodecBadgeWriter, so they can't drift apart.
 internal data class CodecBadgePrefs(val showBadge: Boolean, val showSampleRate: Boolean)
 
 /** The only place the codec badge defaults live: badge on, sample rate off. */

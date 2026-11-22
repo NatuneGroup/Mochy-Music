@@ -1,7 +1,3 @@
-// SearchState.kt
-// The search tab's query, results and in-flight request. The app shell builds it above the adaptive
-// layout, so a tab switch or a resize across the rail breakpoint keeps what was typed and found.
-
 package com.mochyy.mochymusic.shared.ui.search
 
 import androidx.compose.runtime.getValue
@@ -15,6 +11,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 
+// The search tab's query, results and in-flight request. The app shell builds it above the adaptive
+// layout, so a tab switch or a resize across the rail breakpoint keeps what was typed and found.
 internal sealed interface SearchUi {
     data object Idle : SearchUi
     data object Loading : SearchUi
