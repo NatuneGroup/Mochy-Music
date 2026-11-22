@@ -34,4 +34,5 @@ android {
 
 dependencies {
     implementation(libs.media3)
+    compileOnly(libs.androidx.annotation)
 }
