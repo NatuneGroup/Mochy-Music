@@ -549,5 +549,6 @@
     <string name="settings_custom_font_remove">Remove font</string>
     <string name="settings_custom_font_too_big">That font file is over 20 MB</string>
     <string name="settings_custom_font_unreadable">That file isn\'t a font Mochy can use</string>
+    <string name="settings_custom_font_not_saved">Couldn\'t save that font. Your font from before is still on</string>
     <string name="settings_system_font_overridden">Your custom font is used instead. Remove it to use this</string>
 </resources>
