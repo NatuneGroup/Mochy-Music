@@ -20,6 +20,9 @@ import androidx.navigation.NavController
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.DontSkipOnFailureKey
 import com.mochyy.mochymusic.constants.InfiniteQueueKey
+import com.mochyy.mochymusic.constants.QueueAddInOrderKey
+import com.mochyy.mochymusic.constants.QueueEditLockKey
+import com.mochyy.mochymusic.constants.QueuePreventDuplicatesKey
 import com.mochyy.mochymusic.constants.MixWithOtherAppsKey
 import com.mochyy.mochymusic.constants.PauseOnMute
 import com.mochyy.mochymusic.constants.PersistentQueueKey
@@ -65,6 +68,9 @@ private fun listeningItems(): List<SettingsItem> {
     val (skipSilence, onSkipSilenceChange) = rememberPreference(SkipSilenceKey, defaultValue = false)
     val (preloadNextTrack, onPreloadNextTrackChange) = rememberPreference(PreloadNextTrackKey, defaultValue = true)
     val (infiniteQueue, onInfiniteQueueChange) = rememberPreference(InfiniteQueueKey, defaultValue = true)
+    val (preventDuplicates, onPreventDuplicatesChange) = rememberPreference(QueuePreventDuplicatesKey, defaultValue = false)
+    val (addInOrder, onAddInOrderChange) = rememberPreference(QueueAddInOrderKey, defaultValue = true)
+    val (queueLocked, onQueueLockedChange) = rememberPreference(QueueEditLockKey, defaultValue = false)
     return listOf(
         switchItem(
             key = "Infinite queue",
@@ -74,6 +80,30 @@ private fun listeningItems(): List<SettingsItem> {
             icon = painterResource(R.drawable.playlist_play),
             checked = infiniteQueue,
             onCheckedChange = onInfiniteQueueChange,
+        ),
+        switchItem(
+            key = "Prevent duplicates in queue",
+            title = stringResource(R.string.settings_queue_prevent_duplicates),
+            description = stringResource(R.string.settings_queue_prevent_duplicates_desc),
+            icon = painterResource(R.drawable.playlist_play),
+            checked = preventDuplicates,
+            onCheckedChange = onPreventDuplicatesChange,
+        ),
+        switchItem(
+            key = "Add to queue in order",
+            title = stringResource(R.string.settings_queue_add_in_order),
+            description = stringResource(R.string.settings_queue_add_in_order_desc),
+            icon = painterResource(R.drawable.playlist_play),
+            checked = addInOrder,
+            onCheckedChange = onAddInOrderChange,
+        ),
+        switchItem(
+            key = "Lock queue",
+            title = stringResource(R.string.settings_queue_lock),
+            description = stringResource(R.string.settings_queue_lock_desc),
+            icon = painterResource(R.drawable.lock),
+            checked = queueLocked,
+            onCheckedChange = onQueueLockedChange,
         ),
         switchItem(
             key = "Keep playing even when closed",

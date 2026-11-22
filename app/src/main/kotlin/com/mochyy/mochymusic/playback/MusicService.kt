@@ -151,6 +151,7 @@ import com.mochyy.mochymusic.constants.MixWithOtherAppsKey
 import com.mochyy.mochymusic.constants.PauseOnMute
 import com.mochyy.mochymusic.constants.PersistentQueueKey
 import com.mochyy.mochymusic.constants.InfiniteQueueKey
+import com.mochyy.mochymusic.constants.QueueAddInOrderKey
 import com.mochyy.mochymusic.constants.PersistentShuffleAcrossQueuesKey
 import com.mochyy.mochymusic.constants.PlayerVolumeKey
 import com.mochyy.mochymusic.constants.RememberShuffleAndRepeatKey
@@ -2739,7 +2740,10 @@ class MusicService :
             }
             return
         }
-        insertManualQueued(queued, afterIndex = player.currentMediaItemIndex)
+        removeUpcomingDuplicates(queued)
+        // in order: after the play-next songs already lined up, so several taps keep their order
+        val after = if (dataStore.get(QueueAddInOrderKey, true)) manualQueueAnchor() else player.currentMediaItemIndex
+        insertManualQueued(queued, afterIndex = after)
     }
 
     /**
@@ -2756,6 +2760,7 @@ class MusicService :
             player.prepare()
             return
         }
+        removeUpcomingDuplicates(queued)
         insertManualQueued(queued, afterIndex = manualQueueAnchor())
     }
 

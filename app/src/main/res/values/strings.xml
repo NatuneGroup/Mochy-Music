@@ -513,4 +513,10 @@
     <string name="playback_infinite_queue">Infinite queue</string>
     <string name="playback_infinite_queue_desc">Keep the music going with related songs</string>
     <string name="playback_infinite_queue_detail">When the queue is about to end, songs similar to the one playing are added from YouTube radio</string>
+    <string name="settings_queue_prevent_duplicates">Prevent duplicates</string>
+    <string name="settings_queue_prevent_duplicates_desc">A song already in the queue moves instead of being added twice</string>
+    <string name="settings_queue_add_in_order">Add to queue in order</string>
+    <string name="settings_queue_add_in_order_desc">Songs you play next keep the order you added them in</string>
+    <string name="settings_queue_lock">Lock queue</string>
+    <string name="settings_queue_lock_desc">No removing, moving or swiping songs in the queue</string>
 </resources>
