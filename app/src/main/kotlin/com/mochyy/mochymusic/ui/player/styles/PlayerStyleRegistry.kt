@@ -33,6 +33,7 @@ internal fun PlayerStyleContent(
         PlayerStyle.APPLE_MUSIC -> com.mochyy.mochymusic.ui.player.applemusic.AppleMusicPlayerStyle(actions, modifier, preview)
         PlayerStyle.TIKTOK -> com.mochyy.mochymusic.ui.player.tiktok.TikTokPlayerStyle(actions, modifier, preview)
         PlayerStyle.LOOPER -> com.mochyy.mochymusic.ui.player.looper.LooperPlayerStyle(actions, modifier, preview)
+        PlayerStyle.SIMP -> com.mochyy.mochymusic.ui.player.simp.SimpPlayerStyle(actions, modifier, preview)
         PlayerStyle.METROLIST -> MetrolistPlayerStyle(actions, modifier, preview, vintage = false)
         PlayerStyle.METROLIST_VINTAGE -> MetrolistPlayerStyle(actions, modifier, preview, vintage = true)
         PlayerStyle.MODULE -> ModulePlayerStyle(actions, modifier, preview)
