@@ -394,6 +394,7 @@
     <string name="settings_hide_explicit_desc">Leaves explicit songs out of Home, search, library and radio</string>
     <string name="settings_hide_music_videos">Hide music videos</string>
     <string name="settings_hide_music_videos_desc">Leaves music video versions out of Home, search, library and radio</string>
+    <string name="settings_pause_listen_history_desc">Stops saving new listens here and to YouTube history. Listens already saved are kept.</string>
 
     <string name="backup_restore">Backup and restore</string>
     <string name="action_backup">Backup</string>

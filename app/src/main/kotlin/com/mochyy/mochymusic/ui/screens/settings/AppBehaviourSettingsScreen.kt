@@ -29,8 +29,10 @@ import com.mochyy.mochymusic.BuildConfig
 import com.mochyy.mochymusic.constants.AlbumsFromLikedSongsKey
 import com.mochyy.mochymusic.constants.DataSaverKey
 import com.mochyy.mochymusic.constants.DataSaverMobileOnlyKey
+import com.mochyy.mochymusic.constants.DisableScreenshotKey
 import com.mochyy.mochymusic.constants.HideExplicitKey
 import com.mochyy.mochymusic.constants.HideVideoSongsKey
+import com.mochyy.mochymusic.constants.PauseListenHistoryKey
 import com.mochyy.mochymusic.constants.HideSettingsDescriptionsKey
 import com.mochyy.mochymusic.constants.HideUpdateNoticeKey
 import com.mochyy.mochymusic.constants.LarpLevelKey
@@ -270,6 +272,8 @@ private fun contentItems(): List<SettingsItem> {
 
 @Composable
 private fun libraryItems(): List<SettingsItem> {
+    val (pauseListenHistory, onPauseListenHistoryChange) = rememberPreference(PauseListenHistoryKey, defaultValue = false)
+    val (disableScreenshot, onDisableScreenshotChange) = rememberPreference(DisableScreenshotKey, defaultValue = false)
     val (albumsFromLikes, onAlbumsFromLikesChange) = rememberPreference(AlbumsFromLikedSongsKey, defaultValue = false)
     val (autoMetadata, onAutoMetadataChange) = rememberPreference(LocalSongAutoMetadataKey, defaultValue = true)
     val (pauseSearchHistory, onPauseSearchHistoryChange) = rememberPreference(PauseSearchHistoryKey, defaultValue = false)
@@ -291,6 +295,24 @@ private fun libraryItems(): List<SettingsItem> {
             icon = painterResource(R.drawable.cached),
             checked = autoMetadata,
             onCheckedChange = onAutoMetadataChange,
+        ),
+        // stops new listens from being saved here and sent to YouTube history; the listens already saved stay
+        switchItem(
+            key = "Pause listen history",
+            title = stringResource(R.string.pause_listen_history),
+            description = stringResource(R.string.settings_pause_listen_history_desc),
+            icon = painterResource(R.drawable.history),
+            checked = pauseListenHistory,
+            onCheckedChange = onPauseListenHistoryChange,
+        ),
+        // blocks screenshots and hides the app in Recents; applies right away
+        switchItem(
+            key = "Disable screenshot",
+            title = stringResource(R.string.disable_screenshot),
+            description = stringResource(R.string.disable_screenshot_desc),
+            icon = painterResource(R.drawable.screenshot),
+            checked = disableScreenshot,
+            onCheckedChange = onDisableScreenshotChange,
         ),
         switchItem(
             key = "Pause search history",
