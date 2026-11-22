@@ -54,6 +54,7 @@ import com.mochyy.mochymusic.shared.lyrics.PlayerLyrics
 import com.mochyy.mochymusic.shared.lyrics.findPlayerLyrics
 import com.mochyy.mochymusic.shared.lyrics.suspendRunCatching
 import com.mochyy.mochymusic.shared.media.SearchSource
+import com.mochyy.mochymusic.shared.playback.PlaybackHistory
 import com.mochyy.mochymusic.shared.playback.PlayerController
 import com.mochyy.mochymusic.shared.playback.QueueTransport
 import com.mochyy.mochymusic.shared.resources.Res
@@ -135,6 +136,7 @@ internal fun StandaloneMusicApp(
     val recent by library.recent.collectAsState(initial = emptyList())
     var libraryUpdateFailed by remember { mutableStateOf(false) }
     var lastRecorded by remember { mutableStateOf<String?>(null) }
+    val history = remember { PlaybackHistory() }
 
     DisposableEffect(player) {
         onDispose { player.preloadNext(null) }
@@ -164,6 +166,9 @@ internal fun StandaloneMusicApp(
     }
 
     val playingSong = playback.song
+    LaunchedEffect(playingSong?.id) {
+        playingSong?.let(history::started)
+    }
     LaunchedEffect(playingSong?.id, playback.isPlaying) {
         if (playingSong != null && playback.isPlaying && playingSong.id != lastRecorded) {
             suspendRunCatching { library.recordPlay(playingSong) }
@@ -214,13 +219,17 @@ internal fun StandaloneMusicApp(
             return
         }
 
-        val currentIndex = recent.indexOfFirst { it.id == current.id }
-        val previous = if (currentIndex >= 0) {
-            recent.getOrNull(currentIndex + 1)
-        } else {
-            recent.firstOrNull { it.id != current.id }
+        // this session's own order first; past its start, Recently Played minus anything this
+        // session played, since a song played again jumps to the top of that list
+        val previous = history.stepBack(current)
+            ?: recent.firstOrNull { it.id != current.id && !history.playedThisSession(it.id) }
+        if (previous == null) {
+            player.seekTo(0L)
+            return
         }
-        if (previous != null) player.play(previous) else player.seekTo(0L)
+        // the song being left goes back to the front of Up next, so Next returns to it
+        replaceQueue(listOf(current) + queued.filterNot { it.id == current.id || it.id == previous.id })
+        player.play(previous)
     }
 
     DisposableEffect(queueTransport) {
