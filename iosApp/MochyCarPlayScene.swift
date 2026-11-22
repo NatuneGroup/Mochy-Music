@@ -30,6 +30,8 @@ final class MochyCarPlayScene: UIResponder, CPTemplateApplicationSceneDelegate {
         IosCarPlayBridgeKt.installIosCarPlayBridge()
         requestLibrary("saved")
         requestLibrary("recent")
+        // the phone may have changed songs while the car was away; ask for what's playing now
+        post("playbackRequest", payload: [:])
     }
 
     func templateApplicationScene(
