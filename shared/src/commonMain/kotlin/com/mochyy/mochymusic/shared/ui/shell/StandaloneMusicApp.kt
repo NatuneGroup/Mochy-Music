@@ -46,7 +46,6 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.emptyPreferences
 import com.mochyy.mochymusic.shared.library.LocalLibrary
 import com.mochyy.mochymusic.shared.lyrics.LyricsProvider
@@ -54,6 +53,7 @@ import com.mochyy.mochymusic.shared.lyrics.PlayerLyrics
 import com.mochyy.mochymusic.shared.lyrics.findPlayerLyrics
 import com.mochyy.mochymusic.shared.lyrics.suspendRunCatching
 import com.mochyy.mochymusic.shared.media.SearchSource
+import com.mochyy.mochymusic.shared.playback.PlaybackHistory
 import com.mochyy.mochymusic.shared.playback.PlayerController
 import com.mochyy.mochymusic.shared.playback.QueueTransport
 import com.mochyy.mochymusic.shared.resources.Res
@@ -72,9 +72,6 @@ import com.mochyy.mochymusic.shared.resources.lyrics_source
 import com.mochyy.mochymusic.shared.resources.lyrics_source_auto
 import com.mochyy.mochymusic.shared.resources.now_playing
 import com.mochyy.mochymusic.shared.resources.now_playing_settings
-import com.mochyy.mochymusic.shared.resources.settings_write_failed
-import com.mochyy.mochymusic.shared.resources.show_format_badge
-import com.mochyy.mochymusic.shared.resources.show_format_sample_rate
 import com.mochyy.mochymusic.shared.resources.queue
 import com.mochyy.mochymusic.shared.resources.queue_empty
 import com.mochyy.mochymusic.shared.resources.queue_load_failed
@@ -86,14 +83,16 @@ import com.mochyy.mochymusic.shared.resources.shell_credit
 import com.mochyy.mochymusic.shared.resources.your_library
 import com.mochyy.mochymusic.shared.resources.remove_from_queue
 import com.mochyy.mochymusic.shared.resources.skip_next
-import com.mochyy.mochymusic.shared.settings.PlaybackPreferenceKeys
 import com.mochyy.mochymusic.shared.settings.PlaybackPreferences
 import com.mochyy.mochymusic.shared.settings.UpcomingQueueRead
 import com.mochyy.mochymusic.shared.ui.player.MiniPlayerBar
 import com.mochyy.mochymusic.shared.ui.search.SearchScreen
+import com.mochyy.mochymusic.shared.ui.search.SearchState
 import com.mochyy.mochymusic.shared.ui.search.SongRow
-import com.mochyy.mochymusic.shared.ui.settings.PlaybackSettingRow
+import com.mochyy.mochymusic.shared.ui.settings.CodecBadgeRows
+import com.mochyy.mochymusic.shared.ui.settings.CodecBadgeWriter
 import com.mochyy.mochymusic.shared.ui.settings.SharedSettingsScreen
+import com.mochyy.mochymusic.shared.ui.settings.codecBadgePrefs
 import com.music.innertube.models.SongItem
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -126,15 +125,17 @@ internal fun StandaloneMusicApp(
     var showPlayer by remember { mutableStateOf(false) }
     var panel by remember { mutableStateOf(PlayerPanel.Queue) }
     val preferences by settings.values.collectAsState(initial = emptyPreferences())
-    val showBadge = preferences[PlaybackPreferenceKeys.showFormatBadge] ?: true
-    val showSampleRate = preferences[PlaybackPreferenceKeys.showSampleRate] ?: false
-    var settingsFailed by remember { mutableStateOf(false) }
+    val codecPrefs = codecBadgePrefs(preferences)
+    // built here, above the shell, so search and codec saves survive tab switches and resizes
     val scope = rememberCoroutineScope()
+    val searchState = remember(source, scope) { SearchState(source, scope) }
+    val codecBadge = remember(settings, scope) { CodecBadgeWriter(settings, scope) }
     val queueWriteMutex = remember { Mutex() }
     val saved by library.saved.collectAsState(initial = emptyList())
     val recent by library.recent.collectAsState(initial = emptyList())
     var libraryUpdateFailed by remember { mutableStateOf(false) }
     var lastRecorded by remember { mutableStateOf<String?>(null) }
+    val history = remember { PlaybackHistory() }
 
     DisposableEffect(player) {
         onDispose { player.preloadNext(null) }
@@ -164,21 +165,13 @@ internal fun StandaloneMusicApp(
     }
 
     val playingSong = playback.song
+    LaunchedEffect(playingSong?.id) {
+        playingSong?.let(history::started)
+    }
     LaunchedEffect(playingSong?.id, playback.isPlaying) {
         if (playingSong != null && playback.isPlaying && playingSong.id != lastRecorded) {
             suspendRunCatching { library.recordPlay(playingSong) }
                 .onSuccess { lastRecorded = playingSong.id }
-        }
-    }
-
-    fun setPreference(key: Preferences.Key<Boolean>, value: Boolean) {
-        scope.launch {
-            settingsFailed = try {
-                settings.set(key, value)
-                false
-            } catch (_: IOException) {
-                true
-            }
         }
     }
 
@@ -214,13 +207,17 @@ internal fun StandaloneMusicApp(
             return
         }
 
-        val currentIndex = recent.indexOfFirst { it.id == current.id }
-        val previous = if (currentIndex >= 0) {
-            recent.getOrNull(currentIndex + 1)
-        } else {
-            recent.firstOrNull { it.id != current.id }
+        // this session's own order first; past its start, Recently Played minus anything this
+        // session played, since a song played again jumps to the top of that list
+        val previous = history.stepBack(current)
+            ?: recent.firstOrNull { it.id != current.id && !history.playedThisSession(it.id) }
+        if (previous == null) {
+            player.seekTo(0L)
+            return
         }
-        if (previous != null) player.play(previous) else player.seekTo(0L)
+        // the song being left goes back to the front of Up next, so Next returns to it
+        replaceQueue(listOf(current) + queued.filterNot { it.id == current.id || it.id == previous.id })
+        player.play(previous)
     }
 
     DisposableEffect(queueTransport) {
@@ -252,13 +249,13 @@ internal fun StandaloneMusicApp(
         bottomBar = {
             MiniPlayerBar(
                 playback, player::togglePlayPause, player::seekTo, onOpen = { showPlayer = true },
-                showFormatBadge = showBadge, showSampleRate = showSampleRate,
+                showFormatBadge = codecPrefs.showBadge, showSampleRate = codecPrefs.showSampleRate,
             )
         },
     ) { tab ->
         when (tab) {
             ShellTab.Search -> SearchScreen(
-                source = source,
+                state = searchState,
                 onPlay = ::play,
                 queueEnabled = queueReady,
                 onQueue = { song ->
@@ -282,7 +279,7 @@ internal fun StandaloneMusicApp(
                 onRemove = { setSaved(it, false) },
                 updateFailed = libraryUpdateFailed,
             )
-            ShellTab.Settings -> SharedSettingsScreen(settings)
+            ShellTab.Settings -> SharedSettingsScreen(settings, codecBadge)
         }
         true
     }
@@ -317,15 +314,7 @@ internal fun StandaloneMusicApp(
                 }
                 val song = playback.song
                 if (panel == PlayerPanel.Settings) {
-                    PlaybackSettingRow(stringResource(Res.string.show_format_badge), showBadge) {
-                        setPreference(PlaybackPreferenceKeys.showFormatBadge, it)
-                    }
-                    PlaybackSettingRow(stringResource(Res.string.show_format_sample_rate), showSampleRate, enabled = showBadge) {
-                        setPreference(PlaybackPreferenceKeys.showSampleRate, it)
-                    }
-                    if (settingsFailed) {
-                        Text(stringResource(Res.string.settings_write_failed), color = MaterialTheme.colorScheme.error)
-                    }
+                    CodecBadgeRows(codecPrefs, codecBadge)
                 } else if (panel == PlayerPanel.Lyrics && song != null) {
                     LyricsPanel(song, playback.positionMs, lyricsProviders, player::seekTo)
                 } else {

@@ -28,11 +28,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,7 +40,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.mochyy.mochymusic.shared.media.SearchSource
 import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.shared.resources.add_to_queue
 import com.mochyy.mochymusic.shared.resources.search
@@ -53,49 +47,17 @@ import com.mochyy.mochymusic.shared.resources.search_failed
 import com.mochyy.mochymusic.shared.resources.search_hint
 import com.mochyy.mochymusic.shared.resources.search_no_results
 import com.music.innertube.models.SongItem
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
-private sealed interface SearchUi {
-    data object Idle : SearchUi
-    data object Loading : SearchUi
-    data class Results(val songs: List<SongItem>) : SearchUi
-    data object Failed : SearchUi
-}
-
+/** [state] lives in the app shell, so the query and results survive tab and layout changes. */
 @Composable
-fun SearchScreen(
-    source: SearchSource,
+internal fun SearchScreen(
+    state: SearchState,
     onPlay: (SongItem) -> Unit,
     onQueue: (SongItem) -> Unit,
     queueEnabled: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
-    var query by remember { mutableStateOf("") }
-    var ui by remember { mutableStateOf<SearchUi>(SearchUi.Idle) }
-    var job by remember { mutableStateOf<Job?>(null) }
-    val scope = rememberCoroutineScope()
-
-    // a search runs on the explicit action (Enter), not on every keystroke
-    fun submit() {
-        val q = query.trim()
-        if (q.isEmpty()) return
-        job?.cancel()
-        ui = SearchUi.Loading
-        job = scope.launch {
-            val result = source.searchSongs(q)
-            ensureActive()
-            ui = result.fold(
-                onSuccess = { SearchUi.Results(it) },
-                // a cancelled search unwinds instead of showing "couldn't search"
-                onFailure = { if (it is CancellationException) throw it else SearchUi.Failed },
-            )
-        }
-    }
-
     Column(modifier.fillMaxSize().padding(horizontal = 32.dp)) {
         Spacer(Modifier.height(32.dp))
         Text(stringResource(Res.string.search), style = MaterialTheme.typography.displaySmall, color = Color.White)
@@ -107,7 +69,7 @@ fun SearchScreen(
                 .background(Color.White.copy(alpha = 0.08f))
                 .padding(horizontal = 18.dp, vertical = 14.dp),
         ) {
-            if (query.isEmpty()) {
+            if (state.query.isEmpty()) {
                 Text(
                     stringResource(Res.string.search_hint),
                     style = MaterialTheme.typography.bodyLarge,
@@ -115,29 +77,29 @@ fun SearchScreen(
                 )
             }
             BasicTextField(
-                value = query,
-                onValueChange = { query = it },
+                value = state.query,
+                onValueChange = { state.query = it },
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.White),
                 cursorBrush = SolidColor(Color.White),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { submit() }, onDone = { submit() }),
+                keyboardActions = KeyboardActions(onSearch = { state.submit() }, onDone = { state.submit() }),
                 modifier = Modifier.fillMaxWidth(),
             )
         }
         Spacer(Modifier.height(16.dp))
-        when (val state = ui) {
+        when (val current = state.ui) {
             SearchUi.Idle -> Unit
             SearchUi.Loading -> Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(28.dp))
             }
             SearchUi.Failed -> Message(stringResource(Res.string.search_failed))
             is SearchUi.Results ->
-                if (state.songs.isEmpty()) {
+                if (current.songs.isEmpty()) {
                     Message(stringResource(Res.string.search_no_results))
                 } else {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        items(state.songs.distinctBy { it.id }, key = { it.id }) { song ->
+                        items(current.songs.distinctBy { it.id }, key = { it.id }) { song ->
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 SongRow(song, onClick = { onPlay(song) }, modifier = Modifier.weight(1f))
                                 val label = stringResource(Res.string.add_to_queue)

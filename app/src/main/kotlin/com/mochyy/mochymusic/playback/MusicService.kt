@@ -3072,6 +3072,12 @@ class MusicService :
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
         cpuWake.onPlayingChanged(isPlaying)
+        if (isPlaying) scheduleLyricsPreload()
+    }
+
+    // a song added, moved or removed changes what comes next, and so what's worth fetching
+    override fun onTimelineChanged(timeline: Timeline, reason: Int) {
+        if (reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED && player.isPlaying) scheduleLyricsPreload()
     }
 
     override fun onMediaItemTransition(
@@ -3863,11 +3869,18 @@ class MusicService :
     }
 
     // the next two queued songs' lyrics, so they're ready when they come up; only while playing on an unmetered network
+    private var lyricsPreload: Job? = null
+
+    private fun scheduleLyricsPreload() {
+        lyricsPreload?.cancel()
+        lyricsPreload = scope.launch { preloadQueuedLyrics() }
+    }
+
     private suspend fun preloadQueuedLyrics() {
-        if (!dataStore.get(PreloadQueueLyricsKey, false)) return
+        if (!dataStore.get(PreloadQueueLyricsKey, false) || !dataStore.get(ShowLyricsKey, false)) return
         if (!player.isPlaying || connectivityManager.isActiveNetworkMetered) return
-        val first = player.currentMediaItemIndex + 1
-        val queued = (first until minOf(first + 2, player.mediaItemCount)).mapNotNull { player.getMediaItemAt(it).metadata }
+        // the order they will actually play in, shuffle included
+        val queued = upcomingIndices(2).mapNotNull { player.getMediaItemAt(it).metadata }
         for (metadata in queued) {
             if (!player.isPlaying) return
             storeLyricsIfMissing(metadata)
