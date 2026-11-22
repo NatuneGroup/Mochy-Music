@@ -281,9 +281,6 @@ fun transitionModeOf(prefs: Preferences): CrossmixMode =
     prefs[CrossmixModeKey]?.let { saved -> runCatching { CrossmixMode.valueOf(saved) }.getOrNull() }
         ?: if (prefs[CrossfadeEnabledKey] == true) CrossmixMode.MANUAL_CROSSFADE else DefaultTransitionMode
 
-// set once the old plain-crossfade default has been moved over to crossmix, so it never happens twice
-val CrossmixDefaultMovedKey = booleanPreferencesKey("crossmixDefaultMoved")
-
 // how crossmix mixes: how long the two songs overlap, how far tempos may be stretched to meet, one style or the planner's pick, and whether the stunts are in the pool
 val CrossmixLengthKey = stringPreferencesKey("crossmixLength")
 val CrossmixTempoMatchKey = stringPreferencesKey("crossmixTempoMatch")
