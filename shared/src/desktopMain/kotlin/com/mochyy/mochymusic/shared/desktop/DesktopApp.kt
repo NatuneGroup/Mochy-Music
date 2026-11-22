@@ -6,6 +6,7 @@ package com.mochyy.mochymusic.shared.desktop
 
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -17,6 +18,7 @@ import com.mochyy.mochymusic.shared.desktop.media.createSystemMediaSession
 import com.mochyy.mochymusic.shared.desktop.playback.DesktopPlayerController
 import com.mochyy.mochymusic.shared.lyrics.playerLyricsProviders
 import com.mochyy.mochymusic.shared.playback.QueueTransport
+import com.mochyy.mochymusic.shared.playback.SharedQueue
 import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.shared.resources.app_name
 import com.mochyy.mochymusic.shared.resources.playback_failed
@@ -50,6 +52,15 @@ fun runDesktopApp(font: FontFamily) = application {
         }
     }
     DisposableEffect(http) { onDispose { http.close() } }
+    // Up next for the whole app, outside the window's UI, like the iOS runtime's
+    val queueScope = rememberCoroutineScope()
+    val queue = remember(player, queueTransport) {
+        SharedQueue(player, desktopPlaybackPreferences, desktopLibrary, queueTransport, queueScope)
+    }
+    DisposableEffect(queue) {
+        queue.start()
+        onDispose { queue.close() }
+    }
 
     Window(
         onCloseRequest = ::exitApplication,
@@ -63,7 +74,7 @@ fun runDesktopApp(font: FontFamily) = application {
                 providers,
                 desktopPlaybackPreferences,
                 desktopLibrary,
-                queueTransport = queueTransport,
+                queue = queue,
             )
         }
     }
