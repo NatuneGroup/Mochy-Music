@@ -751,6 +751,8 @@ enum class PlayerStyle(
     APPLE_MUSIC("Apple Music", "Apple Music"),
     // the queue as a vertical feed with a right rail of actions, the tiktok look
     TIKTOK("TikTok", "TikTok"),
+    // the looper: a flat dark stage, a wave seek bar and pill transport, the looper look
+    LOOPER("Looper", "Looper", PlayerStyleTraits(showsHandle = false)),
     METROLIST("Metrolist", "Metrolist", PlayerStyleTraits(turnable = true)),
     METROLIST_VINTAGE("Metrolist Vintage", "Vintage", PlayerStyleTraits(turnable = true)),
     // a look module's own player, drawn from its layout; kept last so the others keep their places, and only offered while such a module is on
@@ -792,6 +794,7 @@ enum class PlayerStyle(
             listOf(NAMIDA),
             listOf(APPLE_MUSIC),
             listOf(TIKTOK),
+            listOf(LOOPER),
             listOf(METROLIST, METROLIST_VINTAGE),
         )
     }
