@@ -127,7 +127,8 @@ class CarCatalog(
     }
 
     // what may start of a queue on this connection: the queue itself when all of it may, a shorter list when some of it may, null when none of it may
-    suspend fun allowedToPlay(queue: Queue): Queue? = io {
+    // [startIsChoice]: the start song was tapped, so leaving it out would start a different one; refuse instead
+    suspend fun allowedToPlay(queue: Queue, startIsChoice: Boolean = false): Queue? = io {
         if (!gate.blocksStreams()) return@io queue
         // a radio starts from youtube, so on mobile data it can't play at all
         if (queue !is ListQueue) return@io null
@@ -135,7 +136,9 @@ class CarCatalog(
         if (kept.isEmpty()) return@io null
         if (kept.size == queue.items.size) return@io queue
         val start = queue.items.getOrNull(queue.startIndex)?.mediaId
-        ListQueue(title = queue.title, items = kept, startIndex = kept.indexOfFirst { it.mediaId == start }.coerceAtLeast(0))
+        val keptStart = kept.indexOfFirst { it.mediaId == start }
+        if (startIsChoice && keptStart == -1) return@io null
+        ListQueue(title = queue.title, items = kept, startIndex = keptStart.coerceAtLeast(0))
     }
 
     suspend fun liked(): List<CarSong> = io { database.likedSongs(SongSortType.CREATE_DATE, true).first().map { it.toCarSong() } }

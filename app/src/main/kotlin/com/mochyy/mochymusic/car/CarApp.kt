@@ -54,10 +54,10 @@ class CarApp(
     }
 
     // plays what was picked and opens the player, the way android auto's own media apps do
-    fun play(queue: Queue) {
+    fun play(queue: Queue, startIsChoice: Boolean = false) {
         scope.launch {
             // on mobile data with streaming off, only what's on the phone may start
-            val allowed = catalog.allowedToPlay(queue)
+            val allowed = catalog.allowedToPlay(queue, startIsChoice)
             if (allowed == null) {
                 toast(string(R.string.car_metered_blocked))
                 return@launch
