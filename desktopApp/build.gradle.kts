@@ -39,7 +39,9 @@ compose.desktop {
             description = "Mochy music player for desktop, built on Mochy Music by realidkroo"
             copyright = "GPL-3.0; based on Mochy (github.com/realidkroo/mochy-music)"
             licenseFile.set(rootProject.file("LICENSE"))
-            modules("java.net.http", "jdk.unsupported", "jdk.crypto.ec")
+            // jdk.security.auth: dbus-java's SASL EXTERNAL login reads the user id through it; without it the
+            // Linux media session cannot connect in the packaged app (it then stays silently off).
+            modules("java.net.http", "jdk.unsupported", "jdk.crypto.ec", "jdk.security.auth")
             linux {
                 appCategory = "AudioVideo"
                 menuGroup = "AudioVideo"

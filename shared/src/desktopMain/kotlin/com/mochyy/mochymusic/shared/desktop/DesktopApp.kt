@@ -11,7 +11,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import com.mochyy.mochymusic.shared.desktop.media.DesktopMediaControls
 import com.mochyy.mochymusic.shared.desktop.media.YouTubeSearchSource
+import com.mochyy.mochymusic.shared.desktop.media.createSystemMediaSession
 import com.mochyy.mochymusic.shared.desktop.playback.DesktopPlayerController
 import com.mochyy.mochymusic.shared.lyrics.playerLyricsProviders
 import com.mochyy.mochymusic.shared.resources.Res
@@ -36,6 +38,15 @@ fun runDesktopApp(font: FontFamily) = application {
     }
     val providers = remember(http) { playerLyricsProviders(http) }
     DisposableEffect(player) { onDispose { player.release() } }
+    // OS media keys and widgets: started with the player, closed when the app exits.
+    val mediaControls = remember(player) { DesktopMediaControls(player) }
+    DisposableEffect(player, mediaControls) {
+        val session = createSystemMediaSession(player, mediaControls)
+        onDispose {
+            session.close()
+            mediaControls.close()
+        }
+    }
     DisposableEffect(http) { onDispose { http.close() } }
 
     Window(

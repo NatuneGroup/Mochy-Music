@@ -85,6 +85,9 @@ kotlin {
             implementation(libs.coil.network.okhttp)
             // stream resolution, the same library the Android app asks first
             implementation(libs.innertubex.desktop)
+            // Linux media session (MPRIS over the session D-Bus); loaded only on Linux, failures are ignored
+            implementation(libs.dbus.java.core)
+            implementation(libs.dbus.java.transport.native.unixsocket)
             // decoding: JavaCV's FFmpeg grabber without the rest of JavaCV's camera and vision stack
             implementation("org.bytedeco:javacv:${libs.versions.javacpp.get()}") { isTransitive = false }
             implementation(libs.javacpp)

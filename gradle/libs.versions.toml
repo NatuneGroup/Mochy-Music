@@ -47,6 +47,8 @@ innertubex = "v0.11.6"
 # FFmpeg through JavaCV for the desktop audio engine; ffmpegDesktop must be the FFmpeg build of this javacpp release
 javacpp = "1.5.14"
 ffmpegDesktop = "8.1.2-1.5.14"
+# dbus-java: pure-Java D-Bus client for the Linux MPRIS media session (MIT). Same release the Natune desktop uses.
+dbusJava = "5.1.1"
 tinypinyin = "2.0.3"
 protobuf = "4.33.5"
 protobufPlugin = "0.9.6"
@@ -165,6 +167,9 @@ innertubex = { module = "com.github.MetrolistGroup.innertubex:innertubex", versi
 # the same InnerTubeX release, its desktop JVM artifact
 innertubex-desktop = { module = "com.github.MetrolistGroup.innertubex:innertubex-desktop", version.ref = "innertubex" }
 javacpp = { module = "org.bytedeco:javacpp", version.ref = "javacpp" }
+# D-Bus for the Linux MPRIS session; the native-unixsocket transport talks to the session bus without JNI
+dbus-java-core = { module = "com.github.hypfvieh:dbus-java-core", version.ref = "dbusJava" }
+dbus-java-transport-native-unixsocket = { module = "com.github.hypfvieh:dbus-java-transport-native-unixsocket", version.ref = "dbusJava" }
 
 kuromoji-ipadic = { module = "com.atilika.kuromoji:kuromoji-ipadic", version.ref = "kuromojiIpadic" }
 tinypinyin = { module = "com.github.promeG:tinypinyin", version.ref = "tinypinyin" }
