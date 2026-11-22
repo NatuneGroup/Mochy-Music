@@ -723,6 +723,16 @@ class PlayerConnection(
         playWhenReady.value = newPlayWhenReady
     }
 
+    override fun onIsPlayingChanged(isPlaying: Boolean) {
+    }
+
+    override fun onPositionDiscontinuity(
+        oldPosition: Player.PositionInfo,
+        newPosition: Player.PositionInfo,
+        reason: Int,
+    ) {
+    }
+
     override fun onMediaItemTransition(
         mediaItem: MediaItem?,
         reason: Int,
