@@ -94,6 +94,7 @@ import com.mochyy.mochymusic.widget.WidgetLyricTracker
 import com.mochyy.mochymusic.constants.AudioNormalizationKey
 import com.mochyy.mochymusic.constants.AudioOffload
 import com.mochyy.mochymusic.constants.AudioQualityKey
+import com.mochyy.mochymusic.constants.EfficientDecodingKey
 import com.mochyy.mochymusic.constants.AutoDownloadOnLikeKey
 import com.mochyy.mochymusic.constants.AutoLoadMoreKey
 import com.mochyy.mochymusic.constants.AutoSkipNextOnErrorKey
@@ -1447,7 +1448,7 @@ class MusicService :
 
         val player = ExoPlayer.Builder(this)
             .setMediaSourceFactory(createMediaSourceFactory())
-            .setRenderersFactory(createRenderersFactory(eqProcessor, fxProcessors, silenceProcessor, hapticAudioProcessor, crossmixProcessor, replayGain, spectrum, inspector))
+            .setRenderersFactory(createRenderersFactory(eqProcessor, fxProcessors, silenceProcessor, hapticAudioProcessor, crossmixProcessor, replayGain, spectrum, inspector, runBlocking { dataStore.get(EfficientDecodingKey, true) }))
             .setHandleAudioBecomingNoisy(true)
             // local wake lock keeps background audio smooth without locking the wifi radio out of power-save mode
             .setWakeMode(C.WAKE_MODE_LOCAL)
@@ -4378,6 +4379,7 @@ class MusicService :
         replayGain: com.mochyy.mochymusic.eq.audio.ReplayGainTags,
         spectrum: com.mochyy.mochymusic.playback.audio.AudioSpectrum,
         inspector: StreamInspector,
+        efficientDecoding: Boolean,
     ) =
         object : DefaultRenderersFactory(this) {
             // the renderer below tells it which file each song comes from, so it can tell a lossless song from a lossy one
@@ -4422,6 +4424,8 @@ class MusicService :
                 out: ArrayList<Renderer>,
             ) {
                 val songs = router
+                // lossy youtube audio is decoded in this process first (see InProcessLossyRenderer); the phone's codec stays first for everything else
+                if (efficientDecoding) out.add(InProcessLossyRenderer(eventHandler, eventListener, audioSink, { songs?.sourceFormat = it }, { screenOn }, PositionWakeUs))
                 out.add(object : MediaCodecAudioRenderer(
                     context, codecAdapterFactory, mediaCodecSelector, enableDecoderFallback, eventHandler, eventListener, audioSink,
                 ) {
