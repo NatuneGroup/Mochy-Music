@@ -32,6 +32,7 @@ import com.mochyy.mochymusic.constants.VideoPictureInPictureKey
 import com.mochyy.mochymusic.playback.SponsorBlockDefaultCategories
 import com.mochyy.mochymusic.constants.MixWithOtherAppsKey
 import com.mochyy.mochymusic.constants.PauseOnMute
+import com.mochyy.mochymusic.constants.PauseOnMuteRecoveryDefault
 import com.mochyy.mochymusic.constants.PauseOnMuteRecoveryPercentKey
 import com.mochyy.mochymusic.constants.PersistentQueueKey
 import com.mochyy.mochymusic.constants.PersistentShuffleAcrossQueuesKey
@@ -73,7 +74,7 @@ private fun listeningItems(): List<SettingsItem> {
     val (mixWithOtherApps, onMixWithOtherAppsChange) = rememberPreference(MixWithOtherAppsKey, defaultValue = false)
     val (resumeOnBluetooth, onResumeOnBluetoothChange) = rememberPreference(ResumeOnBluetoothConnectKey, defaultValue = false)
     val (pauseOnMute, onPauseOnMuteChange) = rememberPreference(PauseOnMute, defaultValue = false)
-    val (muteRecoveryPercent, onMuteRecoveryPercentChange) = rememberPreference(PauseOnMuteRecoveryPercentKey, defaultValue = 30)
+    val (muteRecoveryPercent, onMuteRecoveryPercentChange) = rememberPreference(PauseOnMuteRecoveryPercentKey, defaultValue = PauseOnMuteRecoveryDefault)
     val (preloadQueueLyrics, onPreloadQueueLyricsChange) = rememberPreference(PreloadQueueLyricsKey, defaultValue = false)
     val (persistentQueue, onPersistentQueueChange) = rememberPreference(PersistentQueueKey, defaultValue = true)
     val (persistentShuffle, onPersistentShuffleChange) = rememberPreference(PersistentShuffleAcrossQueuesKey, defaultValue = true)

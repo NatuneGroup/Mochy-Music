@@ -151,6 +151,7 @@ import com.mochyy.mochymusic.constants.OfflineModeKey
 import com.mochyy.mochymusic.constants.PauseListenHistoryKey
 import com.mochyy.mochymusic.constants.MixWithOtherAppsKey
 import com.mochyy.mochymusic.constants.PauseOnMute
+import com.mochyy.mochymusic.constants.PauseOnMuteRecoveryDefault
 import com.mochyy.mochymusic.constants.PauseOnMuteRecoveryPercentKey
 import com.mochyy.mochymusic.constants.PersistentQueueKey
 import com.mochyy.mochymusic.constants.InfiniteQueueKey
@@ -3876,7 +3877,7 @@ class MusicService :
     // play pressed while pause-on-mute finds the device at zero: raise it to the recovery level so the song is heard
     private fun restoreMuteRecoveryVolume() {
         if (!::audioManager.isInitialized || !dataStore.get(PauseOnMute, false)) return
-        val percent = dataStore.get(PauseOnMuteRecoveryPercentKey, 0).coerceIn(0, 100)
+        val percent = dataStore.get(PauseOnMuteRecoveryPercentKey, PauseOnMuteRecoveryDefault).coerceIn(0, 100)
         if (percent == 0 || audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) > 0) return
         val max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
         if (max <= 0) return
