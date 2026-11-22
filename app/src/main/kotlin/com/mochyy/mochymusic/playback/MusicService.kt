@@ -2356,20 +2356,17 @@ class MusicService :
     }
 
     /** How many items the player will play after the current one (respecting shuffle), capped at [limit]. */
-    private fun upcomingItemCount(limit: Int): Int = upcomingIndices(limit).size
-
-    /** The indexes of the next [limit] items, in the order the player will play them (shuffle included). */
-    private fun upcomingIndices(limit: Int): List<Int> {
+    private fun upcomingItemCount(limit: Int): Int {
         val timeline = player.currentTimeline
-        if (timeline.isEmpty) return emptyList()
-        val found = ArrayList<Int>(limit)
+        if (timeline.isEmpty) return 0
         var index = player.currentMediaItemIndex
-        while (found.size < limit) {
+        var count = 0
+        while (count < limit) {
             index = timeline.getNextWindowIndex(index, REPEAT_MODE_OFF, player.shuffleModeEnabled)
             if (index == C.INDEX_UNSET) break
-            found += index
+            count++
         }
-        return found
+        return count
     }
 
     /**
