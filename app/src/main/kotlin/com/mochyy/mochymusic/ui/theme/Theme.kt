@@ -9,6 +9,8 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.SaverScope
@@ -51,16 +53,21 @@ fun MochyTheme(
 
     val font = InterFontFamily
     val typography = remember(font) { appTypography(font) }
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = typography,
-    ) {
-        ProvideTextStyle(
-            value = typography.bodyLarge,
-            content = content
-        )
+    CompositionLocalProvider(LocalChromeAccent provides accent) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = typography,
+        ) {
+            ProvideTextStyle(
+                value = typography.bodyLarge,
+                content = content
+            )
+        }
     }
 }
+
+/** the accent the chrome is using, or null for mochy's own grey; controls that take the accent read it */
+val LocalChromeAccent = compositionLocalOf<Color?> { null }
 
 fun Bitmap.extractThemeColor(): Color {
     val colorsToPopulation = Palette.from(this)
