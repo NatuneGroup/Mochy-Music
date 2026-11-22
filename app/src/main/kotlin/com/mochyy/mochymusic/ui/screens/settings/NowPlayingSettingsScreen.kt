@@ -32,6 +32,8 @@ import com.mochyy.mochymusic.constants.LyricsLineBounceKey
 import com.mochyy.mochymusic.constants.LyricsSoftLightKey
 import com.mochyy.mochymusic.constants.LyricsMotionStyle
 import com.mochyy.mochymusic.constants.LyricsMotionStyleKey
+import com.mochyy.mochymusic.constants.LyricsClickKey
+import com.mochyy.mochymusic.constants.LyricsScrollKey
 import com.mochyy.mochymusic.constants.LyricsRomanizeAsMainKey
 import com.mochyy.mochymusic.constants.LyricsRomanizeJapaneseKey
 import com.mochyy.mochymusic.constants.LyricsRomanizeKoreanKey
@@ -135,6 +137,8 @@ private fun lyricsItems(): List<SettingsItem> {
     val (youtubeTranslations, onYoutubeTranslationsChange) = rememberPreference(YouTubeCaptionTranslationKey, defaultValue = true)
     val (syncLyricsToVideo, onSyncLyricsToVideoChange) = rememberPreference(SyncLyricsToVideoKey, defaultValue = true)
     val (romanizeAsMain, onRomanizeAsMainChange) = rememberPreference(LyricsRomanizeAsMainKey, defaultValue = false)
+    val (tapToSeek, onTapToSeekChange) = rememberPreference(LyricsClickKey, defaultValue = true)
+    val (autoScroll, onAutoScrollChange) = rememberPreference(LyricsScrollKey, defaultValue = true)
     val (highBloom, onHighBloomChange) = rememberPreference(LyricsHighBloomKey, defaultValue = true)
     val (interludeDots, onInterludeDotsChange) = rememberPreference(LyricsInterludeDotsKey, defaultValue = true)
     val (lineBounce, onLineBounceChange) = rememberPreference(LyricsLineBounceKey, defaultValue = true)
@@ -169,6 +173,22 @@ private fun lyricsItems(): List<SettingsItem> {
             onCheckedChange = onRomanizeAsMainChange,
         ),
         *romanizeLanguageItems().toTypedArray(),
+        switchItem(
+            key = "Change lyrics on click",
+            title = stringResource(R.string.lyrics_click_change),
+            description = stringResource(R.string.lyrics_click_change_desc),
+            icon = painterResource(R.drawable.lyrics),
+            checked = tapToSeek,
+            onCheckedChange = onTapToSeekChange,
+        ),
+        switchItem(
+            key = "Auto scroll lyrics",
+            title = stringResource(R.string.lyrics_auto_scroll),
+            description = stringResource(R.string.lyrics_auto_scroll_desc),
+            icon = painterResource(R.drawable.lyrics),
+            checked = autoScroll,
+            onCheckedChange = onAutoScrollChange,
+        ),
         switchItem(
             key = "Show instrumental dots",
             title = stringResource(R.string.settings_lyrics_interlude_dots),

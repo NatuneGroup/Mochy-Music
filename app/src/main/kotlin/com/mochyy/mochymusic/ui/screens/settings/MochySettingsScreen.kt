@@ -229,6 +229,8 @@ private val SettingsIndex = listOf(
     SettingsEntry("Romanize Macedonian lyrics", "Now playing", NowPlayingSettingsRoute, "romanize romanise lyrics macedonian cyrillic macedonian", R.string.lyrics_romanize_macedonian),
     SettingsEntry("Romanize Hindi lyrics", "Now playing", NowPlayingSettingsRoute, "romanize romanise lyrics hindi devanagari hindi", R.string.lyrics_romanize_hindi),
     SettingsEntry("Romanize Punjabi lyrics", "Now playing", NowPlayingSettingsRoute, "romanize romanise lyrics punjabi gurmukhi punjabi", R.string.lyrics_romanize_punjabi),
+    SettingsEntry("Change lyrics on click", "Now playing", NowPlayingSettingsRoute, "lyrics tap seek jump line click", R.string.lyrics_click_change),
+    SettingsEntry("Auto scroll lyrics", "Now playing", NowPlayingSettingsRoute, "lyrics scroll follow current line back", R.string.lyrics_auto_scroll),
     SettingsEntry("High quality bloom", "Now playing", NowPlayingSettingsRoute, "lyrics bloom quality extra soft pass glow"),
     SettingsEntry("Tinted lyrics", "Now playing", NowPlayingSettingsRoute, "lyrics soft light blend tint colour color cover inactive grey gray lines"),
     SettingsEntry("Floating lyrics overlay bubble", "Now playing", NowPlayingSettingsRoute, "floating lyrics overlay bubble pill other apps draw over", R.string.settings_floating_lyrics),
