@@ -53,6 +53,7 @@ import com.mochyy.mochymusic.shared.resources.shell_coming_body
 import com.mochyy.mochymusic.shared.resources.shell_coming_title
 import com.mochyy.mochymusic.shared.resources.shell_credit
 import com.mochyy.mochymusic.shared.resources.your_library
+import com.mochyy.mochymusic.shared.ui.theme.LocalMochyAccent
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
@@ -87,7 +88,7 @@ fun MochyShell(
     content: @Composable (ShellTab) -> Boolean = { false },
 ) {
     var selected by rememberSaveable { mutableStateOf(initialTab) }
-    BoxWithConstraints(modifier.fillMaxSize().background(Color.Black)) {
+    BoxWithConstraints(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         val wide = maxWidth >= RailBreakpoint
         val screen: @Composable (Modifier) -> Unit = { m ->
             Box(m) { if (!content(selected)) ComingSoon(selected) }
@@ -127,8 +128,8 @@ fun MochyShell(
 
 @Composable
 private fun TabButton(tab: ShellTab, active: Boolean, onClick: () -> Unit) {
-    // the Android bar's look: white when chosen, a dimmed white otherwise, no ripple
-    val tint = if (active) Color.White else Color.White.copy(alpha = 0.5f)
+    val onSurface = MaterialTheme.colorScheme.onSurface
+    val tint = if (active) LocalMochyAccent.current ?: onSurface else onSurface.copy(alpha = 0.5f)
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier

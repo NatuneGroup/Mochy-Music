@@ -4,6 +4,7 @@
 package com.mochyy.mochymusic.shared.ui.theme
 
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.darkColorScheme
@@ -98,7 +99,9 @@ fun MochySharedTheme(
     val typography = remember(font) { mochyTypography(font) }
     CompositionLocalProvider(LocalMochyAccent provides accent?.let { colorScheme.primary }) {
         MaterialTheme(colorScheme = colorScheme, typography = typography) {
-            ProvideTextStyle(value = typography.bodyLarge, content = content)
+            CompositionLocalProvider(LocalContentColor provides colorScheme.onSurface) {
+                ProvideTextStyle(value = typography.bodyLarge, content = content)
+            }
         }
     }
 }
