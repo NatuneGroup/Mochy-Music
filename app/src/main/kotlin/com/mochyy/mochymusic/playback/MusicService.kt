@@ -3065,11 +3065,14 @@ class MusicService :
 
     private var previousMediaItemIndex = C.INDEX_UNSET
 
+    private val sponsorBlock by lazy { SponsorBlockSkipper(this) }
+
     override fun onMediaItemTransition(
         mediaItem: MediaItem?,
         reason: Int,
     ) {
         clearStreamFailure()
+        sponsorBlock.onItemChanged(player, mediaItem, scope)
         if (!promotingCrossmix) crossmixDirector.onItemChanged()
 
         if (!promotingCrossmix && !isCrossfading) {
@@ -4627,6 +4630,7 @@ class MusicService :
         playerSilenceProcessors.remove(player)
         playerReplayGain.remove(player)
 
+        sponsorBlock.cancel()
         player.release()
         super.onDestroy()
     }

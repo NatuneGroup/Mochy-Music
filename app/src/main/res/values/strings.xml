@@ -519,4 +519,18 @@
     <string name="settings_queue_add_in_order_desc">Songs you play next keep the order you added them in</string>
     <string name="settings_queue_lock">Lock queue</string>
     <string name="settings_queue_lock_desc">No removing, moving or swiping songs in the queue</string>
+    <string name="settings_section_sponsorblock">SponsorBlock</string>
+    <string name="settings_sponsorblock">Skip non-music parts</string>
+    <string name="settings_sponsorblock_desc">Skips parts of YouTube songs that other viewers marked on SponsorBlock</string>
+    <string name="settings_sponsorblock_detail">Only the song\'s video ID is sent to sponsor.ajay.app to look these up</string>
+    <string name="settings_sponsorblock_offtopic">Non-music sections</string>
+    <string name="settings_sponsorblock_offtopic_desc">Parts of a music video that aren\'t the song</string>
+    <string name="settings_sponsorblock_sponsor">Sponsor reads</string>
+    <string name="settings_sponsorblock_sponsor_desc">Paid promotions read out in the song</string>
+    <string name="settings_sponsorblock_selfpromo">Self-promotion</string>
+    <string name="settings_sponsorblock_selfpromo_desc">Plugs for the artist\'s own channels or merch</string>
+    <string name="settings_sponsorblock_intro">Intros</string>
+    <string name="settings_sponsorblock_intro_desc">Lead-in before the song starts</string>
+    <string name="settings_sponsorblock_outro">Outros</string>
+    <string name="settings_sponsorblock_outro_desc">Credits or chatter after the song ends</string>
 </resources>
