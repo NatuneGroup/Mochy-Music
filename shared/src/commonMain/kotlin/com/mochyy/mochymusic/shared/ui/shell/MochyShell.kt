@@ -45,7 +45,10 @@ import com.mochyy.mochymusic.shared.resources.nav_lib
 import com.mochyy.mochymusic.shared.resources.nav_lib_fill
 import com.mochyy.mochymusic.shared.resources.nav_search
 import com.mochyy.mochymusic.shared.resources.nav_search_filled
+import com.mochyy.mochymusic.shared.resources.nav_settings
+import com.mochyy.mochymusic.shared.resources.nav_settings_filled
 import com.mochyy.mochymusic.shared.resources.search
+import com.mochyy.mochymusic.shared.resources.settings
 import com.mochyy.mochymusic.shared.resources.shell_coming_body
 import com.mochyy.mochymusic.shared.resources.shell_coming_title
 import com.mochyy.mochymusic.shared.resources.shell_credit

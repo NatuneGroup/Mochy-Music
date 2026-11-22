@@ -286,9 +286,9 @@ class GeniusLyricsProvider(
 
         val NOISE_BLOCKS =
             listOf(
-                Regex("""<script\b.*?</script\s*>""", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)),
-                Regex("""<style\b.*?</style\s*>""", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)),
-                Regex("""<button\b.*?</button\s*>""", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)),
+                Regex("""<script\b[\s\S]*?</script\s*>""", RegexOption.IGNORE_CASE),
+                Regex("""<style\b[\s\S]*?</style\s*>""", RegexOption.IGNORE_CASE),
+                Regex("""<button\b[\s\S]*?</button\s*>""", RegexOption.IGNORE_CASE),
             )
         val BR_TAG = Regex("""<br\s*/?>""", RegexOption.IGNORE_CASE)
         val PARAGRAPH_TAG = Regex("""</?p\b[^>]*>""", RegexOption.IGNORE_CASE)
