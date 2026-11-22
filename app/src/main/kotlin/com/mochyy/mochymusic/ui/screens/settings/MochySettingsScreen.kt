@@ -109,6 +109,10 @@ private val LocalizedSettingsTitles = mapOf(
     "Local song auto metadata" to R.string.settings_local_auto_metadata,
     "Keep shuffle on" to R.string.settings_persistent_shuffle,
     "Preload next song" to R.string.playback_preload_next,
+    "Preload queue lyrics" to R.string.playback_preload_lyrics,
+    "Mute recovery volume" to R.string.settings_mute_recovery_volume,
+    "Hide player thumbnail" to R.string.settings_hide_player_thumbnail,
+    "Swipe up opens the queue" to R.string.customise_swipe_up_queue,
     "Audio offload" to R.string.playback_audio_offload,
     "Efficient decoding" to R.string.playback_efficient_decoding,
     "Android Auto" to R.string.car_settings_title,
@@ -195,6 +199,7 @@ private val SettingsIndex = listOf(
     SettingsEntry("Swipe right", "Customisation", "customisation_settings", "slide song list queue library download play next playlist details action"),
     SettingsEntry("Swipe left", "Customisation", "customisation_settings", "slide song list queue library download play next playlist details action"),
     SettingsEntry("Swipe down anywhere to close", "Customisation", "customisation_settings", "player close dismiss swipe down pull gesture anywhere"),
+    SettingsEntry("Swipe up opens the queue", "Customisation", "customisation_settings", "swipe up queue lyrics open player gesture", R.string.customise_swipe_up_queue),
     SettingsEntry("Open with your finger", "Customisation", "customisation_settings", "player open swipe up mini player follow finger speed velocity gesture"),
 
     // App behaviour
@@ -226,6 +231,8 @@ private val SettingsIndex = listOf(
     SettingsEntry("Play alongside other apps", "Playback", PlaybackSettingsRoute, "audio focus mix pause other app video game sound together"),
     SettingsEntry("Resume on Bluetooth connection", "Playback", PlaybackSettingsRoute, "bluetooth headphones earbuds car connect resume auto play start", R.string.playback_resume_bluetooth),
     SettingsEntry("Pause when muted", "Playback", PlaybackSettingsRoute, "pause mute volume silent zero off automatic", R.string.pause_music_when_media_is_muted),
+    SettingsEntry("Mute recovery volume", "Playback", PlaybackSettingsRoute, "pause mute recovery volume restore play zero silent percent", R.string.settings_mute_recovery_volume),
+    SettingsEntry("Preload queue lyrics", "Playback", PlaybackSettingsRoute, "lyrics preload prefetch next queued songs unmetered wifi", R.string.playback_preload_lyrics),
     SettingsEntry("Save Player's last state", "Playback", PlaybackSettingsRoute, "persistent queue restore track state"),
     SettingsEntry("Infinite queue", "Playback", PlaybackSettingsRoute, "autoplay radio related endless queue songs keep going never stop", R.string.playback_infinite_queue),
     SettingsEntry("Keep CPU awake during playback", "Playback", PlaybackSettingsRoute, "cpu wake lock awake screen off background sleep stop music battery", R.string.settings_keep_cpu_awake),
@@ -248,6 +255,7 @@ private val SettingsIndex = listOf(
 
     // Now playing
     SettingsEntry("Now playing", "Now playing", NowPlayingSettingsRoute, "player lyrics video canvas badge format"),
+    SettingsEntry("Hide player thumbnail", "Now playing", NowPlayingSettingsRoute, "hide thumbnail artwork cover album art logo player", R.string.settings_hide_player_thumbnail),
     SettingsEntry("Audio format badge", "Now playing", NowPlayingSettingsRoute, "format codec opus aac flac badge title quality"),
     SettingsEntry("Show sample rate", "Now playing", NowPlayingSettingsRoute, "sample rate khz hz format badge quality"),
     SettingsEntry("Translations from YouTube", "Now playing", NowPlayingSettingsRoute, "captions translate lyrics language"),

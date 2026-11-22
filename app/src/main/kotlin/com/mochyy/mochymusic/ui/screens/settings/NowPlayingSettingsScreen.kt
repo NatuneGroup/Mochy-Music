@@ -48,6 +48,7 @@ import com.mochyy.mochymusic.constants.LyricsRomanizeMacedonianKey
 import com.mochyy.mochymusic.constants.LyricsRomanizeHindiKey
 import com.mochyy.mochymusic.constants.LyricsRomanizePunjabiKey
 import com.mochyy.mochymusic.constants.PlayVideoBackgroundKey
+import com.mochyy.mochymusic.constants.HidePlayerThumbnailKey
 import com.mochyy.mochymusic.constants.ShowFormatBadgeKey
 import com.mochyy.mochymusic.constants.ShowFormatBitDepthKey
 import com.mochyy.mochymusic.constants.ShowFormatSampleRateKey
@@ -99,10 +100,19 @@ fun NowPlayingSettingsScreen(navController: NavController) {
 
 @Composable
 private fun badgeItems(): List<SettingsItem> {
+    val (hidePlayerThumbnail, onHidePlayerThumbnailChange) = rememberPreference(HidePlayerThumbnailKey, defaultValue = false)
     val (formatBadge, onFormatBadgeChange) = rememberPreference(ShowFormatBadgeKey, defaultValue = true)
     val (formatSampleRate, onFormatSampleRateChange) = rememberPreference(ShowFormatSampleRateKey, defaultValue = false)
     val (formatBitDepth, onFormatBitDepthChange) = rememberPreference(ShowFormatBitDepthKey, defaultValue = false)
     return listOf(
+        switchItem(
+            key = "Hide player thumbnail",
+            title = stringResource(R.string.settings_hide_player_thumbnail),
+            description = stringResource(R.string.settings_hide_player_thumbnail_desc),
+            icon = painterResource(R.drawable.hide_image),
+            checked = hidePlayerThumbnail,
+            onCheckedChange = onHidePlayerThumbnailChange,
+        ),
         switchItem(
             key = "Audio format badge",
             title = stringResource(R.string.appearance_format_badge),

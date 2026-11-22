@@ -17,6 +17,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -123,6 +124,7 @@ import com.mochyy.mochymusic.constants.DisableBlurKey
 import com.mochyy.mochymusic.constants.ForceYtBackdropBlur1500Key
 import com.mochyy.mochymusic.constants.PlayVideoBackgroundKey
 import com.mochyy.mochymusic.constants.DisableVideoAutoplayKey
+import com.mochyy.mochymusic.constants.HidePlayerThumbnailKey
 import com.mochyy.mochymusic.constants.PlayerBackgroundStyle
 import com.mochyy.mochymusic.constants.PlayerCoverStyle
 import com.mochyy.mochymusic.constants.PlayerCoverZoomKey
@@ -1434,6 +1436,18 @@ private fun MiniSongLines(title: String, artist: String, album: String, modifier
 
 @Composable
 private fun CoverPicture(thumbnailUrl: String?, modifier: Modifier = Modifier, zoom: (() -> Float)? = null) {
+    val (hidePlayerThumbnail) = rememberPreference(HidePlayerThumbnailKey, defaultValue = false)
+    // the mochy mark stands in for the cover; the cover's own box keeps its size and place
+    if (hidePlayerThumbnail) {
+        Box(modifier = modifier, contentAlignment = Alignment.Center) {
+            Image(
+                painter = painterResource(R.drawable.ic_mochy_mark),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(0.4f),
+            )
+        }
+        return
+    }
     val context = LocalContext.current
     val imageRequest = remember(thumbnailUrl) {
         ImageRequest.Builder(context)
