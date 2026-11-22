@@ -1,5 +1,7 @@
 package com.mochyy.mochymusic.shared.ios
 
+import kotlinx.coroutines.MainScope
+import com.mochyy.mochymusic.shared.playback.SharedQueue
 import com.mochyy.mochymusic.shared.lyrics.playerLyricsProviders
 import com.mochyy.mochymusic.shared.lyrics.LyricsProvider
 import com.mochyy.mochymusic.shared.playback.QueueTransport
@@ -13,5 +15,9 @@ internal object IosPlaybackRuntime {
     val queueTransport = QueueTransport()
 
     val player by lazy { IosPlayerController(youtube, queueTransport) { playbackFailedText } }
+    /** Up next for the whole app; started by whichever comes first, the phone UI or a CarPlay scene. */
+    val queue by lazy {
+        SharedQueue(player, iosPlaybackPreferences, library, queueTransport, MainScope()).also { it.start() }
+    }
     val lyricsProviders: List<LyricsProvider> by lazy { playerLyricsProviders(youtube.http) }
 }

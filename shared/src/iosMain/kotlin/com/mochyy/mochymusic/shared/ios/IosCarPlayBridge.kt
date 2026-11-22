@@ -60,6 +60,8 @@ private object IosCarPlayBridge {
         val runtime = IosPlaybackRuntime
         val currentLibrary = runtime.library
         val currentPlayer = runtime.player
+        // a CarPlay-only launch still restores Up next and moves through it as songs end
+        runtime.queue
         library = currentLibrary
         player = currentPlayer
 
@@ -141,7 +143,8 @@ private object IosCarPlayBridge {
                     publishPlayResult(requestId, ready = false)
                     return@launch
                 }
-                activePlayer.play(song)
+                // through the queue, as a tap on the phone does: a song picked from Up next leaves it
+                IosPlaybackRuntime.queue.play(song)
                 val result = withTimeoutOrNull(45_000L) {
                     activePlayer.state.first { state ->
                         state.song?.id == songId && state.error != null ||

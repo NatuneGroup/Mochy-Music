@@ -28,9 +28,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -53,9 +51,8 @@ import com.mochyy.mochymusic.shared.lyrics.PlayerLyrics
 import com.mochyy.mochymusic.shared.lyrics.findPlayerLyrics
 import com.mochyy.mochymusic.shared.lyrics.suspendRunCatching
 import com.mochyy.mochymusic.shared.media.SearchSource
-import com.mochyy.mochymusic.shared.playback.PlaybackHistory
+import com.mochyy.mochymusic.shared.playback.SharedQueue
 import com.mochyy.mochymusic.shared.playback.PlayerController
-import com.mochyy.mochymusic.shared.playback.QueueTransport
 import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.shared.resources.library_empty
 import com.mochyy.mochymusic.shared.resources.library_filter_hint
@@ -84,7 +81,6 @@ import com.mochyy.mochymusic.shared.resources.your_library
 import com.mochyy.mochymusic.shared.resources.remove_from_queue
 import com.mochyy.mochymusic.shared.resources.skip_next
 import com.mochyy.mochymusic.shared.settings.PlaybackPreferences
-import com.mochyy.mochymusic.shared.settings.UpcomingQueueRead
 import com.mochyy.mochymusic.shared.ui.player.MiniPlayerBar
 import com.mochyy.mochymusic.shared.ui.search.SearchScreen
 import com.mochyy.mochymusic.shared.ui.search.SearchState
@@ -94,16 +90,10 @@ import com.mochyy.mochymusic.shared.ui.settings.CodecBadgeWriter
 import com.mochyy.mochymusic.shared.ui.settings.SharedSettingsScreen
 import com.mochyy.mochymusic.shared.ui.settings.codecBadgePrefs
 import com.music.innertube.models.SongItem
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import okio.IOException
 import org.jetbrains.compose.resources.stringResource
 
 private enum class PlayerPanel { Queue, Lyrics, Settings }
-private const val PreloadStartDelayMs = 2_000L
-private const val PreviousRestartThresholdMs = 3_000L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -114,14 +104,14 @@ internal fun StandaloneMusicApp(
     settings: PlaybackPreferences,
     library: LocalLibrary,
     modifier: Modifier = Modifier,
-    queueTransport: QueueTransport? = null,
+    queue: SharedQueue,
 ) {
     val playback by player.state.collectAsState()
-    var queued by remember { mutableStateOf<List<SongItem>>(emptyList()) }
-    val storedQueue by settings.upcomingQueue.collectAsState(initial = UpcomingQueueRead.Loading)
-    var queueReady by remember { mutableStateOf(false) }
-    var queueStorageUnavailable by remember { mutableStateOf(false) }
-    var queueWriteFailed by remember { mutableStateOf(false) }
+    // Up next lives in the app's SharedQueue, not here, so CarPlay and the media controls share it
+    val queued by queue.upcoming.collectAsState()
+    val queueReady by queue.ready.collectAsState()
+    val queueStorageUnavailable by queue.storageUnavailable.collectAsState()
+    val queueWriteFailed by queue.writeFailed.collectAsState()
     var showPlayer by remember { mutableStateOf(false) }
     var panel by remember { mutableStateOf(PlayerPanel.Queue) }
     val preferences by settings.values.collectAsState(initial = emptyPreferences())
@@ -130,118 +120,14 @@ internal fun StandaloneMusicApp(
     val scope = rememberCoroutineScope()
     val searchState = remember(source, scope) { SearchState(source, scope) }
     val codecBadge = remember(settings, scope) { CodecBadgeWriter(settings, scope) }
-    val queueWriteMutex = remember { Mutex() }
     val saved by library.saved.collectAsState(initial = emptyList())
     val recent by library.recent.collectAsState(initial = emptyList())
     var libraryUpdateFailed by remember { mutableStateOf(false) }
-    var lastRecorded by remember { mutableStateOf<String?>(null) }
-    val history = remember { PlaybackHistory() }
-
-    DisposableEffect(player) {
-        onDispose { player.preloadNext(null) }
-    }
-
-    LaunchedEffect(storedQueue) {
-        if (!queueReady) {
-            when (val result = storedQueue) {
-                UpcomingQueueRead.Loading -> Unit
-                is UpcomingQueueRead.Loaded -> {
-                    queued = result.songs
-                    queueStorageUnavailable = false
-                    queueReady = true
-                }
-                UpcomingQueueRead.Unavailable -> {
-                    queueStorageUnavailable = true
-                    queueReady = true
-                }
-            }
-        }
-    }
 
     fun setSaved(song: SongItem, save: Boolean) {
         scope.launch {
             libraryUpdateFailed = suspendRunCatching { library.setSaved(song, save) }.isFailure
         }
-    }
-
-    val playingSong = playback.song
-    LaunchedEffect(playingSong?.id) {
-        playingSong?.let(history::started)
-    }
-    LaunchedEffect(playingSong?.id, playback.isPlaying) {
-        if (playingSong != null && playback.isPlaying && playingSong.id != lastRecorded) {
-            suspendRunCatching { library.recordPlay(playingSong) }
-                .onSuccess { lastRecorded = playingSong.id }
-        }
-    }
-
-    fun replaceQueue(next: List<SongItem>) {
-        if (next == queued) return
-        queued = next
-        if (!queueReady || queueStorageUnavailable) return
-        scope.launch {
-            queueWriteMutex.withLock {
-                queueWriteFailed = try {
-                    settings.setUpcomingQueue(next)
-                    false
-                } catch (_: IOException) {
-                    true
-                }
-            }
-        }
-    }
-
-    fun play(song: SongItem) {
-        replaceQueue(queued.filterNot { it.id == song.id })
-        player.play(song)
-    }
-
-    fun playNext() {
-        queued.firstOrNull()?.let(::play)
-    }
-
-    fun playPrevious() {
-        val current = playback.song ?: return
-        if (playback.positionMs > PreviousRestartThresholdMs) {
-            player.seekTo(0L)
-            return
-        }
-
-        // this session's own order first; past its start, Recently Played minus anything this
-        // session played, since a song played again jumps to the top of that list
-        val previous = history.stepBack(current)
-            ?: recent.firstOrNull { it.id != current.id && !history.playedThisSession(it.id) }
-                ?.also(history::startedBefore)
-        if (previous == null) {
-            player.seekTo(0L)
-            return
-        }
-        // the song being left goes back to the front of Up next, so Next returns to it
-        replaceQueue(listOf(current) + queued.filterNot { it.id == current.id || it.id == previous.id })
-        player.play(previous)
-    }
-
-    DisposableEffect(queueTransport) {
-        val unbind = queueTransport?.bind(::playNext, ::playPrevious)
-        onDispose { unbind?.invoke() }
-    }
-
-    SideEffect {
-        queueTransport?.setCanGoNext(queueReady && queued.isNotEmpty())
-    }
-
-    LaunchedEffect(playback.hasEnded) {
-        if (playback.hasEnded) playNext()
-    }
-
-    val nextSong = queued.firstOrNull()
-    LaunchedEffect(player, queueReady, playback.isPlaying, playback.isLoading, nextSong?.id) {
-        // A restored queue stays offline until playback actually gets underway; pauses and queue
-        // changes also cancel any pending or completed prefetch before choosing the new head.
-        player.preloadNext(null)
-        if (!queueReady || !playback.isPlaying || playback.isLoading || nextSong == null) return@LaunchedEffect
-        delay(PreloadStartDelayMs)
-        player.preloadNext(nextSong)
     }
 
     MochyShell(
@@ -257,10 +143,10 @@ internal fun StandaloneMusicApp(
         when (tab) {
             ShellTab.Search -> SearchScreen(
                 state = searchState,
-                onPlay = ::play,
+                onPlay = queue::play,
                 queueEnabled = queueReady,
                 onQueue = { song ->
-                    if (queueReady && queued.none { it.id == song.id }) replaceQueue(queued + song)
+                    queue.add(song)
                     panel = PlayerPanel.Queue
                     showPlayer = true
                 },
@@ -269,14 +155,14 @@ internal fun StandaloneMusicApp(
                 title = stringResource(Res.string.recently_played),
                 emptyMessage = stringResource(Res.string.recently_played_empty),
                 songs = recent,
-                onPlay = ::play,
+                onPlay = queue::play,
                 credit = stringResource(Res.string.shell_credit),
             )
             ShellTab.Library -> LibrarySongs(
                 title = stringResource(Res.string.your_library),
                 emptyMessage = stringResource(Res.string.library_empty),
                 songs = saved,
-                onPlay = ::play,
+                onPlay = queue::play,
                 onRemove = { setSaved(it, false) },
                 updateFailed = libraryUpdateFailed,
             )
@@ -334,14 +220,14 @@ internal fun StandaloneMusicApp(
                         if (queued.isEmpty()) {
                             Text(stringResource(Res.string.queue_empty))
                         } else {
-                            TextButton(onClick = ::playNext) { Text(stringResource(Res.string.skip_next)) }
+                            TextButton(onClick = queue::playNext) { Text(stringResource(Res.string.skip_next)) }
                             LazyColumn(Modifier.fillMaxWidth().heightIn(max = 320.dp)) {
                                 items(queued, key = { it.id }) { song ->
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        SongRow(song, onClick = { play(song) }, modifier = Modifier.weight(1f))
+                                        SongRow(song, onClick = { queue.play(song) }, modifier = Modifier.weight(1f))
                                         val label = stringResource(Res.string.remove_from_queue)
                                         IconButton(
-                                            onClick = { replaceQueue(queued.filterNot { it.id == song.id }) },
+                                            onClick = { queue.remove(song) },
                                             modifier = Modifier.semantics { contentDescription = label },
                                         ) { Text("−", style = MaterialTheme.typography.headlineSmall) }
                                     }
