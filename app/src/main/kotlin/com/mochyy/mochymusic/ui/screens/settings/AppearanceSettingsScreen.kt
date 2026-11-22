@@ -156,6 +156,7 @@ private fun fontItems(): List<SettingsItem> {
     val scope = rememberCoroutineScope()
     val tooBig = stringResource(R.string.settings_custom_font_too_big)
     val notAFont = stringResource(R.string.settings_custom_font_unreadable)
+    val notSaved = stringResource(R.string.settings_custom_font_not_saved)
     fun picker(part: CustomFont.Part) = { uri: Uri? ->
         if (uri != null) {
             scope.launch {
@@ -163,6 +164,7 @@ private fun fontItems(): List<SettingsItem> {
                     is CustomFont.Picked.Done -> Unit
                     CustomFont.Picked.TooBig -> TopToaster.error(tooBig)
                     CustomFont.Picked.NotAFont -> TopToaster.error(notAFont)
+                    CustomFont.Picked.NotSaved -> TopToaster.error(notSaved)
                 }
             }
         }

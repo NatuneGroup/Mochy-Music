@@ -16,6 +16,8 @@ import com.mochyy.mochymusic.constants.CustomBoldFontKey
 import com.mochyy.mochymusic.constants.CustomFontKey
 import com.mochyy.mochymusic.utils.dataStore
 import java.io.File
+import okio.FileSystem
+import okio.Path.Companion.toOkioPath
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -48,6 +50,8 @@ object CustomFont {
         data class Done(val family: FontFamily) : Picked
         data object TooBig : Picked
         data object NotAFont : Picked
+        /** it is a font, but it couldn't be saved into the app; the font from before is still on */
+        data object NotSaved : Picked
     }
 
     /** the mime types the picker offers; many pickers tag a .ttf as octet-stream */
@@ -58,11 +62,12 @@ object CustomFont {
 
     private fun dir(context: Context) = File(context.filesDir, "fonts")
 
+    // which files count as installed, and how a new one is swapped in, lives in shared CustomFontFiles (tested there)
     private fun file(context: Context, part: Part): File? =
-        dir(context).listFiles()?.firstOrNull { it.isFile && it.nameWithoutExtension == part.stem && it.extension in FontExtensions }
+        CustomFontFiles.installed(FileSystem.SYSTEM, dir(context).toOkioPath(), part.stem)?.toFile()
 
     private fun drop(context: Context, part: Part) {
-        dir(context).listFiles()?.filter { it.nameWithoutExtension == part.stem }?.forEach { it.delete() }
+        CustomFontFiles.remove(FileSystem.SYSTEM, dir(context).toOkioPath(), part.stem)
     }
 
     /** the saved custom font, loaded; null when there is none or it no longer loads */
@@ -85,9 +90,9 @@ object CustomFont {
             }
         }
         if (!customFontSizeAllowed(size)) return@withContext Picked.TooBig
-        val extension = name?.substringAfterLast('.', "")?.lowercase()?.takeIf { it in FontExtensions } ?: "ttf"
+        val extension = name?.substringAfterLast('.', "")?.lowercase()?.takeIf { it in CustomFontFiles.Extensions } ?: "ttf"
         val folder = dir(context).apply { mkdirs() }
-        val incoming = File(folder, "${part.stem}.incoming")
+        val incoming = CustomFontFiles.staging(folder.toOkioPath(), part.stem).toFile()
         // the size a provider reports can be missing or wrong, so the copy itself stops past the limit
         val copied = runCatching {
             resolver.openInputStream(uri)?.use { input ->
@@ -114,14 +119,16 @@ object CustomFont {
             incoming.delete()
             return@withContext Picked.NotAFont
         }
-        drop(context, part)
+        // a bold needs the regular it goes with
+        if (part == Part.Bold && file(context, Part.Regular) == null) {
+            incoming.delete()
+            return@withContext Picked.NotSaved
+        }
+        // the old file stays until the new one is in place, so a failed save keeps the font from before
+        val saved = CustomFontFiles.install(FileSystem.SYSTEM, folder.toOkioPath(), part.stem, extension, incoming.toOkioPath())?.toFile()
+            ?: return@withContext Picked.NotSaved
         // a new regular is a new font, so a bold kept from the last one would not match it
         if (part == Part.Regular) drop(context, Part.Bold)
-        val saved = File(folder, "${part.stem}.$extension")
-        if (!incoming.renameTo(saved)) {
-            incoming.delete()
-            return@withContext Picked.NotAFont
-        }
         val regular = file(context, Part.Regular)
         val family = regular?.let { fontFamilyFromFiles(it, file(context, Part.Bold)) }
         if (family == null) {
@@ -155,5 +162,4 @@ object CustomFont {
         withContext(Dispatchers.Main) { AppFont.custom = family }
     }
 
-    private val FontExtensions = setOf("ttf", "otf")
 }
