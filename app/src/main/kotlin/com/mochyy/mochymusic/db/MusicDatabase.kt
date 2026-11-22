@@ -142,7 +142,8 @@ const val MusicDatabaseVersion = 45
         PlaylistSongMapPreview::class,
     ],
     version = MusicDatabaseVersion,
-    exportSchema = false
+    // CI compares app/schemas to what this compiles to, so the database can move between modules without a column changing
+    exportSchema = true,
 )
 @TypeConverters(Converters::class)
 abstract class InternalDatabase : RoomDatabase() {
