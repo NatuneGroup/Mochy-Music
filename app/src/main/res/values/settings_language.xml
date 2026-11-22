@@ -2,6 +2,10 @@
 <resources>
     <string name="playback_preload_next">Preload next song</string>
     <string name="playback_preload_next_desc">Cache the start of the next YouTube song on unmetered networks, even with Blend skips off</string>
+    <string name="playback_audio_offload">Audio offload</string>
+    <string name="playback_audio_offload_desc">Let the phone\'s audio chip decode songs to save battery. Turns itself off while Crossmix or sound effects are on.</string>
+    <string name="playback_efficient_decoding">Efficient decoding</string>
+    <string name="playback_efficient_decoding_desc">Decode YouTube AAC and Opus songs inside the app to save battery. Turn off to use the phone\'s own decoder. Takes effect when playback restarts.</string>
     <string name="appearance_player">Player appearance</string>
     <string name="appearance_customize_player">Customize player</string>
     <string name="appearance_customize_player_desc">Customize player cover, background, style</string>

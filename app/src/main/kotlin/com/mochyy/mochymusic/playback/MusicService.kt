@@ -94,6 +94,7 @@ import com.mochyy.mochymusic.widget.WidgetLyricTracker
 import com.mochyy.mochymusic.constants.AudioNormalizationKey
 import com.mochyy.mochymusic.constants.AudioOffload
 import com.mochyy.mochymusic.constants.AudioQualityKey
+import com.mochyy.mochymusic.constants.EfficientDecodingKey
 import com.mochyy.mochymusic.constants.AutoDownloadOnLikeKey
 import com.mochyy.mochymusic.constants.AutoLoadMoreKey
 import com.mochyy.mochymusic.constants.AutoSkipNextOnErrorKey
@@ -777,6 +778,16 @@ class MusicService :
     override fun onCreate() {
         super.onCreate()
         isRunning = true
+        screenOn = getSystemService(android.os.PowerManager::class.java)?.isInteractive != false
+        androidx.core.content.ContextCompat.registerReceiver(
+            this,
+            screenReceiver,
+            android.content.IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_ON)
+                addAction(Intent.ACTION_SCREEN_OFF)
+            },
+            androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
 
         playerInitialized.value = false
 
@@ -1437,7 +1448,7 @@ class MusicService :
 
         val player = ExoPlayer.Builder(this)
             .setMediaSourceFactory(createMediaSourceFactory())
-            .setRenderersFactory(createRenderersFactory(eqProcessor, fxProcessors, silenceProcessor, hapticAudioProcessor, crossmixProcessor, replayGain, spectrum, inspector))
+            .setRenderersFactory(createRenderersFactory(eqProcessor, fxProcessors, silenceProcessor, hapticAudioProcessor, crossmixProcessor, replayGain, spectrum, inspector, runBlocking { dataStore.get(EfficientDecodingKey, true) }))
             .setHandleAudioBecomingNoisy(true)
             // local wake lock keeps background audio smooth without locking the wifi radio out of power-save mode
             .setWakeMode(C.WAKE_MODE_LOCAL)
@@ -4368,6 +4379,7 @@ class MusicService :
         replayGain: com.mochyy.mochymusic.eq.audio.ReplayGainTags,
         spectrum: com.mochyy.mochymusic.playback.audio.AudioSpectrum,
         inspector: StreamInspector,
+        efficientDecoding: Boolean,
     ) =
         object : DefaultRenderersFactory(this) {
             // the renderer below tells it which file each song comes from, so it can tell a lossless song from a lossy one
@@ -4412,6 +4424,8 @@ class MusicService :
                 out: ArrayList<Renderer>,
             ) {
                 val songs = router
+                // lossy youtube audio is decoded in this process first (see InProcessLossyRenderer); the phone's codec stays first for everything else
+                if (efficientDecoding) out.add(InProcessLossyRenderer(eventHandler, eventListener, audioSink, { songs?.sourceFormat = it }, { screenOn }, PositionWakeUs))
                 out.add(object : MediaCodecAudioRenderer(
                     context, codecAdapterFactory, mediaCodecSelector, enableDecoderFallback, eventHandler, eventListener, audioSink,
                 ) {
@@ -4421,8 +4435,10 @@ class MusicService :
                     }
 
                     // the loop sleeps half the audio buffer, and speed on the audio track sizes that for 8x, so it slept a whole second and the position went that stale
-                    override fun getDurationToProgressUs(positionUs: Long, elapsedRealtimeUs: Long, isOnBufferAvailableListenerRegistered: Boolean): Long =
-                        minOf(super.getDurationToProgressUs(positionUs, elapsedRealtimeUs, isOnBufferAvailableListenerRegistered), PositionWakeUs)
+                    override fun getDurationToProgressUs(positionUs: Long, elapsedRealtimeUs: Long, isOnBufferAvailableListenerRegistered: Boolean): Long {
+                        val wait = super.getDurationToProgressUs(positionUs, elapsedRealtimeUs, isOnBufferAvailableListenerRegistered)
+                        return if (screenOn) minOf(wait, PositionWakeUs) else wait
+                    }
                 })
                 // after the phone's own, so it only takes what the phone can't decode: alac on most phones, flac on old ones, 192 kHz masters
                 out.add(object : FfmpegFallbackRenderer(eventHandler, eventListener, audioSink) {
@@ -4430,8 +4446,10 @@ class MusicService :
                         songs?.sourceFormat = format
                     }
 
-                    override fun getDurationToProgressUs(positionUs: Long, elapsedRealtimeUs: Long): Long =
-                        minOf(super.getDurationToProgressUs(positionUs, elapsedRealtimeUs), PositionWakeUs)
+                    override fun getDurationToProgressUs(positionUs: Long, elapsedRealtimeUs: Long): Long {
+                        val wait = super.getDurationToProgressUs(positionUs, elapsedRealtimeUs)
+                        return if (screenOn) minOf(wait, PositionWakeUs) else wait
+                    }
                 })
             }
         }.apply {
@@ -4591,6 +4609,7 @@ class MusicService :
 
     override fun onDestroy() {
         isRunning = false
+        runCatching { unregisterReceiver(screenReceiver) }
 
         audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
         audioOutputs.release()
@@ -4677,6 +4696,16 @@ class MusicService :
     }
 
     private val powerManager by lazy { getSystemService(android.os.PowerManager::class.java) }
+
+    // the screen's state for the playback loop: with it off nothing reads the position every 100 ms
+    @Volatile
+    private var screenOn = true
+
+    private val screenReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            screenOn = intent?.action == Intent.ACTION_SCREEN_ON
+        }
+    }
 
     // which lyric line the now playing widgets show; the scope is asked for each time because the service replaces it
     private val widgetLyrics by lazy {

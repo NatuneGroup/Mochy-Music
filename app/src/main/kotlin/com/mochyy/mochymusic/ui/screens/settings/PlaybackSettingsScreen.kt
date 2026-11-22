@@ -18,7 +18,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.AudioOffload
 import com.mochyy.mochymusic.constants.DontSkipOnFailureKey
+import com.mochyy.mochymusic.constants.EfficientDecodingKey
 import com.mochyy.mochymusic.constants.MixWithOtherAppsKey
 import com.mochyy.mochymusic.constants.PauseOnMute
 import com.mochyy.mochymusic.constants.PersistentQueueKey
@@ -63,6 +65,8 @@ private fun listeningItems(): List<SettingsItem> {
     val (persistentShuffle, onPersistentShuffleChange) = rememberPreference(PersistentShuffleAcrossQueuesKey, defaultValue = true)
     val (skipSilence, onSkipSilenceChange) = rememberPreference(SkipSilenceKey, defaultValue = false)
     val (preloadNextTrack, onPreloadNextTrackChange) = rememberPreference(PreloadNextTrackKey, defaultValue = true)
+    val (audioOffload, onAudioOffloadChange) = rememberPreference(AudioOffload, defaultValue = false)
+    val (efficientDecoding, onEfficientDecodingChange) = rememberPreference(EfficientDecodingKey, defaultValue = true)
     return listOf(
         switchItem(
             key = "Keep playing even when closed",
@@ -123,6 +127,22 @@ private fun listeningItems(): List<SettingsItem> {
             icon = painterResource(R.drawable.download),
             checked = preloadNextTrack,
             onCheckedChange = onPreloadNextTrackChange,
+        ),
+        switchItem(
+            key = "Audio offload",
+            title = stringResource(R.string.playback_audio_offload),
+            description = stringResource(R.string.playback_audio_offload_desc),
+            icon = painterResource(R.drawable.speed),
+            checked = audioOffload,
+            onCheckedChange = onAudioOffloadChange,
+        ),
+        switchItem(
+            key = "Efficient decoding",
+            title = stringResource(R.string.playback_efficient_decoding),
+            description = stringResource(R.string.playback_efficient_decoding_desc),
+            icon = painterResource(R.drawable.graphic_eq),
+            checked = efficientDecoding,
+            onCheckedChange = onEfficientDecodingChange,
         ),
         switchItem(
             key = "Skip Silence",
