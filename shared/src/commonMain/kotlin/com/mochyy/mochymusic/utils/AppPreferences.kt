@@ -39,8 +39,9 @@ internal expect fun readPreferencesBlocking(store: DataStore<Preferences>): Pref
  * The latest preferences of one store, held so a composition reads them synchronously.
  *
  * A store that can't be read (an unreadable or corrupt file) never takes the app down: the cache stays
- * cold and empty, so rows show their defaults, but that empty set is never treated as the saved data,
- * and a later successful read still fills it. A write that fails is dropped; nothing is saved.
+ * cold and empty, so rows show their defaults, but that empty set is never treated as the saved data.
+ * It stays that way until the app starts again (the collector has ended and the read isn't retried
+ * every frame). A write that fails is dropped; nothing is saved.
  */
 open class StorePreferencesCache internal constructor() {
 
