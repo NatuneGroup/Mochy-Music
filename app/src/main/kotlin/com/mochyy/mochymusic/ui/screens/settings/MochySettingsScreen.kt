@@ -238,6 +238,7 @@ private val SettingsIndex = listOf(
     SettingsEntry("SponsorBlock self-promotion", "Playback", PlaybackSettingsRoute, "sponsorblock self promo promotion skip", R.string.settings_sponsorblock_selfpromo),
     SettingsEntry("SponsorBlock intros", "Playback", PlaybackSettingsRoute, "sponsorblock intro start skip", R.string.settings_sponsorblock_intro),
     SettingsEntry("SponsorBlock outros", "Playback", PlaybackSettingsRoute, "sponsorblock outro end credits skip", R.string.settings_sponsorblock_outro),
+    SettingsEntry("Picture-in-picture", "Playback", PlaybackSettingsRoute, "video music pip picture in picture window float leave app background", R.string.playback_pip),
     SettingsEntry("Keep shuffle on", "Playback", PlaybackSettingsRoute, "shuffle persistent spotify random keep new playlist"),
     SettingsEntry("Preload next song", "Playback", PlaybackSettingsRoute, "queue next track buffer preload unmetered wi-fi"),
     SettingsEntry("Audio offload", "Playback", PlaybackSettingsRoute, "battery offload decode chip power efficiency hardware"),
