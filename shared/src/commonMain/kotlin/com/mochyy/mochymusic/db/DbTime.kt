@@ -15,3 +15,7 @@ fun LocalDateTime.toEpochMillisUtc(): Long = toInstant(TimeZone.UTC).toEpochMill
 @OptIn(kotlin.time.ExperimentalTime::class)
 fun localDateTimeFromEpochMillisUtc(value: Long): LocalDateTime =
     kotlin.time.Instant.fromEpochMilliseconds(value).toLocalDateTime(TimeZone.UTC)
+
+// the current time as epoch millis, same value as java's System.currentTimeMillis()
+@OptIn(kotlin.time.ExperimentalTime::class)
+fun nowEpochMillis(): Long = kotlin.time.Clock.System.now().toEpochMilliseconds()
