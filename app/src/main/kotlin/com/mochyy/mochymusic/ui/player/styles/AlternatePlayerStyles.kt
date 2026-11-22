@@ -77,22 +77,8 @@ fun AlternatePlayerStyle(
     modifier: Modifier = Modifier,
     preview: Boolean = false,
 ) {
-    when (style) {
-        PlayerStyle.POSTER -> PosterPlayerStyle(actions, modifier, preview)
-        PlayerStyle.TIMELINE -> TimelinePlayerStyle(actions, modifier, preview)
-        PlayerStyle.LYRICS -> LyricsPlayerStyle(actions, modifier, preview)
-        PlayerStyle.IPOD -> com.mochyy.mochymusic.ui.player.ipod.IpodPlayerStyle(modifier, preview)
-        PlayerStyle.VIDEO -> com.mochyy.mochymusic.ui.player.video.VideoPlayerStyle(actions, modifier, preview)
-        PlayerStyle.BEDSIDE -> com.mochyy.mochymusic.ui.player.bedside.BedsidePlayerStyle(actions, modifier, preview)
-        PlayerStyle.BEDSIDE_TILES -> com.mochyy.mochymusic.ui.player.bedside.BedsideTilesStyle(actions, modifier, preview)
-        PlayerStyle.NAMIDA -> com.mochyy.mochymusic.ui.player.namida.NamidaPlayerStyle(actions, modifier, preview)
-        PlayerStyle.APPLE_MUSIC -> com.mochyy.mochymusic.ui.player.applemusic.AppleMusicPlayerStyle(actions, modifier, preview)
-        PlayerStyle.TIKTOK -> com.mochyy.mochymusic.ui.player.tiktok.TikTokPlayerStyle(actions, modifier, preview)
-        PlayerStyle.METROLIST, PlayerStyle.METROLIST_VINTAGE ->
-            MetrolistPlayerStyle(actions, modifier, preview, vintage = style == PlayerStyle.METROLIST_VINTAGE)
-        PlayerStyle.MODULE -> ModulePlayerStyle(actions, modifier, preview)
-        PlayerStyle.FLAGSHIP, PlayerStyle.CLASSIC, PlayerStyle.TURNTABLE -> Unit
-    }
+    // the drawing is hooked up in PlayerStyleRegistry.kt, the one place a new style is added
+    PlayerStyleContent(style, actions, modifier, preview)
 }
 
 /** what every alternate style reads from the player */
@@ -258,7 +244,7 @@ private val PosterChevron = 43.dp
  * sideways, the circle swings in from the left.
  */
 @Composable
-private fun PosterPlayerStyle(actions: StyleActions, modifier: Modifier, preview: Boolean) {
+internal fun PosterPlayerStyle(actions: StyleActions, modifier: Modifier, preview: Boolean) {
     val tones = rememberStyleTones()
     val track = rememberStyleTrack()
     val r = rememberResponsive()
@@ -705,7 +691,7 @@ private fun CircleCover(
  * the playhead, with the elapsed and total times riding either side of it in huge type.
  */
 @Composable
-private fun TimelinePlayerStyle(actions: StyleActions, modifier: Modifier, preview: Boolean) {
+internal fun TimelinePlayerStyle(actions: StyleActions, modifier: Modifier, preview: Boolean) {
     val tones = rememberStyleTones()
     val track = rememberStyleTrack()
     val position = rememberLivePosition(animated = !preview)
@@ -768,7 +754,7 @@ private fun TimelinePlayerStyle(actions: StyleActions, modifier: Modifier, previ
  * same played/remaining split and riding times as the timeline.
  */
 @Composable
-private fun LyricsPlayerStyle(actions: StyleActions, modifier: Modifier, preview: Boolean) {
+internal fun LyricsPlayerStyle(actions: StyleActions, modifier: Modifier, preview: Boolean) {
     val tones = rememberStyleTones()
     val track = rememberStyleTrack()
     val position = rememberLivePosition(animated = !preview)
