@@ -60,6 +60,7 @@ import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.ui.theme.LocalChromeAccent
 import com.mochyy.mochymusic.scrobble.ScrobbleSite
 import com.mochyy.mochymusic.ui.screens.devices.showDeviceIntegration
+import com.mochyy.mochymusic.ui.screens.settings.importsync.AccountSwitcherRoute
 import com.mochyy.mochymusic.ui.screens.settings.importsync.YouTubeSyncRoute
 import com.mochyy.mochymusic.ui.screens.settings.integrations.IntegrationsRoute
 import com.mochyy.mochymusic.ui.screens.settings.integrations.AndroidAutoSettingsRoute
@@ -315,6 +316,7 @@ private val SettingsIndex = listOf(
     SettingsEntry("Now Playing", "Integrations", scrobbleServiceRoute(ScrobbleSite.LASTFM), "scrobble now playing status profile lastfm librefm"),
     SettingsEntry("Send likes", "Integrations", scrobbleServiceRoute(ScrobbleSite.LASTFM), "love loved songs lastfm librefm scrobble"),
     SettingsEntry("YouTube Music sync", "Integrations", YouTubeSyncRoute, "youtube ytm sync account sign in likes library playlists history", R.string.settings_index_youtube_sync),
+    SettingsEntry("Account switcher", "Integrations", AccountSwitcherRoute, "account switcher switch account multiple accounts saved accounts add remove youtube"),
 
     // Storage
     SettingsEntry("Storage", "Storage", "storage_settings", "space disk size cache downloads clear free junk delete"),
