@@ -21,7 +21,8 @@ internal sealed interface UpcomingQueueRead {
     data object Unavailable : UpcomingQueueRead
 }
 
-internal class PlaybackPreferences(private val store: DataStore<Preferences>) {
+// [store] is the platform's one settings file; shared Compose UI reads it through LocalAppPreferences
+internal class PlaybackPreferences(val store: DataStore<Preferences>) {
     private val json = Json { ignoreUnknownKeys = true }
 
     val values = store.data.catch { error ->
