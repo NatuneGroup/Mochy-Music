@@ -543,6 +543,10 @@ fun NavGraphBuilder.navigationBuilder(
         com.mochyy.mochymusic.ui.screens.gesture.GestureScreen(navController = navController)
     }
 
+    composable("appearance_settings") {
+        com.mochyy.mochymusic.ui.screens.settings.AppearanceSettingsScreen(navController = navController)
+    }
+
     composable("customisation_settings") {
         com.mochyy.mochymusic.ui.screens.gesture.CustomisationScreen(navController = navController)
     }

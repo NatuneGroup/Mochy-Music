@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Appearance settings page -->
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_appearance_desc">Start tab, navigation bar, scale and colours.</string>
+    <string name="settings_start_tab">Start tab</string>
+    <string name="settings_start_tab_desc">The tab that opens when the app starts.</string>
+</resources>

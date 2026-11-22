@@ -150,6 +150,7 @@ private val LocalizedSettingsPages = mapOf(
     "Playback" to R.string.settings_playback_category,
     "Now playing" to R.string.settings_now_playing,
     "Customisation" to R.string.settings_customisation_category,
+    "Appearance" to R.string.settings_appearance,
     "Storage" to R.string.storage,
     "Audio Lab" to R.string.settings_audio_lab_category,
     "Modules" to R.string.settings_modules_category,
@@ -157,6 +158,10 @@ private val LocalizedSettingsPages = mapOf(
 )
 
 private val SettingsIndex = listOf(
+    // Appearance
+    SettingsEntry("Appearance", "Appearance", "appearance_settings", "look theme tabs navigation bar layout scale colour color font tablet", R.string.settings_appearance),
+    SettingsEntry("Default start tab", "Appearance", "appearance_settings", "start open launch first tab home search library", R.string.settings_start_tab),
+
     // Customisation
     SettingsEntry("Customisation", "Customisation", "customisation_settings", "customize cover rounding playlist player home styles gesture swipe blur animation lyrics"),
     SettingsEntry("Cover rounding", "Customisation", "customisation_settings", "square rounded corner radius px thumbnail art"),
@@ -502,6 +507,13 @@ fun MochySettingsScreen(navController: NavController, pane: SettingsPane? = null
                             iconRes = R.drawable.settings,
                             selected = selected == "general_settings",
                             onClick = { open("general_settings") }
+                        )
+
+                        CategoryBubble(
+                            title = stringResource(R.string.settings_appearance),
+                            iconRes = R.drawable.contrast,
+                            selected = selected == "appearance_settings",
+                            onClick = { open("appearance_settings") }
                         )
 
                         CategoryBubble(
