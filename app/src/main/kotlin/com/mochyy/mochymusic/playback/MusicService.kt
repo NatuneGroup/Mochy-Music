@@ -3298,6 +3298,8 @@ class MusicService :
 
     override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
         updateNotification()
+        // runs on a later main-thread turn, after the new shuffle order below is in place
+        if (player.isPlaying) scheduleLyricsPreload()
         if (shuffleModeEnabled) {
 
             if (player.mediaItemCount == 0) return
@@ -3324,6 +3326,8 @@ class MusicService :
 
     override fun onRepeatModeChanged(repeatMode: Int) {
         updateNotification()
+        // repeat all wraps round, so the last song's next songs change with it
+        if (player.isPlaying) scheduleLyricsPreload()
         // a crossfade or mix planned before repeat one went on would still swap players at the end, and the song came round silent
         scheduleCrossfade()
         scope.launch {
