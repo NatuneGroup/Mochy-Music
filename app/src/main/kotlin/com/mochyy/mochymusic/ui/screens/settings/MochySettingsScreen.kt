@@ -282,6 +282,9 @@ private val SettingsIndex = listOf(
 
     // Integrations
     SettingsEntry("Android Auto", "Integrations", AndroidAutoSettingsRoute, "car carplay driving upcoming recommendations voice artwork lyrics mobile data"),
+    SettingsEntry("Songs on this device", "Integrations", AndroidAutoSettingsRoute, "car library folder local downloaded files phone"),
+    SettingsEntry("Stream on mobile data", "Integrations", AndroidAutoSettingsRoute, "car metered mobile data cellular streaming offline saved cached"),
+    SettingsEntry("Pinned playlists in the car", "Integrations", AndroidAutoSettingsRoute, "car library pin playlists order first top"),
     SettingsEntry("Discord", "Integrations", DiscordRoute, "discord rich presence rpc status activity listening playing profile behaviour pause clear"),
     SettingsEntry("Last.fm", "Integrations", scrobbleServiceRoute(ScrobbleSite.LASTFM), "lastfm scrobble scrobbling history stats account sign in"),
     SettingsEntry("Libre.fm", "Integrations", scrobbleServiceRoute(ScrobbleSite.LIBREFM), "librefm scrobble scrobbling history stats account sign in"),

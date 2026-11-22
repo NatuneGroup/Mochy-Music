@@ -1,11 +1,15 @@
 package com.mochyy.mochymusic.ui.screens.settings.integrations
 
 import androidx.car.app.connection.CarConnection
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -18,8 +22,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Observer
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
+import com.mochyy.mochymusic.LocalDatabase
 import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.CarDeviceSongsKey
 import com.mochyy.mochymusic.constants.CarLyricsKey
+import com.mochyy.mochymusic.constants.CarMeteredStreamingKey
+import com.mochyy.mochymusic.constants.CarPinnedPlaylistIdsKey
 import com.mochyy.mochymusic.constants.CarMeteredArtworkKey
 import com.mochyy.mochymusic.constants.CarOnlineRecommendationsKey
 import com.mochyy.mochymusic.constants.CarOnlineVoiceSearchKey
@@ -50,7 +58,19 @@ fun AndroidAutoSettingsScreen(navController: NavController) {
     val (recommendations, setRecommendations) = rememberPreference(CarOnlineRecommendationsKey, defaultValue = true)
     val (onlineVoice, setOnlineVoice) = rememberPreference(CarOnlineVoiceSearchKey, defaultValue = true)
     val (meteredArtwork, setMeteredArtwork) = rememberPreference(CarMeteredArtworkKey, defaultValue = true)
+    val (meteredStreaming, setMeteredStreaming) = rememberPreference(CarMeteredStreamingKey, defaultValue = true)
     val (lyrics, setLyrics) = rememberPreference(CarLyricsKey, defaultValue = true)
+    val (pinnedRaw, setPinnedRaw) = rememberPreference(CarPinnedPlaylistIdsKey, defaultValue = "")
+    val database = LocalDatabase.current
+    val playlistsFlow = remember(database) { database.playlistsByCreateDateAsc() }
+    val playlists by playlistsFlow.collectAsState(initial = emptyList())
+    // ids in the order they were picked; a playlist deleted since then just drops out of the list
+    val pinnedIds = pinnedRaw.split(",").filter { it.isNotBlank() }
+    val pinned = pinnedIds.mapNotNull { id -> playlists.find { it.id == id } }
+    val others = playlists.filter { playlist -> pinnedIds.none { it == playlist.id } }
+    val ids = pinned.map { it.id }
+    val savePinned = { list: List<String> -> setPinnedRaw(list.joinToString(",")) }
+    val (deviceSongs, setDeviceSongs) = rememberPreference(CarDeviceSongsKey, defaultValue = true)
 
     SubSettingsScaffold(
         title = stringResource(R.string.car_settings_title),
@@ -65,6 +85,14 @@ fun AndroidAutoSettingsScreen(navController: NavController) {
                 icon = painterResource(R.drawable.home),
                 checked = recommendations,
                 onCheckedChange = setRecommendations,
+            ),
+            switchItem(
+                key = "Songs on this device",
+                title = stringResource(R.string.car_settings_device_songs),
+                description = stringResource(R.string.car_settings_device_songs_desc),
+                icon = painterResource(R.drawable.smartphone),
+                checked = deviceSongs,
+                onCheckedChange = setDeviceSongs,
             ),
             switchItem(
                 key = "Online voice search",
@@ -83,6 +111,38 @@ fun AndroidAutoSettingsScreen(navController: NavController) {
                 onCheckedChange = setLyrics,
             ),
         ))
+        SettingsSection(stringResource(R.string.car_pinned_playlists), pinned.mapIndexed { index, playlist ->
+            SettingsItem(
+                title = { Text(playlist.playlist.name) },
+                trailingContent = {
+                    Row {
+                        IconButton(enabled = index > 0, onClick = {
+                            savePinned(ids.toMutableList().apply { add(index - 1, removeAt(index)) })
+                        }) {
+                            Icon(painterResource(R.drawable.arrow_upward), contentDescription = stringResource(R.string.car_pinned_move_up))
+                        }
+                        IconButton(enabled = index < ids.lastIndex, onClick = {
+                            savePinned(ids.toMutableList().apply { add(index + 1, removeAt(index)) })
+                        }) {
+                            Icon(painterResource(R.drawable.arrow_downward), contentDescription = stringResource(R.string.car_pinned_move_down))
+                        }
+                        IconButton(onClick = { savePinned(ids - playlist.id) }) {
+                            Icon(painterResource(R.drawable.close), contentDescription = stringResource(R.string.car_pinned_remove))
+                        }
+                    }
+                },
+            )
+        })
+        SettingsSection(stringResource(R.string.car_settings_pinned_other), others.map { playlist ->
+            SettingsItem(
+                title = { Text(playlist.playlist.name) },
+                trailingContent = {
+                    IconButton(onClick = { savePinned(ids + playlist.id) }) {
+                        Icon(painterResource(R.drawable.playlist_add), contentDescription = stringResource(R.string.car_pinned_add))
+                    }
+                },
+            )
+        })
         SettingsSection(stringResource(R.string.car_settings_mobile_data), listOf(
             switchItem(
                 key = "Artwork on metered networks",
@@ -91,6 +151,14 @@ fun AndroidAutoSettingsScreen(navController: NavController) {
                 icon = painterResource(R.drawable.wifi),
                 checked = meteredArtwork,
                 onCheckedChange = setMeteredArtwork,
+            ),
+            switchItem(
+                key = "Stream on mobile data",
+                title = stringResource(R.string.car_settings_metered_streaming),
+                description = stringResource(R.string.car_settings_metered_streaming_desc),
+                icon = painterResource(R.drawable.wifi),
+                checked = meteredStreaming,
+                onCheckedChange = setMeteredStreaming,
             ),
         ))
         Spacer(Modifier.height(140.dp))
