@@ -88,7 +88,7 @@ class App : Application(), SingletonImageLoader.Factory {
             Timber.plant(Timber.DebugTree())
         }
 
-        PreferencesCache.start(this, applicationScope)
+        PreferencesCache.start(dataStore, applicationScope)
         if (BuildConfig.COMPACT_APK) {
             JapaneseLanguagePackManager.initialize(this)
             ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {

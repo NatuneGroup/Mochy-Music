@@ -7,7 +7,6 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.mochyy.mochymusic.extensions.toEnum
-import kotlinx.coroutines.CoroutineScope
 import kotlin.properties.ReadOnlyProperty
 
 private val Context.settingsFile: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -21,9 +20,7 @@ val Context.dataStore: DataStore<Preferences>
     }
 
 // PreferencesCache, LocalAppPreferences, rememberPreference and rememberEnumPreference live in :shared
-// (utils/AppPreferences.kt, same package); the app starts the cache on its sealed store
-fun PreferencesCache.start(context: Context, scope: CoroutineScope) =
-    start(context.applicationContext.dataStore, scope)
+// (utils/AppPreferences.kt, same package); App starts the cache on this sealed store
 
 operator fun <T> DataStore<Preferences>.get(key: Preferences.Key<T>): T? =
     PreferencesCache.current(this)[key]

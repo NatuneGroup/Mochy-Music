@@ -24,7 +24,9 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
+import okio.IOException
 import kotlin.concurrent.Volatile
 
 /** The dispatcher the cache reads and writes the store on (Dispatchers.IO where the platform has one). */
@@ -33,7 +35,14 @@ internal expect val preferencesDispatcher: CoroutineDispatcher
 /** Reads the store's current preferences, blocking the caller; used only until the cache is warm. */
 internal expect fun readPreferencesBlocking(store: DataStore<Preferences>): Preferences
 
-object PreferencesCache {
+/**
+ * The latest preferences of one store, held so a composition reads them synchronously.
+ *
+ * A store that can't be read (an unreadable or corrupt file) never takes the app down: the cache stays
+ * cold and empty, so rows show their defaults, but that empty set is never treated as the saved data,
+ * and a later successful read still fills it. A write that fails is dropped; nothing is saved.
+ */
+open class StorePreferencesCache internal constructor() {
 
     private val snapshotState = mutableStateOf(emptyPreferences())
 
@@ -42,6 +51,11 @@ object PreferencesCache {
 
     @Volatile
     private var warm: Boolean = false
+
+    /** A read failed and nothing has been read since; the blocking read isn't retried every frame. */
+    @Volatile
+    var readFailed: Boolean = false
+        private set
 
     /** The store the platform started the cache with; compositions that provide none read this one. */
     @Volatile
@@ -52,35 +66,53 @@ object PreferencesCache {
 
     val snapshot: State<Preferences> get() = snapshotState
 
+    /** Whether [snapshot] holds what the store actually read, rather than the empty stand-in. */
+    val isWarm: Boolean get() = warm
+
     /** Keeps the cache following [store] for as long as [scope] lives; a second start for the same store does nothing. */
     fun start(store: DataStore<Preferences>, scope: CoroutineScope = writeScope) {
         if (this.store === store) return
         this.store = store
         scope.launch(preferencesDispatcher, start = CoroutineStart.UNDISPATCHED) {
-            store.data.collect { prefs ->
-                plain = prefs
-                warm = true
-                snapshotState.value = prefs
-            }
+            store.data
+                .catch { error -> if (error is IOException) readFailed = true else throw error }
+                .collect { prefs -> publish(prefs) }
         }
     }
 
     fun current(store: DataStore<Preferences>): Preferences {
-        if (warm) return plain
-        val prefs = readPreferencesBlocking(store)
-        plain = prefs
-        warm = true
-        snapshotState.value = prefs
+        if (warm || readFailed) return plain
+        val prefs = try {
+            readPreferencesBlocking(store)
+        } catch (error: IOException) {
+            readFailed = true
+            return plain
+        }
+        publish(prefs)
         return prefs
     }
 
     fun <T> set(store: DataStore<Preferences>, key: Preferences.Key<T>, value: T) {
 
         writeScope.launch {
-            store.edit { it[key] = value }
+            try {
+                store.edit { it[key] = value }
+            } catch (_: IOException) {
+                // the file can't be written; the old value stays on screen, as nothing was saved
+            }
         }
     }
+
+    private fun publish(prefs: Preferences) {
+        plain = prefs
+        warm = true
+        readFailed = false
+        snapshotState.value = prefs
+    }
 }
+
+/** The one cache the app's compositions read, warmed by the platform at start-up. */
+object PreferencesCache : StorePreferencesCache()
 
 /** The app's settings store for this composition. */
 val LocalAppPreferences: ProvidableCompositionLocal<DataStore<Preferences>> = staticCompositionLocalOf {
