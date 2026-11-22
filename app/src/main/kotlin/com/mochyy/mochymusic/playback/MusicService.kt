@@ -257,6 +257,7 @@ import com.mochyy.mochymusic.utils.reportException
 import com.mochyy.mochymusic.widget.MochyWidgetManager
 import com.mochyy.mochymusic.widget.MusicWidgetReceiver
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -3078,7 +3079,8 @@ class MusicService :
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
         cpuWake.onPlayingChanged(isPlaying)
-        if (isPlaying) scheduleLyricsPreload()
+        // starting asks for the next songs' lyrics; pausing stops a preload still running
+        scheduleLyricsPreload()
     }
 
     // a song added, moved or removed changes what comes next, and so what's worth fetching
@@ -3861,7 +3863,20 @@ class MusicService :
     }
 
     // a song's lyrics are kept the first time they're fetched; an offline miss is not kept, so it's asked again online
+    // one lookup per song at a time: the current song's fetch and the queue's preload of the same song share it
+    // (the database and the provider cache only know finished results, not ones still on the way)
+    private val lyricsFetches = HashMap<String, Deferred<Unit>>()
+
     private suspend fun storeLyricsIfMissing(mediaMetadata: com.mochyy.mochymusic.models.MediaMetadata) {
+        val id = mediaMetadata.id
+        val fetch = lyricsFetches[id]?.takeIf { it.isActive } ?: scope.async { fetchAndStoreLyrics(mediaMetadata) }.also { started ->
+            lyricsFetches[id] = started
+            started.invokeOnCompletion { if (lyricsFetches[id] === started) lyricsFetches.remove(id) }
+        }
+        fetch.await()
+    }
+
+    private suspend fun fetchAndStoreLyrics(mediaMetadata: com.mochyy.mochymusic.models.MediaMetadata) {
         if (database.lyrics(mediaMetadata.id).first() != null) return
         val lyricsWithProvider = lyricsHelper.getLyrics(mediaMetadata)
         if (lyricsWithProvider.provider != com.mochyy.mochymusic.lyrics.LyricsHelper.NoConnectionProvider) {
@@ -3881,14 +3896,22 @@ class MusicService :
     // every trigger for the next songs' lyrics goes through this one owner (the current song's own fetch stays separate)
     private val lyricsPreloader = UpcomingPreloader<com.mochyy.mochymusic.models.MediaMetadata>({ scope }, { it.id }) { queued ->
         for (metadata in queued) {
-            if (!player.isPlaying) return@UpcomingPreloader
+            // checked before each song, so losing wi-fi or turning the setting off stops the next fetch
+            if (!lyricsPreloadAllowed()) return@UpcomingPreloader
             storeLyricsIfMissing(metadata)
         }
     }
 
+    private fun lyricsPreloadAllowed(): Boolean =
+        dataStore.get(PreloadQueueLyricsKey, false) && dataStore.get(ShowLyricsKey, false) &&
+            player.isPlaying && !connectivityManager.isActiveNetworkMetered
+
     private fun scheduleLyricsPreload() {
-        if (!dataStore.get(PreloadQueueLyricsKey, false) || !dataStore.get(ShowLyricsKey, false)) return
-        if (!player.isPlaying || connectivityManager.isActiveNetworkMetered) return
+        // not allowed any more: a preload already running stops too, not just new ones
+        if (!lyricsPreloadAllowed()) {
+            lyricsPreloader.cancel()
+            return
+        }
         // the order they will actually play in, shuffle included
         lyricsPreloader.request(upcomingIndices(2).mapNotNull { player.getMediaItemAt(it).metadata })
     }
