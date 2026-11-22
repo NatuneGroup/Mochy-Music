@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import androidx.room.Embedded
 import androidx.room.Junction
 import androidx.room.Relation
+import kotlin.jvm.JvmOverloads
 
 @Immutable
 data class Song

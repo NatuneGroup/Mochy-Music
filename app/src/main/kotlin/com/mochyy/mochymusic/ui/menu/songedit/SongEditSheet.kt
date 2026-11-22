@@ -27,6 +27,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.mochyy.mochymusic.LocalDatabase
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.toggleLibrary
 import com.mochyy.mochymusic.di.AudioLabEntryPoint
 import com.mochyy.mochymusic.eq.AudioLabStore
 import com.mochyy.mochymusic.models.MediaMetadata

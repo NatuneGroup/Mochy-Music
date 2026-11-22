@@ -360,7 +360,7 @@ private fun PlaylistPickRow(
 ) {
     val count =
         if (playlist.songCount == 0 && playlist.playlist.remoteSongCount != null) {
-            playlist.playlist.remoteSongCount
+            playlist.playlist.remoteSongCount!!
         } else {
             playlist.songCount
         }

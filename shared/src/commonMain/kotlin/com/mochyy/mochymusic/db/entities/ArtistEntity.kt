@@ -5,10 +5,6 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.mochyy.mochymusic.db.nowLocal
-import com.music.innertube.YouTube
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDateTime
 import kotlin.random.Random
 
@@ -33,15 +29,6 @@ data class ArtistEntity(
     fun localToggleLike() = copy(
         bookmarkedAt = if (bookmarkedAt != null) null else nowLocal(),
     )
-
-    fun toggleLike() = localToggleLike().also {
-        CoroutineScope(Dispatchers.IO).launch {
-            val targetChannelId = channelId ?: YouTube.getChannelId(id)
-            if (targetChannelId.isNotEmpty()) {
-                YouTube.subscribeChannel(targetChannelId, bookmarkedAt == null)
-            }
-        }
-    }
 
     companion object {
         private const val Letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
