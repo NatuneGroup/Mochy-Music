@@ -99,7 +99,7 @@ fun ColorScheme.pureBlack(apply: Boolean) = sharedPureBlack(apply)
 
 /** the accent as primary and secondary; the text on it is black or white, whichever reads better */
 fun ColorScheme.withAccent(accent: Color): ColorScheme {
-    val onAccent = if (accent.luminance() > 0.4f) Color.Black else Color.White
+    val onAccent = if (accent.luminance() > 0.179f) Color.Black else Color.White
     return copy(
         primary = accent,
         onPrimary = onAccent,

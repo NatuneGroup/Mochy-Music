@@ -199,7 +199,6 @@ import com.mochyy.mochymusic.ui.screens.search.searchRoute
 import com.mochyy.mochymusic.ui.screens.navigationBuilder
 import com.mochyy.mochymusic.ui.screens.DarkMode
 import com.mochyy.mochymusic.ui.screens.NavigationTab
-import com.mochyy.mochymusic.ui.theme.ColorSaver
 import com.mochyy.mochymusic.ui.theme.DefaultThemeColor
 import com.mochyy.mochymusic.ui.theme.MochyTheme
 import com.mochyy.mochymusic.ui.theme.extractThemeColor
@@ -574,35 +573,32 @@ class MainActivity : ComponentActivity() {
         val (selectedThemeColorInt) = rememberPreference(SelectedThemeColorKey, defaultValue = DefaultThemeColor.toArgb())
         val selectedThemeColor = Color(selectedThemeColorInt)
 
-        var themeColor by rememberSaveable(stateSaver = ColorSaver) {
-            mutableStateOf(selectedThemeColor)
-        }
-
-        LaunchedEffect(selectedThemeColor) {
-            if (!enableDynamicTheme) {
-                themeColor = selectedThemeColor
-            }
-        }
+        val (accentInt) = rememberPreference(com.mochyy.mochymusic.constants.AccentColorKey, defaultValue = 0)
+        val (accentFromArt) = rememberPreference(com.mochyy.mochymusic.constants.AccentFromArtKey, defaultValue = false)
+        var artworkColorInt by rememberSaveable { mutableStateOf<Int?>(null) }
 
         // the launch intro waits for this, so the whole app doesn't recompose for a new colour
         // scheme halfway through it
-        var themeSettled by remember { mutableStateOf(false) }
+        var artworkSettled by remember { mutableStateOf(false) }
+        val themeSettled = !enableDynamicTheme || artworkSettled
+        val needsArtworkColor = enableDynamicTheme || accentFromArt
 
-        LaunchedEffect(playerConnection, enableDynamicTheme, selectedThemeColor) {
-            val playerConnection = playerConnection
-            if (!enableDynamicTheme || playerConnection == null) {
-                themeColor = selectedThemeColor
-                if (!enableDynamicTheme) themeSettled = true
+        LaunchedEffect(playerConnection, needsArtworkColor) {
+            if (!needsArtworkColor || playerConnection == null) {
+                artworkColorInt = null
                 return@LaunchedEffect
             }
 
-            playerConnection.service.currentMediaMetadata.collectLatest { song ->
-                if (song?.thumbnailUrl != null) {
-                    withContext(Dispatchers.IO) {
+            playerConnection.service.currentMediaMetadata
+                .map { it?.thumbnailUrl }
+                .distinctUntilChanged()
+                .collectLatest { artworkUrl ->
+                    artworkColorInt = if (artworkUrl.isNullOrBlank()) null else withContext(Dispatchers.IO) {
                         try {
                             val result = imageLoader.execute(
                                 ImageRequest.Builder(this@MainActivity)
-                                    .data(song.thumbnailUrl)
+                                    .data(artworkUrl)
+                                    .size(128)
                                     .allowHardware(false)
                                     .memoryCachePolicy(CachePolicy.ENABLED)
                                     .diskCachePolicy(CachePolicy.ENABLED)
@@ -610,27 +606,21 @@ class MainActivity : ComponentActivity() {
                                     .crossfade(false)
                                     .build()
                             )
-                            themeColor = result.image?.toBitmap()?.extractThemeColor() ?: selectedThemeColor
-                        } catch (e: Exception) {
-
-                            themeColor = selectedThemeColor
+                            result.image?.toBitmap()?.extractThemeColor()?.toArgb()
+                        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                            throw cancelled
+                        } catch (_: Exception) {
+                            null
                         }
                     }
-                } else {
-                    themeColor = selectedThemeColor
+                    artworkSettled = true
                 }
-                themeSettled = true
-            }
         }
 
-        // the chrome's accent: the picked colour, or the cover's colour when the user chose that
-        val (accentInt) = rememberPreference(com.mochyy.mochymusic.constants.AccentColorKey, defaultValue = 0)
-        val (accentFromArt) = rememberPreference(com.mochyy.mochymusic.constants.AccentFromArtKey, defaultValue = false)
-        val chromeAccent: Color? = when {
-            accentFromArt -> themeColor
-            accentInt != 0 -> Color(accentInt)
-            else -> null
-        }
+        val artworkColor = artworkColorInt?.let { Color(it) }
+        val themeColor = artworkColor.takeIf { enableDynamicTheme } ?: selectedThemeColor
+        val chromeAccent = artworkColor.takeIf { accentFromArt }
+            ?: accentInt.takeIf { it != 0 }?.let { Color(it) }
 
         MochyTheme(
             darkTheme = useDarkTheme,

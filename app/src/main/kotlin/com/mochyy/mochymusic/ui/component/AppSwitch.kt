@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -21,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import com.mochyy.mochymusic.ui.theme.LocalChromeAccent
 
 private val TrackWidth = 52.dp
 private val TrackHeight = 32.dp
@@ -38,9 +40,11 @@ fun AppSwitch(
 ) {
     val alpha = if (enabled) 1f else 0.38f
     val animSpec = tween<Color>(150)
+    val accent = LocalChromeAccent.current
+    val checkedThumb = if (accent == null) Color.White else MaterialTheme.colorScheme.onPrimary
 
     val trackColor by animateColorAsState(
-        targetValue = if (checked) Grey.copy(alpha = alpha) else Color.Transparent,
+        targetValue = if (checked) (accent ?: Grey).copy(alpha = alpha) else Color.Transparent,
         animationSpec = animSpec,
         label = "trackColor"
     )
@@ -50,7 +54,7 @@ fun AppSwitch(
         label = "borderColor"
     )
     val thumbColor by animateColorAsState(
-        targetValue = if (checked) Color.White.copy(alpha = alpha) else Grey.copy(alpha = alpha),
+        targetValue = if (checked) checkedThumb.copy(alpha = alpha) else Grey.copy(alpha = alpha),
         animationSpec = animSpec,
         label = "thumbColor"
     )
