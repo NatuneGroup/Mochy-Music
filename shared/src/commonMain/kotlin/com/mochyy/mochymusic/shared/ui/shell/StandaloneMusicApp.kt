@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,7 +26,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -91,6 +91,8 @@ import com.mochyy.mochymusic.shared.settings.UpcomingQueueRead
 import com.mochyy.mochymusic.shared.ui.player.MiniPlayerBar
 import com.mochyy.mochymusic.shared.ui.search.SearchScreen
 import com.mochyy.mochymusic.shared.ui.search.SongRow
+import com.mochyy.mochymusic.shared.ui.settings.PlaybackSettingRow
+import com.mochyy.mochymusic.shared.ui.settings.SharedSettingsScreen
 import com.music.innertube.models.SongItem
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -111,6 +113,7 @@ internal fun StandaloneMusicApp(
     settings: PlaybackPreferences,
     library: LocalLibrary,
     modifier: Modifier = Modifier,
+    additionalSettingsSections: @Composable ColumnScope.() -> Unit = {},
 ) {
     val playback by player.state.collectAsState()
     var queued by remember { mutableStateOf<List<SongItem>>(emptyList()) }
@@ -252,6 +255,7 @@ internal fun StandaloneMusicApp(
                 onRemove = { setSaved(it, false) },
                 updateFailed = libraryUpdateFailed,
             )
+            ShellTab.Settings -> SharedSettingsScreen(settings, additionalSections = additionalSettingsSections)
         }
         true
     }
@@ -424,24 +428,6 @@ private fun LibrarySongs(
                 modifier = Modifier.padding(vertical = 24.dp),
             )
         }
-    }
-}
-
-@Composable
-private fun PlaybackSettingRow(
-    label: String,
-    checked: Boolean,
-    enabled: Boolean = true,
-    onChange: (Boolean) -> Unit,
-) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, Modifier.weight(1f))
-        Switch(
-            checked = checked,
-            onCheckedChange = onChange,
-            enabled = enabled,
-            modifier = Modifier.semantics { contentDescription = label },
-        )
     }
 }
 

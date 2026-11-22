@@ -55,7 +55,7 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
-/** Mochy's three main tabs, with the Android app's own icons. Settings joins when its screen moves over. */
+/** Mochy's shared destinations, with the Android app's own icons. */
 enum class ShellTab(
     val title: StringResource,
     val icon: DrawableResource,
@@ -64,6 +64,7 @@ enum class ShellTab(
     Home(Res.string.home, Res.drawable.nav_home, Res.drawable.nav_home_filled),
     Search(Res.string.search, Res.drawable.nav_search, Res.drawable.nav_search_filled),
     Library(Res.string.your_library, Res.drawable.nav_lib, Res.drawable.nav_lib_fill),
+    Settings(Res.string.settings, Res.drawable.nav_settings, Res.drawable.nav_settings_filled),
 }
 
 // at or above this width the tabs stand in a rail on the left, the way a desktop window reads them
