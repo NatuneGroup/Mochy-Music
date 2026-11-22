@@ -4,11 +4,12 @@ import androidx.compose.runtime.Immutable
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.mochyy.mochymusic.db.nowLocal
 import com.music.innertube.YouTube
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.time.LocalDateTime
+import kotlinx.datetime.LocalDateTime
 import kotlin.random.Random
 
 @Immutable
@@ -18,7 +19,7 @@ data class ArtistEntity(
     val name: String,
     val thumbnailUrl: String? = null,
     val channelId: String? = null,
-    val lastUpdateTime: LocalDateTime = LocalDateTime.now(),
+    val lastUpdateTime: LocalDateTime = nowLocal(),
     val bookmarkedAt: LocalDateTime? = null,
     @ColumnInfo(name = "isLocal", defaultValue = false.toString())
     val isLocal: Boolean = false
@@ -30,7 +31,7 @@ data class ArtistEntity(
         get() = id.startsWith("FEmusic_library_privately_owned_artist")
 
     fun localToggleLike() = copy(
-        bookmarkedAt = if (bookmarkedAt != null) null else LocalDateTime.now(),
+        bookmarkedAt = if (bookmarkedAt != null) null else nowLocal(),
     )
 
     fun toggleLike() = localToggleLike().also {

@@ -1,20 +1,17 @@
 package com.mochyy.mochymusic.db
 
 import androidx.room.TypeConverter
-import java.time.Instant
-import java.time.LocalDateTime
-import java.time.ZoneOffset
+import kotlinx.datetime.LocalDateTime
 
 class Converters {
     @TypeConverter
     fun fromTimestamp(value: Long?): LocalDateTime? =
         if (value != null) {
-            LocalDateTime.ofInstant(Instant.ofEpochMilli(value), ZoneOffset.UTC)
+            localDateTimeFromEpochMillisUtc(value)
         } else {
             null
         }
 
     @TypeConverter
-    fun dateToTimestamp(date: LocalDateTime?): Long? =
-        date?.atZone(ZoneOffset.UTC)?.toInstant()?.toEpochMilli()
+    fun dateToTimestamp(date: LocalDateTime?): Long? = date?.toEpochMillisUtc()
 }

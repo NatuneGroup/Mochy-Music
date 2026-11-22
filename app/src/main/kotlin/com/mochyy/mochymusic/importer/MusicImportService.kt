@@ -5,6 +5,7 @@ package com.mochyy.mochymusic.importer
 import android.content.Context
 import com.mochyy.mochymusic.db.MusicDatabase
 import com.mochyy.mochymusic.db.entities.ImportSession
+import com.mochyy.mochymusic.db.nowLocal
 import com.mochyy.mochymusic.extensions.isUserLoggedIn
 import com.mochyy.mochymusic.importer.account.AccountImportException
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -21,7 +22,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import java.time.LocalDateTime
+import kotlinx.datetime.LocalDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -58,7 +59,7 @@ class MusicImportService @Inject constructor(
         _progress.value = ImportProgress(isRunning = true, totalTracks = parsed.totalSongs, source = parsed.provider)
         runningJob = importScope.launch {
             try {
-                steps.sessionId = database.insert(ImportSession(source = steps.source.key, startedAt = LocalDateTime.now()))
+                steps.sessionId = database.insert(ImportSession(source = steps.source.key, startedAt = nowLocal()))
                 steps.runImport(parsed, options)
                 _progress.update { it.copy(isRunning = false, isDone = true, currentLabel = "") }
                 val done = _progress.value
@@ -134,7 +135,7 @@ class MusicImportService @Inject constructor(
             val owner = database.getImportedPlaylist(playlist.id)?.sessionId
             if (owner != null) {
                 steps.sessionId = owner.takeIf { database.importSessionExists(it) }
-                    ?: database.insert(ImportSession(source = steps.source.key, startedAt = LocalDateTime.now())).also { ownSession = it }
+                    ?: database.insert(ImportSession(source = steps.source.key, startedAt = nowLocal())).also { ownSession = it }
             }
             val fresh = steps.record.newTracks(playlist.id, read.tracks)
             _progress.update { it.copy(totalTracks = it.totalTracks + fresh.size) }

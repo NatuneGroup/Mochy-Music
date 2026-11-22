@@ -3,7 +3,7 @@ package com.mochyy.mochymusic.db.entities
 import androidx.compose.runtime.Immutable
 import androidx.room.Entity
 import androidx.room.Index
-import java.time.LocalDateTime
+import kotlinx.datetime.LocalDateTime
 
 /**
  * A song that came into the app by an import, and from where. A song imported from two services has

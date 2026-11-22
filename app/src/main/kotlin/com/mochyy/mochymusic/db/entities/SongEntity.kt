@@ -5,11 +5,12 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.mochyy.mochymusic.db.nowLocal
 import com.music.innertube.YouTube
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.time.LocalDateTime
+import kotlinx.datetime.LocalDateTime
 
 @Immutable
 @Entity(
@@ -61,13 +62,13 @@ data class SongEntity(
 ) {
     fun localToggleLike() = copy(
         liked = !liked,
-        likedDate = if (!liked) LocalDateTime.now() else null,
+        likedDate = if (!liked) nowLocal() else null,
     )
 
     fun toggleLike() = copy(
         liked = !liked,
-        likedDate = if (!liked) LocalDateTime.now() else null,
-        inLibrary = if (!liked) inLibrary ?: LocalDateTime.now() else inLibrary,
+        likedDate = if (!liked) nowLocal() else null,
+        inLibrary = if (!liked) inLibrary ?: nowLocal() else inLibrary,
         addedByLike = if (!liked && inLibrary == null) true else addedByLike,
     ).also {
         CoroutineScope(Dispatchers.IO).launch {
@@ -78,7 +79,7 @@ data class SongEntity(
     // byLike is for the youtube sync, where a liked song lands in the library on its own
     fun toggleLibrary(syncToYouTube: Boolean = true, byLike: Boolean = false) = copy(
         liked = if (inLibrary == null) liked else false,
-        inLibrary = if (inLibrary == null) LocalDateTime.now() else null,
+        inLibrary = if (inLibrary == null) nowLocal() else null,
         likedDate = if (inLibrary == null) likedDate else null,
         addedByLike = inLibrary == null && byLike,
     ).also {

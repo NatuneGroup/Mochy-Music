@@ -392,8 +392,8 @@ val MIGRATION_1_2 =
                     contentValuesOf(
                         "id" to playlist.id,
                         "name" to playlist.name,
-                        "createDate" to converters.dateToTimestamp(LocalDateTime.now()),
-                        "lastUpdateTime" to converters.dateToTimestamp(LocalDateTime.now()),
+                        "createDate" to converters.dateToTimestamp(nowLocal()),
+                        "lastUpdateTime" to converters.dateToTimestamp(nowLocal()),
                     ),
                 )
             }
@@ -573,9 +573,9 @@ class Migration12To13 : AutoMigrationSpec {
 class Migration13To14 : AutoMigrationSpec {
     @SuppressLint("Range")
     override fun onPostMigrate(db: SupportSQLiteDatabase) {
-        db.execSQL("UPDATE playlist SET createdAt = '${Converters().dateToTimestamp(LocalDateTime.now())}'")
+        db.execSQL("UPDATE playlist SET createdAt = '${Converters().dateToTimestamp(nowLocal())}'")
         db.execSQL(
-            "UPDATE playlist SET lastUpdateTime = '${Converters().dateToTimestamp(LocalDateTime.now())}'"
+            "UPDATE playlist SET lastUpdateTime = '${Converters().dateToTimestamp(nowLocal())}'"
         )
     }
 }

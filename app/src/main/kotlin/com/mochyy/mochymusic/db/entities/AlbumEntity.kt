@@ -4,11 +4,12 @@ import androidx.compose.runtime.Immutable
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.mochyy.mochymusic.db.nowLocal
 import com.music.innertube.YouTube
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.time.LocalDateTime
+import kotlinx.datetime.LocalDateTime
 
 @Immutable
 @Entity(tableName = "album")
@@ -23,7 +24,7 @@ data class AlbumEntity(
     val duration: Int,
     @ColumnInfo(defaultValue = "0")
     val explicit: Boolean = false,
-    val lastUpdateTime: LocalDateTime = LocalDateTime.now(),
+    val lastUpdateTime: LocalDateTime = nowLocal(),
     val bookmarkedAt: LocalDateTime? = null,
     val likedDate: LocalDateTime? = null,
     val inLibrary: LocalDateTime? = null,
@@ -34,7 +35,7 @@ data class AlbumEntity(
     val isUploaded: Boolean = false,
 ) {
     fun localToggleLike() = copy(
-        bookmarkedAt = if (bookmarkedAt != null) null else LocalDateTime.now()
+        bookmarkedAt = if (bookmarkedAt != null) null else nowLocal()
     )
 
     fun toggleUploaded() = copy(
@@ -42,7 +43,7 @@ data class AlbumEntity(
     )
 
     fun toggleLibrary() = copy(
-        inLibrary = if (inLibrary != null) null else LocalDateTime.now()
+        inLibrary = if (inLibrary != null) null else nowLocal()
     )
 
     fun toggleLike() = localToggleLike().also {

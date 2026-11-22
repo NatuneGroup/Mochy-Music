@@ -3,7 +3,8 @@ package com.mochyy.mochymusic.db.entities
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import java.time.LocalDateTime
+import com.mochyy.mochymusic.db.nowLocal
+import kotlinx.datetime.LocalDateTime
 
 @Entity(
     tableName = "recognition_history",
@@ -30,6 +31,6 @@ data class RecognitionHistory(
     val spotifyUrl: String? = null,
     val isrc: String? = null,
     val youtubeVideoId: String? = null,
-    val recognizedAt: LocalDateTime = LocalDateTime.now(),
+    val recognizedAt: LocalDateTime = nowLocal(),
     val liked: Boolean = false
 )

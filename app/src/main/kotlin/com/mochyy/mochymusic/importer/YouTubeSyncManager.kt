@@ -30,6 +30,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.datetime.toJavaLocalDateTime
+import kotlinx.datetime.toKotlinLocalDateTime
 import timber.log.Timber
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -170,7 +172,7 @@ class YouTubeSyncManager @Inject constructor(
         val now = LocalDateTime.now()
 
         val existing = HashMap<String, MutableList<LocalDate>>()
-        database.events().first().forEach { existing.getOrPut(it.event.songId) { mutableListOf() } += it.event.timestamp.toLocalDate() }
+        database.events().first().forEach { existing.getOrPut(it.event.songId) { mutableListOf() } += it.event.timestamp.toJavaLocalDateTime().toLocalDate() }
 
         var copied = 0
         var older = today.plusDays(1)
@@ -188,7 +190,7 @@ class YouTubeSyncManager @Inject constructor(
                 val playTimeMs = (song.duration ?: 0) * 1000L
                 database.withTransaction {
                     insert(song.toMediaMetadata())
-                    insert(Event(songId = song.id, timestamp = timestamp, playTime = playTimeMs))
+                    insert(Event(songId = song.id, timestamp = timestamp.toKotlinLocalDateTime(), playTime = playTimeMs))
                     if (playTimeMs > 0) incrementTotalPlayTime(song.id, playTimeMs)
                 }
                 existing.getOrPut(song.id) { mutableListOf() } += timestamp.toLocalDate()
