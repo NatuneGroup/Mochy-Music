@@ -21,6 +21,14 @@ import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.AudioOffload
 import com.mochyy.mochymusic.constants.DontSkipOnFailureKey
 import com.mochyy.mochymusic.constants.EfficientDecodingKey
+import com.mochyy.mochymusic.constants.InfiniteQueueKey
+import com.mochyy.mochymusic.constants.KeepCpuAwakeKey
+import com.mochyy.mochymusic.constants.QueueAddInOrderKey
+import com.mochyy.mochymusic.constants.QueueEditLockKey
+import com.mochyy.mochymusic.constants.QueuePreventDuplicatesKey
+import com.mochyy.mochymusic.constants.SponsorBlockCategoriesKey
+import com.mochyy.mochymusic.constants.SponsorBlockEnabledKey
+import com.mochyy.mochymusic.playback.SponsorBlockDefaultCategories
 import com.mochyy.mochymusic.constants.MixWithOtherAppsKey
 import com.mochyy.mochymusic.constants.PauseOnMute
 import com.mochyy.mochymusic.constants.PersistentQueueKey
@@ -50,6 +58,7 @@ fun PlaybackSettingsScreen(navController: NavController) {
     ) {
         SettingsSection(stringResource(R.string.settings_section_listening), listeningItems().matching(query))
         SettingsSection(stringResource(R.string.settings_section_failures), failureItems().matching(query))
+        SettingsSection(stringResource(R.string.settings_section_sponsorblock), sponsorBlockItems().matching(query))
         SettingsSection(stringResource(R.string.settings_related), relatedItems(navController).matching(query))
         Spacer(Modifier.height(140.dp))
     }
@@ -67,7 +76,53 @@ private fun listeningItems(): List<SettingsItem> {
     val (preloadNextTrack, onPreloadNextTrackChange) = rememberPreference(PreloadNextTrackKey, defaultValue = true)
     val (audioOffload, onAudioOffloadChange) = rememberPreference(AudioOffload, defaultValue = false)
     val (efficientDecoding, onEfficientDecodingChange) = rememberPreference(EfficientDecodingKey, defaultValue = true)
+    val (infiniteQueue, onInfiniteQueueChange) = rememberPreference(InfiniteQueueKey, defaultValue = true)
+    val (keepCpuAwake, onKeepCpuAwakeChange) = rememberPreference(KeepCpuAwakeKey, defaultValue = false)
+    val (preventDuplicates, onPreventDuplicatesChange) = rememberPreference(QueuePreventDuplicatesKey, defaultValue = false)
+    val (addInOrder, onAddInOrderChange) = rememberPreference(QueueAddInOrderKey, defaultValue = true)
+    val (queueLocked, onQueueLockedChange) = rememberPreference(QueueEditLockKey, defaultValue = false)
     return listOf(
+        switchItem(
+            key = "Infinite queue",
+            title = stringResource(R.string.playback_infinite_queue),
+            description = stringResource(R.string.playback_infinite_queue_desc),
+            detail = stringResource(R.string.playback_infinite_queue_detail),
+            icon = painterResource(R.drawable.playlist_play),
+            checked = infiniteQueue,
+            onCheckedChange = onInfiniteQueueChange,
+        ),
+        switchItem(
+            key = "Keep CPU awake during playback",
+            title = stringResource(R.string.settings_keep_cpu_awake),
+            description = stringResource(R.string.settings_keep_cpu_awake_desc),
+            icon = painterResource(R.drawable.sleep_timer),
+            checked = keepCpuAwake,
+            onCheckedChange = onKeepCpuAwakeChange,
+        ),
+        switchItem(
+            key = "Prevent duplicates in queue",
+            title = stringResource(R.string.settings_queue_prevent_duplicates),
+            description = stringResource(R.string.settings_queue_prevent_duplicates_desc),
+            icon = painterResource(R.drawable.playlist_play),
+            checked = preventDuplicates,
+            onCheckedChange = onPreventDuplicatesChange,
+        ),
+        switchItem(
+            key = "Add to queue in order",
+            title = stringResource(R.string.settings_queue_add_in_order),
+            description = stringResource(R.string.settings_queue_add_in_order_desc),
+            icon = painterResource(R.drawable.playlist_play),
+            checked = addInOrder,
+            onCheckedChange = onAddInOrderChange,
+        ),
+        switchItem(
+            key = "Lock queue",
+            title = stringResource(R.string.settings_queue_lock),
+            description = stringResource(R.string.settings_queue_lock_desc),
+            icon = painterResource(R.drawable.lock),
+            checked = queueLocked,
+            onCheckedChange = onQueueLockedChange,
+        ),
         switchItem(
             key = "Keep playing even when closed",
             title = stringResource(R.string.playback_keep_playing),
@@ -151,6 +206,74 @@ private fun listeningItems(): List<SettingsItem> {
             icon = painterResource(R.drawable.skip_next),
             checked = skipSilence,
             onCheckedChange = onSkipSilenceChange,
+        ),
+    )
+}
+
+@Composable
+private fun sponsorBlockItems(): List<SettingsItem> {
+    val (enabled, onEnabledChange) = rememberPreference(SponsorBlockEnabledKey, defaultValue = false)
+    val (categories, onCategoriesChange) = rememberPreference(SponsorBlockCategoriesKey, defaultValue = SponsorBlockDefaultCategories)
+    fun setCategory(name: String, on: Boolean) = onCategoriesChange(if (on) categories + name else categories - name)
+    return listOf(
+        switchItem(
+            key = "SponsorBlock",
+            title = stringResource(R.string.settings_sponsorblock),
+            description = stringResource(R.string.settings_sponsorblock_desc),
+            detail = stringResource(R.string.settings_sponsorblock_detail),
+            icon = painterResource(R.drawable.skip_next),
+            checked = enabled,
+            onCheckedChange = onEnabledChange,
+        ),
+        switchItem(
+            key = "SponsorBlock non-music sections",
+            title = stringResource(R.string.settings_sponsorblock_offtopic),
+            description = stringResource(R.string.settings_sponsorblock_offtopic_desc),
+            icon = painterResource(R.drawable.skip_next),
+            checked = "music_offtopic" in categories,
+            onCheckedChange = { setCategory("music_offtopic", it) },
+            subOptionOf = enabled,
+            visible = enabled,
+        ),
+        switchItem(
+            key = "SponsorBlock sponsor reads",
+            title = stringResource(R.string.settings_sponsorblock_sponsor),
+            description = stringResource(R.string.settings_sponsorblock_sponsor_desc),
+            icon = painterResource(R.drawable.skip_next),
+            checked = "sponsor" in categories,
+            onCheckedChange = { setCategory("sponsor", it) },
+            subOptionOf = enabled,
+            visible = enabled,
+        ),
+        switchItem(
+            key = "SponsorBlock self-promotion",
+            title = stringResource(R.string.settings_sponsorblock_selfpromo),
+            description = stringResource(R.string.settings_sponsorblock_selfpromo_desc),
+            icon = painterResource(R.drawable.skip_next),
+            checked = "selfpromo" in categories,
+            onCheckedChange = { setCategory("selfpromo", it) },
+            subOptionOf = enabled,
+            visible = enabled,
+        ),
+        switchItem(
+            key = "SponsorBlock intros",
+            title = stringResource(R.string.settings_sponsorblock_intro),
+            description = stringResource(R.string.settings_sponsorblock_intro_desc),
+            icon = painterResource(R.drawable.skip_next),
+            checked = "intro" in categories,
+            onCheckedChange = { setCategory("intro", it) },
+            subOptionOf = enabled,
+            visible = enabled,
+        ),
+        switchItem(
+            key = "SponsorBlock outros",
+            title = stringResource(R.string.settings_sponsorblock_outro),
+            description = stringResource(R.string.settings_sponsorblock_outro_desc),
+            icon = painterResource(R.drawable.skip_next),
+            checked = "outro" in categories,
+            onCheckedChange = { setCategory("outro", it) },
+            subOptionOf = enabled,
+            visible = enabled,
         ),
     )
 }

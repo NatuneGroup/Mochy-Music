@@ -2,6 +2,9 @@
 
 package com.mochyy.mochymusic.playback
 
+import com.mochyy.mochymusic.constants.QueueEditLockKey
+import com.mochyy.mochymusic.utils.dataStore
+import com.mochyy.mochymusic.utils.get
 import android.content.Context
 import com.mochyy.mochymusic.ui.component.TopToaster
 import com.mochyy.mochymusic.R
@@ -494,7 +497,11 @@ class PlayerConnection(
     }
 
     /** Moves a song to play straight after [afterUid]. */
+    /** The queue lock: while on, songs can't be removed, moved or played next from the queue. */
+    private fun queueLocked(): Boolean = service.dataStore.get(QueueEditLockKey, false)
+
     fun moveQueueItem(uid: Int, afterUid: Int) {
+        if (queueLocked()) return
         val from = mediaIndexOf(uid)
         val after = mediaIndexOf(afterUid)
         if (from == C.INDEX_UNSET || after == C.INDEX_UNSET || from == after) return
@@ -517,6 +524,7 @@ class PlayerConnection(
 
     /** Takes a song out of wherever it is in the queue and puts it next, as one the user queued. */
     fun playQueueItemNext(uid: Int) {
+        if (queueLocked()) return
         val index = mediaIndexOf(uid)
         if (index == C.INDEX_UNSET || index == player.currentMediaItemIndex) return
         try {
@@ -530,7 +538,7 @@ class PlayerConnection(
 
     /** Removes songs from the queue. The one playing is never removed. */
     fun removeQueueItems(uids: Collection<Int>) {
-        if (uids.isEmpty()) return
+        if (uids.isEmpty() || queueLocked()) return
         val wanted = uids.toHashSet()
         val timeline = player.currentTimeline
         val window = Timeline.Window()

@@ -152,6 +152,7 @@ import com.mochyy.mochymusic.constants.MixWithOtherAppsKey
 import com.mochyy.mochymusic.constants.PauseOnMute
 import com.mochyy.mochymusic.constants.PersistentQueueKey
 import com.mochyy.mochymusic.constants.InfiniteQueueKey
+import com.mochyy.mochymusic.constants.QueueAddInOrderKey
 import com.mochyy.mochymusic.constants.PersistentShuffleAcrossQueuesKey
 import com.mochyy.mochymusic.constants.PlayerVolumeKey
 import com.mochyy.mochymusic.constants.RememberShuffleAndRepeatKey
@@ -2751,7 +2752,10 @@ class MusicService :
             }
             return
         }
-        insertManualQueued(queued, afterIndex = player.currentMediaItemIndex)
+        removeUpcomingDuplicates(queued)
+        // in order: after the play-next songs already lined up, so several taps keep their order
+        val after = if (dataStore.get(QueueAddInOrderKey, true)) manualQueueAnchor() else player.currentMediaItemIndex
+        insertManualQueued(queued, afterIndex = after)
     }
 
     /**
@@ -2768,6 +2772,7 @@ class MusicService :
             player.prepare()
             return
         }
+        removeUpcomingDuplicates(queued)
         insertManualQueued(queued, afterIndex = manualQueueAnchor())
     }
 
@@ -3072,11 +3077,19 @@ class MusicService :
 
     private var previousMediaItemIndex = C.INDEX_UNSET
 
+    private val sponsorBlock by lazy { SponsorBlockSkipper(this) }
+    private val cpuWake by lazy { CpuWakeHold(this).also { it.attach(scope) } }
+
+    override fun onIsPlayingChanged(isPlaying: Boolean) {
+        cpuWake.onPlayingChanged(isPlaying)
+    }
+
     override fun onMediaItemTransition(
         mediaItem: MediaItem?,
         reason: Int,
     ) {
         clearStreamFailure()
+        sponsorBlock.onItemChanged(player, mediaItem, scope)
         if (!promotingCrossmix) crossmixDirector.onItemChanged()
 
         if (!promotingCrossmix && !isCrossfading) {
@@ -4642,6 +4655,8 @@ class MusicService :
         playerSilenceProcessors.remove(player)
         playerReplayGain.remove(player)
 
+        sponsorBlock.cancel()
+        cpuWake.release()
         player.release()
         super.onDestroy()
     }
