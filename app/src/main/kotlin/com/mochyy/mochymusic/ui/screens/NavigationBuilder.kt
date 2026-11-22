@@ -460,6 +460,9 @@ fun NavGraphBuilder.navigationBuilder(
     composable(com.mochyy.mochymusic.ui.screens.settings.InternetSettingsRoute) {
         com.mochyy.mochymusic.ui.screens.settings.InternetSettingsScreen(navController = navController)
     }
+    composable(com.mochyy.mochymusic.ui.screens.settings.AiTranslatorSettingsRoute) {
+        com.mochyy.mochymusic.ui.screens.settings.AiTranslatorSettingsScreen(navController = navController)
+    }
     composable(com.mochyy.mochymusic.ui.screens.settings.ProxySettingsRoute) {
         com.mochyy.mochymusic.ui.screens.settings.ProxySettingsScreen(navController = navController)
     }

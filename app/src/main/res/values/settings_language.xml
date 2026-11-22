@@ -249,4 +249,22 @@
     <string name="settings_floating_lyrics">Floating lyrics</string>
     <string name="settings_floating_lyrics_desc">Keep the line being sung in a little bubble over other apps</string>
     <string name="settings_floating_lyrics_detail">Tap the cover for play and pause, or hold it to open Mochy. Drag it and it snaps to the nearest edge. Drop it on Close to hide it until you\'re back in Mochy, or on Don\'t show again to turn it off.</string>
+    <string name="settings_ai_translator">AI translator</string>
+    <string name="settings_ai_translator_desc">Translate lyrics with OpenRouter, your own OpenAI-compatible endpoint or DeepL</string>
+    <string name="settings_translate_auto">Translate lyrics automatically</string>
+    <string name="settings_translate_auto_desc">Translate lyrics when they load. Off, you tap Translate in the lyrics menu</string>
+    <string name="ai_translator_provider">Provider</string>
+    <string name="ai_translator_provider_openrouter">OpenRouter</string>
+    <string name="ai_translator_provider_custom">Custom endpoint (OpenAI-compatible)</string>
+    <string name="ai_translator_provider_deepl">DeepL</string>
+    <string name="ai_translator_endpoint">Endpoint URL</string>
+    <string name="ai_translator_endpoint_hint">https://example.com/v1/chat/completions</string>
+    <string name="ai_translator_endpoint_default">OpenRouter</string>
+    <string name="ai_translator_model">Model</string>
+    <string name="ai_translator_model_default">Provider default</string>
+    <string name="ai_translator_key">API key</string>
+    <string name="ai_translator_key_saved">Saved on this phone</string>
+    <string name="ai_translator_key_empty">Not set</string>
+    <string name="ai_translator_key_clear">Clear</string>
+    <string name="ai_translator_target">Translate to</string>
 </resources>

@@ -506,7 +506,7 @@ private val TranslationTargetIds = listOf(
 
 /** Every language with its name in the app's language, A to Z for that language. */
 @Composable
-private fun rememberTranslationTargets(): List<Pair<String, String>> {
+internal fun rememberTranslationTargets(): List<Pair<String, String>> {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     return remember(configuration) {
@@ -740,7 +740,7 @@ private val YouTubeTranslationGreen = Color(0xFF93F58A)
  * "Vietnamese".
  */
 @Composable
-private fun LanguagePickerSheet(
+internal fun LanguagePickerSheet(
     title: String,
     selected: String,
     onPick: (String) -> Unit,

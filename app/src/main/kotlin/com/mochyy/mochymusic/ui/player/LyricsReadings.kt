@@ -95,7 +95,7 @@ fun LyricsReadings(
     val (openRouterKey) = rememberPreference(OpenRouterApiKey, defaultValue = "")
     val (openRouterBaseUrl) = rememberPreference(
         OpenRouterBaseUrlKey,
-        defaultValue = "https://openrouter.ai/api/v1",
+        defaultValue = "",
     )
     val (openRouterModel) = rememberPreference(OpenRouterModelKey, defaultValue = "")
     val (deeplKey) = rememberPreference(DeeplApiKey, defaultValue = "")
