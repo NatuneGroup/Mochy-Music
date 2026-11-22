@@ -137,7 +137,8 @@ class SyncUtils @Inject constructor(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    Timber.e(e, "Error processing sync operation: $operation")
+                    // the type only: an operation holds songs and the account it was queued for
+                    Timber.e(e, "Error processing sync operation: ${operation::class.simpleName}")
                 }
             }
         }
@@ -161,8 +162,8 @@ class SyncUtils @Inject constructor(
         }
     }
 
-    // stable id of the signed-in account (see SavedAccount.id), null when nobody is signed in
-    private suspend fun activeAccountId(): String? = SavedAccount.fromActive(context.dataStore.data.first())?.id
+    // the signed-in account as SavedAccount.opaqueId (never the raw id, which can be the cookie), null when nobody is signed in
+    private suspend fun activeAccountId(): String? = SavedAccount.fromActive(context.dataStore.data.first())?.opaqueId
 
     private suspend fun isLoggedIn(): Boolean {
         return try {
@@ -248,7 +249,7 @@ class SyncUtils @Inject constructor(
 
     fun likeSong(s: SongEntity) {
         // tagged with the account signed in at the tap (read now, not once the launch runs), so a switch before it runs drops it
-        val owner = SavedAccount.fromActive(PreferencesCache.current(context.dataStore))?.id
+        val owner = SavedAccount.fromActive(PreferencesCache.current(context.dataStore))?.opaqueId
         syncScope.launch {
             syncChannel.send(SyncOperation.LikeSong(s, owner))
         }
