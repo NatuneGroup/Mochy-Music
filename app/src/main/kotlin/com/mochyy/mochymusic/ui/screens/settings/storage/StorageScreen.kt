@@ -244,7 +244,8 @@ private fun CacheLimitCard(
         StepSlider(steps = steps, value = limit, onValueChange = onLimitChange)
         Row(Modifier.padding(top = 4.dp, start = 4.dp, end = 4.dp)) {
             Text(stringResource(R.string.storage_cache_none), style = storageText(10f, FontWeight.Medium, StorageMuted, 0f), modifier = Modifier.weight(1f))
-            Text(stringResource(R.string.storage_cache_unlimited), style = storageText(10f, FontWeight.Medium, StorageMuted, 0f))
+            // the slider's real ends: the image cache tops out at 2 gb, only the song cache has a no-limit step
+            Text(cacheLimitLabel(steps.last()), style = storageText(10f, FontWeight.Medium, StorageMuted, 0f))
         }
         AnimatedVisibility(
             visible = appliesLater,
