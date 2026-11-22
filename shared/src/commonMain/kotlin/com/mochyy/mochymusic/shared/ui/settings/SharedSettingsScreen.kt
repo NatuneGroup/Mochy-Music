@@ -18,50 +18,25 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.emptyPreferences
 import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.shared.resources.settings
 import com.mochyy.mochymusic.shared.resources.settings_player_display
 import com.mochyy.mochymusic.shared.resources.settings_playback_category
-import com.mochyy.mochymusic.shared.resources.settings_write_failed
-import com.mochyy.mochymusic.shared.resources.show_format_badge
-import com.mochyy.mochymusic.shared.resources.show_format_sample_rate
-import com.mochyy.mochymusic.shared.settings.PlaybackPreferenceKeys
 import com.mochyy.mochymusic.shared.settings.PlaybackPreferences
-import kotlinx.coroutines.launch
-import okio.IOException
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun SharedSettingsScreen(
     settings: PlaybackPreferences,
+    codecBadge: CodecBadgeWriter,
     modifier: Modifier = Modifier,
 ) {
     val preferences by settings.values.collectAsState(initial = emptyPreferences())
-    val showBadge = preferences[PlaybackPreferenceKeys.showFormatBadge] ?: true
-    val showSampleRate = preferences[PlaybackPreferenceKeys.showSampleRate] ?: false
-    var writeFailed by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-
-    fun setPreference(key: Preferences.Key<Boolean>, value: Boolean) {
-        scope.launch {
-            writeFailed = try {
-                settings.set(key, value)
-                false
-            } catch (_: IOException) {
-                true
-            }
-        }
-    }
 
     Column(
         modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp),
@@ -80,22 +55,10 @@ internal fun SharedSettingsScreen(
                 modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
             )
             SettingsCard {
-                PlaybackSettingRow(stringResource(Res.string.show_format_badge), showBadge) {
-                    setPreference(PlaybackPreferenceKeys.showFormatBadge, it)
-                }
-                PlaybackSettingRow(
-                    stringResource(Res.string.show_format_sample_rate),
-                    showSampleRate,
-                    enabled = showBadge,
-                ) {
-                    setPreference(PlaybackPreferenceKeys.showSampleRate, it)
-                }
+                CodecBadgeRows(codecBadgePrefs(preferences), codecBadge)
             }
         }
         StandaloneAppearanceSettings(settings)
-        if (writeFailed) {
-            Text(stringResource(Res.string.settings_write_failed), color = MaterialTheme.colorScheme.error)
-        }
     }
 }
 
