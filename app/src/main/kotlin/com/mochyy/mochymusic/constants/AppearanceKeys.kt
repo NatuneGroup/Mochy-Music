@@ -4,6 +4,7 @@ package com.mochyy.mochymusic.constants
 
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 
 // hide the bottom nav bar while a list scrolls down, show it again on the way up
 val HideNavOnScrollKey = booleanPreferencesKey("hideNavOnScroll")
@@ -22,3 +23,6 @@ val TabletLayoutKey = booleanPreferencesKey("tabletLayout")
 
 // the app's text in the phone's system font instead of mochy's own
 val SystemFontKey = booleanPreferencesKey("systemFont")
+
+// the bar's tabs in order, as their routes separated by commas; a leading "-" hides a tab. blank means the default
+val NavTabsKey = stringPreferencesKey("navTabs")

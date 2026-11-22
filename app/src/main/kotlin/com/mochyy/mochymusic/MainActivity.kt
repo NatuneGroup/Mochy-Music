@@ -657,8 +657,9 @@ class MainActivity : ComponentActivity() {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val (previousTab, setPreviousTab) = rememberSaveable { mutableStateOf("home") }
 
-                val navigationItems = remember {
-                        Screens.MainScreens
+                val (navTabs) = rememberPreference(com.mochyy.mochymusic.constants.NavTabsKey, defaultValue = "")
+                val navigationItems = remember(navTabs) {
+                    com.mochyy.mochymusic.ui.component.navigationTabs(navTabs)
                 }
                 val (slimNav) = rememberPreference(SlimNavBarKey, defaultValue = false)
                 // flipped in Experimental while the app is open: it starts (or stops) turning right away

@@ -250,6 +250,32 @@ fun rememberNavBarHideConnection(state: NavBarHide, barHeightPx: Float, enabled:
         }
     }
 
+/** one tab in the bar's settings: where it sits and whether it is shown */
+data class NavTabSlot(val screen: Screens, val shown: Boolean)
+
+/**
+ * the tabs in the saved order, shown or hidden. a tab missing from the save (a new one, or a blank
+ * save) comes last and is shown. Settings is always in the bar so the app can never be left without it.
+ */
+fun navTabSlots(saved: String): List<NavTabSlot> {
+    val slots = mutableListOf<NavTabSlot>()
+    saved.split(',').filter { it.isNotBlank() }.forEach { token ->
+        val screen = Screens.MainScreens.firstOrNull { it.route == token.removePrefix("-") } ?: return@forEach
+        if (slots.none { it.screen == screen }) slots += NavTabSlot(screen, shown = !token.startsWith("-"))
+    }
+    Screens.MainScreens.forEach { screen ->
+        if (slots.none { it.screen == screen }) slots += NavTabSlot(screen, shown = true)
+    }
+    return slots
+}
+
+fun encodeNavTabs(slots: List<NavTabSlot>): String =
+    slots.joinToString(",") { if (it.shown) it.screen.route else "-${it.screen.route}" }
+
+/** the tabs the bar draws, in order */
+fun navigationTabs(saved: String): List<Screens> =
+    navTabSlots(saved).filter { it.shown || it.screen == Screens.Settings }.map { it.screen }
+
 /** The bar itself, a stadium the mini player's 64dp matches. */
 internal val NavBarHeight = 64.dp
 internal val NavBarShape = RoundedCornerShape(50)

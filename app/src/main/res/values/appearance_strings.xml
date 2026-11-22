@@ -16,4 +16,9 @@
     <string name="settings_tablet_layout_desc">Use the wide layout with the side bar on any screen, even a phone held upright.</string>
     <string name="settings_system_font">System font</string>
     <string name="settings_system_font_desc">Show the app in your phone's own font instead of Mochy's.</string>
+    <string name="settings_nav_bar">Navigation bar</string>
+    <string name="settings_nav_bar_desc">Choose which tabs show, and their order.</string>
+    <string name="settings_nav_bar_always">Always shown</string>
+    <string name="settings_nav_move_up">Move up</string>
+    <string name="settings_nav_move_down">Move down</string>
 </resources>

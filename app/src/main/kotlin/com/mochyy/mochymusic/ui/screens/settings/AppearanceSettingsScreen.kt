@@ -58,7 +58,7 @@ fun AppearanceSettingsScreen(navController: NavController) {
         onBack = { navController.navigateUp() },
         searchBar = { SubSettingsSearchBar(query = query, onQueryChange = { query = it }) },
     ) {
-        SettingsSection(title = null, items = (startItems() + navBarItems() + accentItems()).matching(query))
+        SettingsSection(title = null, items = (startItems() + navBarItems(navController) + accentItems()).matching(query))
         SettingsSection(title = null, items = (scaleItems() + tabletItems() + fontItems()).matching(query))
         Spacer(Modifier.height(140.dp))
     }
@@ -82,9 +82,16 @@ private fun startItems(): List<SettingsItem> {
 }
 
 @Composable
-private fun navBarItems(): List<SettingsItem> {
+private fun navBarItems(navController: NavController): List<SettingsItem> {
     val (hideOnScroll, setHideOnScroll) = rememberPreference(HideNavOnScrollKey, defaultValue = false)
     return listOf(
+        linkItem(
+            key = "Navigation bar",
+            title = stringResource(R.string.settings_nav_bar),
+            description = stringResource(R.string.settings_nav_bar_desc),
+            icon = painterResource(R.drawable.nav_bar),
+            onClick = { navController.navigate("nav_bar_settings") },
+        ),
         switchItem(
             key = "Hide navigation bar on scroll",
             title = stringResource(R.string.settings_hide_nav_on_scroll),
