@@ -19,6 +19,7 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.CarDeviceSongsKey
 import com.mochyy.mochymusic.constants.CarLyricsKey
 import com.mochyy.mochymusic.constants.CarMeteredArtworkKey
 import com.mochyy.mochymusic.constants.CarOnlineRecommendationsKey
@@ -51,6 +52,7 @@ fun AndroidAutoSettingsScreen(navController: NavController) {
     val (onlineVoice, setOnlineVoice) = rememberPreference(CarOnlineVoiceSearchKey, defaultValue = true)
     val (meteredArtwork, setMeteredArtwork) = rememberPreference(CarMeteredArtworkKey, defaultValue = true)
     val (lyrics, setLyrics) = rememberPreference(CarLyricsKey, defaultValue = true)
+    val (deviceSongs, setDeviceSongs) = rememberPreference(CarDeviceSongsKey, defaultValue = true)
 
     SubSettingsScaffold(
         title = stringResource(R.string.car_settings_title),
@@ -65,6 +67,14 @@ fun AndroidAutoSettingsScreen(navController: NavController) {
                 icon = painterResource(R.drawable.home),
                 checked = recommendations,
                 onCheckedChange = setRecommendations,
+            ),
+            switchItem(
+                key = "Songs on this device",
+                title = stringResource(R.string.car_settings_device_songs),
+                description = stringResource(R.string.car_settings_device_songs_desc),
+                icon = painterResource(R.drawable.smartphone),
+                checked = deviceSongs,
+                onCheckedChange = setDeviceSongs,
             ),
             switchItem(
                 key = "Online voice search",

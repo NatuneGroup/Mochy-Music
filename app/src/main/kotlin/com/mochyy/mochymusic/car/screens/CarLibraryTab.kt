@@ -16,25 +16,33 @@ import kotlinx.coroutines.coroutineScope
 // the phone's library, one row per kind of list, each opening its own screen
 @UnstableApi
 internal class CarLibraryTab(app: CarApp) : CarDataTab<CarLibraryTab.Data>(app, "library", R.string.car_tab_library, R.drawable.library_music) {
-    class Data(val liked: Int, val downloaded: Int)
+    // deviceSongs is -1 when the row is hidden in settings
+    class Data(val liked: Int, val downloaded: Int, val deviceSongs: Int)
 
     override suspend fun fetch(): Data = coroutineScope {
         val liked = async { app.catalog.likedCount() }
         val downloaded = async { app.catalog.downloadedCount() }
-        Data(liked.await(), downloaded.await())
+        val device = async { if (app.catalog.showDeviceSongs()) app.catalog.deviceSongs().size else -1 }
+        Data(liked.await(), downloaded.await(), device.await())
     }
 
-    override fun empty() = Data(0, 0)
+    override fun empty() = Data(0, 0, -1)
 
     override fun build(data: Data): Template {
         val songs = { count: Int -> app.carContext.resources.getQuantityString(R.plurals.n_song, count, count) }
-        val rows = listOf(
-            entry(R.string.car_liked, songs(data.liked), R.drawable.favorite) {
-                app.push(CarSongsScreen(app, app.string(R.string.car_liked)) { app.catalog.liked() })
+        val liked = entry(R.string.car_liked, songs(data.liked), R.drawable.favorite) {
+            app.push(CarSongsScreen(app, app.string(R.string.car_liked)) { app.catalog.liked() })
+        }
+        val downloaded = entry(R.string.car_downloaded, songs(data.downloaded), R.drawable.download) {
+            app.push(CarSongsScreen(app, app.string(R.string.car_downloaded)) { app.catalog.downloaded() })
+        }
+        // imported local files and downloads together, the car's folder for what's on the phone
+        val device = if (data.deviceSongs < 0) emptyList() else listOf(
+            entry(R.string.car_device_songs, songs(data.deviceSongs), R.drawable.smartphone) {
+                app.push(CarSongsScreen(app, app.string(R.string.car_device_songs)) { app.catalog.deviceSongs() })
             },
-            entry(R.string.car_downloaded, songs(data.downloaded), R.drawable.download) {
-                app.push(CarSongsScreen(app, app.string(R.string.car_downloaded)) { app.catalog.downloaded() })
-            },
+        )
+        val rows = listOf(liked, downloaded) + device + listOf(
             entry(R.string.car_playlists, null, R.drawable.queue_music) {
                 app.push(CarCollectionsScreen(app, app.string(R.string.car_playlists), grid = false) { app.catalog.playlists() })
             },

@@ -10,6 +10,7 @@ import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.WatchEndpoint
 import com.music.innertube.models.YTItem
+import com.mochyy.mochymusic.constants.CarDeviceSongsKey
 import com.mochyy.mochymusic.constants.HideVideoSongsKey
 import com.mochyy.mochymusic.constants.CarOnlineRecommendationsKey
 import com.mochyy.mochymusic.constants.SongSortType
@@ -102,6 +103,15 @@ class CarCatalog(
     suspend fun likedCount(): Int = io { database.likedSongsCount().first() }
 
     suspend fun downloadedCount(): Int = io { database.downloadedSongs(SongSortType.CREATE_DATE, true).first().size }
+
+    // songs saved on this phone: imported local files and downloads, for the car's "songs on this device" row
+    fun showDeviceSongs(): Boolean = context.dataStore.get(CarDeviceSongsKey, true)
+
+    suspend fun deviceSongs(): List<CarSong> = io {
+        val local = database.localSongs(SongSortType.CREATE_DATE, true).first()
+        val downloaded = database.downloadedSongs(SongSortType.CREATE_DATE, true).first()
+        (local + downloaded).distinctBy { it.id }.map { it.toCarSong() }
+    }
 
     suspend fun liked(): List<CarSong> = io { database.likedSongs(SongSortType.CREATE_DATE, true).first().map { it.toCarSong() } }
 
