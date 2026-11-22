@@ -45,7 +45,6 @@ import org.jetbrains.compose.resources.stringResource
 internal fun SharedSettingsScreen(
     settings: PlaybackPreferences,
     modifier: Modifier = Modifier,
-    additionalSections: @Composable ColumnScope.() -> Unit = {},
 ) {
     val preferences by settings.values.collectAsState(initial = emptyPreferences())
     val showBadge = preferences[PlaybackPreferenceKeys.showFormatBadge] ?: true
@@ -93,7 +92,7 @@ internal fun SharedSettingsScreen(
                 }
             }
         }
-        additionalSections()
+        StandaloneAppearanceSettings(settings)
         if (writeFailed) {
             Text(stringResource(Res.string.settings_write_failed), color = MaterialTheme.colorScheme.error)
         }

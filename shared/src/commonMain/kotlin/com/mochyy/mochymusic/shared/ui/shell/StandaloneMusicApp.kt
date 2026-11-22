@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -113,7 +112,6 @@ internal fun StandaloneMusicApp(
     settings: PlaybackPreferences,
     library: LocalLibrary,
     modifier: Modifier = Modifier,
-    additionalSettingsSections: @Composable ColumnScope.() -> Unit = {},
 ) {
     val playback by player.state.collectAsState()
     var queued by remember { mutableStateOf<List<SongItem>>(emptyList()) }
@@ -255,7 +253,7 @@ internal fun StandaloneMusicApp(
                 onRemove = { setSaved(it, false) },
                 updateFailed = libraryUpdateFailed,
             )
-            ShellTab.Settings -> SharedSettingsScreen(settings, additionalSections = additionalSettingsSections)
+            ShellTab.Settings -> SharedSettingsScreen(settings)
         }
         true
     }
