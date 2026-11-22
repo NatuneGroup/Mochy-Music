@@ -70,6 +70,7 @@ kotlin {
             api(project(":providers:innertube"))
             implementation(libs.coil)
             implementation(libs.kotlinx.coroutines.core)
+            api(libs.kotlinx.datetime)
             // Providers take an injected HttpClient; each platform picks the engine, timeouts and proxy.
             implementation(libs.ktor.client.core)
             implementation(libs.kotlinx.serialization.json)

@@ -67,8 +67,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
 import java.text.Collator
-import java.time.LocalDateTime
 import java.time.ZoneOffset
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.toJavaLocalDateTime
 import java.util.Locale
 
 @Dao
@@ -411,7 +412,7 @@ interface DatabaseDao {
         fromTimeStamp: Long,
         limit: Int = 6,
         offset: Int = 0,
-        toTimeStamp: Long? = LocalDateTime.now().toInstant(ZoneOffset.UTC).toEpochMilli(),
+        toTimeStamp: Long? = nowLocal().toEpochMillisUtc(),
     ): Flow<List<SongWithStats>>
 
     @Transaction
@@ -444,7 +445,7 @@ interface DatabaseDao {
         fromTimeStamp: Long,
         limit: Int = 6,
         offset: Int = 0,
-        toTimeStamp: Long? = LocalDateTime.now().toInstant(ZoneOffset.UTC).toEpochMilli(),
+        toTimeStamp: Long? = nowLocal().toEpochMillisUtc(),
     ): Flow<List<Song>>
 
     @Transaction
@@ -482,7 +483,7 @@ interface DatabaseDao {
         fromTimeStamp: Long,
         limit: Int = 6,
         offset: Int = 0,
-        toTimeStamp: Long? = LocalDateTime.now().toInstant(ZoneOffset.UTC).toEpochMilli(),
+        toTimeStamp: Long? = nowLocal().toEpochMillisUtc(),
     ): Flow<List<Artist>>
 
     @Transaction
@@ -523,7 +524,7 @@ interface DatabaseDao {
         fromTimeStamp: Long,
         limit: Int = 6,
         offset: Int = 0,
-        toTimeStamp: Long? = LocalDateTime.now().toInstant(ZoneOffset.UTC).toEpochMilli(),
+        toTimeStamp: Long? = nowLocal().toEpochMillisUtc(),
     ): Flow<List<Album>>
 
     @Transaction
@@ -543,7 +544,7 @@ interface DatabaseDao {
         fromTimeStamp: Long,
         limit: Int = 6,
         offset: Int = 0,
-        toTimeStamp: Long? = LocalDateTime.now().toInstant(ZoneOffset.UTC).toEpochMilli(),
+        toTimeStamp: Long? = nowLocal().toEpochMillisUtc(),
     ): Flow<List<Playlist>>
 
     @Transaction
@@ -1121,7 +1122,7 @@ interface DatabaseDao {
 
     @Transaction
     fun addMissingLibraryAlbums() {
-        addMissingAlbumRows(LocalDateTime.now())
+        addMissingAlbumRows(nowLocal())
         addMissingAlbumArtists()
     }
 
@@ -1477,7 +1478,7 @@ interface DatabaseDao {
     fun incrementPlayCount(songId: String, year: Int, month: Int)
 
     fun incrementPlayCount(songId: String) {
-        val time = LocalDateTime.now().atOffset(ZoneOffset.UTC)
+        val time = nowLocal().toJavaLocalDateTime().atOffset(ZoneOffset.UTC)
         var oldCount: Int
         runBlocking {
             oldCount = getPlayCountByMonth(songId, time.year, time.monthValue).first()
@@ -2017,7 +2018,7 @@ interface DatabaseDao {
                 thumbnailUrl = preferredThumbnailUrl
                     ?: artistPage.artist.thumbnail?.resize(544, 544)
                     ?: artist.thumbnailUrl,
-                lastUpdateTime = LocalDateTime.now()
+                lastUpdateTime = nowLocal()
             )
         )
     }

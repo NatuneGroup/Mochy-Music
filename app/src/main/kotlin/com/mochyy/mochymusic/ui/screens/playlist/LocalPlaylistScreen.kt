@@ -151,7 +151,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
-import java.time.LocalDateTime
+import com.mochyy.mochymusic.db.nowLocal
 
 private val YouTubeChannelRegex = Regex("music\\.youtube\\.com/channel/([A-Za-z0-9_-]+)")
 
@@ -404,7 +404,7 @@ fun LocalPlaylistScreen(
                 startIndex = startIndex,
             )
         )
-        database.query { insert(PlaylistEvent(playlistId = current.id, timestamp = LocalDateTime.now())) }
+        database.query { insert(PlaylistEvent(playlistId = current.id, timestamp = nowLocal())) }
     }
 
     val openPlaylistMenu: (() -> Unit)? = playlist?.let { currentPlaylist ->

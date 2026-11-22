@@ -293,10 +293,10 @@ import okhttp3.OkHttpClient
 import timber.log.Timber
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
-import java.time.LocalDateTime
 import javax.inject.Inject
 import kotlin.coroutines.coroutineContext
 import kotlin.time.Duration.Companion.seconds
+import com.mochyy.mochymusic.db.nowLocal
 
 private const val INSTANT_SILENCE_SKIP_STEP_MS = 15_000L
 
@@ -4541,7 +4541,7 @@ class MusicService :
                     insert(
                         Event(
                             songId = mediaItem.mediaId,
-                            timestamp = LocalDateTime.now(),
+                            timestamp = nowLocal(),
                             playTime = playbackStats.totalPlayTimeMs,
                         ),
                     )

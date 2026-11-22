@@ -60,6 +60,8 @@ import java.time.LocalDateTime
 import java.time.ZoneOffset
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.mochyy.mochymusic.db.nowLocal
+import kotlinx.datetime.toKotlinLocalDateTime
 
 sealed class SyncOperation {
     data object FullSync : SyncOperation()
@@ -414,7 +416,7 @@ class SyncUtils @Inject constructor(
 
     /** Marks a song as one YouTube brought in, so the Library lists it under YouTube Music. */
     private fun MusicDatabase.tagFromYouTube(songId: String, now: LocalDateTime) =
-        insert(ImportedSong(songId = songId, source = ImportSource.YOUTUBE_MUSIC.key, importedAt = now))
+        insert(ImportedSong(songId = songId, source = ImportSource.YOUTUBE_MUSIC.key, importedAt = now.toKotlinLocalDateTime()))
 
     private suspend fun executeLikeSong(s: SongEntity, owner: String?) = withContext(Dispatchers.IO) {
         // before the YouTube check: a love on Last.fm or Libre.fm doesn't need a YouTube account
@@ -500,10 +502,10 @@ class SyncUtils @Inject constructor(
                                 if (tagAll || dbSong == null || !dbSong.song.liked) tagFromYouTube(song.id, now)
                                 if (dbSong == null) {
                                     insert(song.toMediaMetadata()) {
-                                        it.copy(liked = true, likedDate = timestamp, isVideo = isVideoSong)
+                                        it.copy(liked = true, likedDate = timestamp.toKotlinLocalDateTime(), isVideo = isVideoSong)
                                     }
                                 } else if (!dbSong.song.liked || dbSong.song.likedDate != timestamp || dbSong.song.isVideo != isVideoSong) {
-                                    update(dbSong.song.copy(liked = true, likedDate = timestamp, isVideo = isVideoSong))
+                                    update(dbSong.song.copy(liked = true, likedDate = timestamp.toKotlinLocalDateTime(), isVideo = isVideoSong))
                                 }
                             }
                             delay(DB_OPERATION_DELAY_MS)
@@ -872,7 +874,7 @@ class SyncUtils @Inject constructor(
                                             name = artist.title,
                                             thumbnailUrl = artist.thumbnail,
                                             channelId = channelId,
-                                            bookmarkedAt = LocalDateTime.now()
+                                            bookmarkedAt = nowLocal()
                                         )
                                     )
                                 } else {
@@ -885,8 +887,8 @@ class SyncUtils @Inject constructor(
                                                 name = artist.title,
                                                 thumbnailUrl = artist.thumbnail,
                                                 channelId = channelId ?: existing.channelId,
-                                                bookmarkedAt = existing.bookmarkedAt ?: LocalDateTime.now(),
-                                                lastUpdateTime = LocalDateTime.now()
+                                                bookmarkedAt = existing.bookmarkedAt ?: nowLocal(),
+                                                lastUpdateTime = nowLocal()
                                             )
                                         )
                                     }
@@ -964,7 +966,7 @@ class SyncUtils @Inject constructor(
                                     browseId = playlist.id,
                                     thumbnailUrl = playlist.thumbnail,
                                     isEditable = playlist.isEditable,
-                                    bookmarkedAt = LocalDateTime.now(),
+                                    bookmarkedAt = nowLocal(),
                                     remoteSongCount = playlist.songCountText?.let {
                                         Regex("""\d+""").find(it)?.value?.toIntOrNull()
                                     },
@@ -985,7 +987,7 @@ class SyncUtils @Inject constructor(
                                         playlistId = playlistEntity.id,
                                         source = ImportSource.YOUTUBE_MUSIC.key,
                                         sessionId = null,
-                                        importedAt = LocalDateTime.now(),
+                                        importedAt = nowLocal(),
                                     ),
                                 )
                             }

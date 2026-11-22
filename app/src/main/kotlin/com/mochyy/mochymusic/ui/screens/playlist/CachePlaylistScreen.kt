@@ -68,7 +68,6 @@ import com.mochyy.mochymusic.utils.makeTimeString
 import com.mochyy.mochymusic.utils.rememberEnumPreference
 import com.mochyy.mochymusic.utils.rememberPreference
 import com.mochyy.mochymusic.viewmodels.CachePlaylistViewModel
-import java.time.LocalDateTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,7 +94,7 @@ fun CachePlaylistScreen(
     val sortedSongs = remember(cachedSongs, sortType, sortDescending, hideExplicit) {
         val visible = if (hideExplicit) cachedSongs.filter { !it.song.explicit } else cachedSongs
         val sorted = when (sortType) {
-            SongSortType.CREATE_DATE -> visible.sortedBy { it.song.dateDownload ?: LocalDateTime.MIN }
+            SongSortType.CREATE_DATE -> visible.sortedWith(compareBy(nullsFirst(naturalOrder<kotlinx.datetime.LocalDateTime>())) { it.song.dateDownload })
             SongSortType.NAME -> visible.sortedBy { it.song.title }
             SongSortType.ARTIST -> visible.sortedBy { song -> song.artists.joinToString(separator = "") { it.name } }
             SongSortType.PLAY_TIME -> visible.sortedBy { it.song.totalPlayTime }

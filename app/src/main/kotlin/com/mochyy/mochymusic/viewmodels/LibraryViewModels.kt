@@ -63,6 +63,8 @@ import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.LocalDateTime
 import javax.inject.Inject
+import com.mochyy.mochymusic.db.nowLocal
+import kotlinx.datetime.toJavaLocalDateTime
 
 @HiltViewModel
 class LibrarySongsViewModel
@@ -144,7 +146,7 @@ constructor(
                     .map { it.artist }
                     .filter {
                         it.thumbnailUrl == null || Duration.between(
-                            it.lastUpdateTime,
+                            it.lastUpdateTime.toJavaLocalDateTime(),
                             LocalDateTime.now()
                         ) > Duration.ofDays(10)
                     }.forEach { artist ->
@@ -159,7 +161,7 @@ constructor(
                                     update(
                                         artist.copy(
                                             thumbnailUrl = preferredThumbnailUrl,
-                                            lastUpdateTime = LocalDateTime.now()
+                                            lastUpdateTime = nowLocal()
                                         )
                                     )
                                 }
@@ -371,7 +373,7 @@ constructor(
                     .filter {
                         it.thumbnailUrl == null ||
                                 Duration.between(
-                                    it.lastUpdateTime,
+                                    it.lastUpdateTime.toJavaLocalDateTime(),
                                     LocalDateTime.now(),
                                 ) > Duration.ofDays(10)
                     }.forEach { artist ->
@@ -386,7 +388,7 @@ constructor(
                                     update(
                                         artist.copy(
                                             thumbnailUrl = preferredThumbnailUrl,
-                                            lastUpdateTime = LocalDateTime.now(),
+                                            lastUpdateTime = nowLocal(),
                                         )
                                     )
                                 }

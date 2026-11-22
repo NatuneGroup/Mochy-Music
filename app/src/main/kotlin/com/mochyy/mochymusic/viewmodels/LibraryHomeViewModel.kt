@@ -47,6 +47,8 @@ import java.text.Collator
 import java.time.LocalDateTime
 import java.util.Locale
 import javax.inject.Inject
+import com.mochyy.mochymusic.db.nowLocal
+import kotlinx.datetime.toJavaLocalDateTime
 
 /**
  * Backs the Library home screen: the four category counts/covers, the pinned grid, and the
@@ -223,7 +225,7 @@ constructor(
         list.map { it.artist }
             .filter {
                 it.thumbnailUrl == null ||
-                    Duration.between(it.lastUpdateTime, LocalDateTime.now()) > Duration.ofDays(10)
+                    Duration.between(it.lastUpdateTime.toJavaLocalDateTime(), LocalDateTime.now()) > Duration.ofDays(10)
             }
             .forEach { artist ->
                 val preferred = ArtistImageResolver.resolveThumbnail(artist)
@@ -240,7 +242,7 @@ constructor(
                                 update(
                                     artist.copy(
                                         thumbnailUrl = preferred,
-                                        lastUpdateTime = LocalDateTime.now(),
+                                        lastUpdateTime = nowLocal(),
                                     )
                                 )
                             }
