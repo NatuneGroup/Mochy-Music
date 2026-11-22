@@ -2,6 +2,8 @@ package com.mochyy.mochymusic.crossmix
 
 import android.content.Context
 import android.net.Uri
+import android.os.Build
+import android.os.Trace
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
@@ -25,6 +27,7 @@ import java.io.File
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * analyses tracks for crossmix and keeps them on disk. Every song is decoded whole, once: as the
@@ -141,9 +144,25 @@ class CrossmixAnalysisRepository(
     private suspend fun decodeAndAnalyze(uri: Uri, mediaId: String, progress: Progress): TrackAnalysis {
         val analyzer = StreamingTrackAnalyzer()
         val resampler = MonoResampler()
-        val outcome = StreamPcmDecoder.decode(dataSourceFactory(), uri, mediaId, MaxTrackMs * 1_000L) { pcm, channels, sampleRate, presentationUs ->
-            resampler.push(pcm, channels, sampleRate, analyzer::feed)
-            progress.decodedUs = presentationUs
+        // An async envelope remains valid if the decoder ever suspends. The nested PCM slices
+        // are synchronous so Perfetto can attribute their running CPU time to this thread.
+        val cookie = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && Trace.isEnabled()) {
+            traceCookies.incrementAndGet().also { Trace.beginAsyncSection("CrossMix decode stream", it) }
+        } else {
+            null
+        }
+        val traceAnalysis = cookie != null
+        val outcome = try {
+            StreamPcmDecoder.decode(dataSourceFactory(), uri, mediaId, MaxTrackMs * 1_000L) { pcm, channels, sampleRate, presentationUs ->
+                traceCrossmix(traceAnalysis, "CrossMix analyze PCM") {
+                    resampler.push(pcm, channels, sampleRate, analyzer::feed)
+                }
+                progress.decodedUs = presentationUs
+            }
+        } finally {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && cookie != null) {
+                Trace.endAsyncSection("CrossMix decode stream", cookie)
+            }
         }
         val lastPresentationUs = outcome.lastPresentationUs
         val durationUs = outcome.durationUs
@@ -151,7 +170,7 @@ class CrossmixAnalysisRepository(
         val complete = wholeStream || lastPresentationUs >= MaxTrackMs * 1_000L
         // a stream that stopped early still says how the song opens: kept as a partial result, which
         // a playing song never settles for, so its whole is tried again next time
-        return analyzer.finish(complete = complete)
+        return traceCrossmix(traceAnalysis, "CrossMix finish analysis") { analyzer.finish(complete = complete) }
             ?: error("only ${lastPresentationUs / 1_000_000} s of audio came through")
     }
 
@@ -242,6 +261,8 @@ class CrossmixAnalysisRepository(
     }
 
     private companion object {
+        val traceCookies = AtomicInteger()
+
         // 3: analyses cut short by a one-chunk stream were stored as whole ones. 4: the voice curve. 5: bars from chords and drums, and section starts
         const val CacheVersion = 5
         const val MaxCachedArray = 200_000
@@ -250,6 +271,16 @@ class CrossmixAnalysisRepository(
         const val WaitMs = 60_000L
         /** a decode that hasn't finished by then is stuck (a stalled stream): the thread is freed for the next song */
         const val MaxDecodeMs = 4 * 60_000L
+    }
+}
+
+private inline fun <T> traceCrossmix(enabled: Boolean, name: String, block: () -> T): T {
+    if (!enabled) return block()
+    Trace.beginSection(name)
+    return try {
+        block()
+    } finally {
+        Trace.endSection()
     }
 }
 
