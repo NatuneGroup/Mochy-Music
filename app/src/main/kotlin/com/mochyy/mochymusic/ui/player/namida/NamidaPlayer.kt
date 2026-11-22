@@ -474,7 +474,7 @@ private fun NamidaTransport(
         horizontalArrangement = Arrangement.spacedBy(NamidaControlGap),
     ) {
         NamidaIconButton(
-            R.drawable.avd_skip_previous,
+            R.drawable.ic_untitled_skip_previous,
             palette,
             iconSize = NamidaSkipIcon,
             enabled = canPrevious,
@@ -515,7 +515,7 @@ private fun NamidaTransport(
             )
         }
         NamidaIconButton(
-            R.drawable.avd_skip_next,
+            R.drawable.ic_untitled_skip_next,
             palette,
             iconSize = NamidaSkipIcon,
             enabled = canNext,
