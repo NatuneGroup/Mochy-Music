@@ -981,7 +981,8 @@ class PlayerConnection(
         }
     }
 
-    override fun release() = dispose()
+    // the service and MainActivity own this connection on android; a shared screen leaving must not tear it down
+    override fun release() {}
 
     fun dispose() {
         try {
