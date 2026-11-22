@@ -15,7 +15,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import com.mochyy.mochymusic.R
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.ui.layout.onPlaced
@@ -41,6 +40,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,6 +50,12 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+
+/**
+ * Shows a row's whole description when the row is held. Each platform provides how: Android puts it in
+ * the top toast with the info icon; without a provider holding a row does nothing.
+ */
+val LocalSettingsDetail = staticCompositionLocalOf<(String) -> Unit> { {} }
 
 enum class SettingsGroupStyle {
 
@@ -163,7 +169,7 @@ private fun GroupedItems(items: List<SettingsItem>) {
 
 @Composable
 private fun settingsContainerColor(): Color =
-    if (com.mochyy.mochymusic.ui.theme.LocalChromeAccent.current != null) {
+    if (com.mochyy.mochymusic.shared.ui.theme.LocalMochyAccent.current != null) {
         MaterialTheme.colorScheme.surfaceContainer
     } else {
         com.mochyy.mochymusic.ui.screens.search.SearchColors.Field
@@ -224,6 +230,7 @@ private fun SettingsItemRow(
     val key = item.highlightKey
     val requester = remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
     val settingsScroll = LocalSettingsScroll.current
+    val showDetail = LocalSettingsDetail.current
     val density = androidx.compose.ui.platform.LocalDensity.current
     val placement = remember { SettingsPlacement() }
     androidx.compose.runtime.LaunchedEffect(key) {
@@ -265,7 +272,7 @@ private fun SettingsItemRow(
                 onClick = { item.onClick?.invoke() },
                 // holding a row shows its whole description, since the line under it is cut to one
                 onLongClick = (item.detail ?: item.descriptionText)?.let { full ->
-                    { TopToaster.show(full, iconRes = R.drawable.info) }
+                    { showDetail(full) }
                 },
             )
             .padding(horizontal = 20.dp, vertical = 14.dp),

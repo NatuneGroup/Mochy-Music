@@ -4,6 +4,7 @@
 
 package com.mochyy.mochymusic.shared.desktop
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -24,13 +25,21 @@ import com.mochyy.mochymusic.shared.resources.app_name
 import com.mochyy.mochymusic.shared.resources.playback_failed
 import com.mochyy.mochymusic.shared.ui.shell.StandaloneMusicApp
 import com.mochyy.mochymusic.shared.ui.theme.StandaloneMochyTheme
+import com.mochyy.mochymusic.utils.LocalAppPreferences
+import com.mochyy.mochymusic.utils.PreferencesCache
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
 import org.jetbrains.compose.resources.stringResource
 
 /** Opens Mochy's main window with [font] as the app's typeface (the launcher loads Inter for it). */
-fun runDesktopApp(font: FontFamily) = application {
+fun runDesktopApp(font: FontFamily) {
+    // warm before the first frame, so rememberPreference starts on the saved value
+    PreferencesCache.start(desktopPlaybackPreferences.store)
+    runDesktopWindow(font)
+}
+
+private fun runDesktopWindow(font: FontFamily) = application {
     val search = remember { YouTubeSearchSource() }
     val playbackFailed = stringResource(Res.string.playback_failed)
     val player = remember(playbackFailed) { DesktopPlayerController(playbackFailedText = { playbackFailed }) }
@@ -67,15 +76,17 @@ fun runDesktopApp(font: FontFamily) = application {
         title = stringResource(Res.string.app_name),
         state = rememberWindowState(width = 1100.dp, height = 720.dp),
     ) {
-        StandaloneMochyTheme(font, desktopPlaybackPreferences) {
-            StandaloneMusicApp(
-                search,
-                player,
-                providers,
-                desktopPlaybackPreferences,
-                desktopLibrary,
-                queue = queue,
-            )
+        CompositionLocalProvider(LocalAppPreferences provides desktopPlaybackPreferences.store) {
+            StandaloneMochyTheme(font, desktopPlaybackPreferences) {
+                StandaloneMusicApp(
+                    search,
+                    player,
+                    providers,
+                    desktopPlaybackPreferences,
+                    desktopLibrary,
+                    queue = queue,
+                )
+            }
         }
     }
 }

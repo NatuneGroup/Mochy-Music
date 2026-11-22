@@ -500,22 +500,28 @@ class MainActivity : ComponentActivity() {
             lifecycle,
         )
         setContent(parent = motionRecomposer) {
-            // the UI scale is applied once here, at the root: every dp and sp in the app grows or shrinks with it
-            val (uiScale) = rememberPreference(com.mochyy.mochymusic.constants.UiScalePercentKey, defaultValue = 100)
-            val baseDensity = LocalDensity.current
+            // the one settings store (sealed by the vault) for every shared screen, and the toast a held settings row shows
             CompositionLocalProvider(
-                LocalDensity provides androidx.compose.ui.unit.Density(
-                    density = baseDensity.density * uiScale / 100f,
-                    fontScale = baseDensity.fontScale,
-                ),
+                com.mochyy.mochymusic.utils.LocalAppPreferences provides dataStore,
+                com.mochyy.mochymusic.ui.component.LocalSettingsDetail provides ShowSettingsDetail,
             ) {
-                mochyApp(
-                    playerConnection = playerConnection,
-                    database = database,
-                    downloadUtil = downloadUtil,
-                    syncUtils = syncUtils,
-                )
-                VideoPipLayer(this@MainActivity, videoPipOn, playerConnection, inPip)
+                // the UI scale is applied once here, at the root: every dp and sp in the app grows or shrinks with it
+                val (uiScale) = rememberPreference(com.mochyy.mochymusic.constants.UiScalePercentKey, defaultValue = 100)
+                val baseDensity = LocalDensity.current
+                CompositionLocalProvider(
+                    LocalDensity provides androidx.compose.ui.unit.Density(
+                        density = baseDensity.density * uiScale / 100f,
+                        fontScale = baseDensity.fontScale,
+                    ),
+                ) {
+                    mochyApp(
+                        playerConnection = playerConnection,
+                        database = database,
+                        downloadUtil = downloadUtil,
+                        syncUtils = syncUtils,
+                    )
+                    VideoPipLayer(this@MainActivity, videoPipOn, playerConnection, inPip)
+                }
             }
         }
     }
@@ -1747,6 +1753,11 @@ private fun HomeUpdatePrompt(currentRoute: String?) {
         )
     }
 }
+// a held settings row's whole description, in the top toast
+private val ShowSettingsDetail: (String) -> Unit = { full ->
+    com.mochyy.mochymusic.ui.component.TopToaster.show(full, iconRes = R.drawable.info)
+}
+
 val LocalPlayerAwareWindowInsets = staticCompositionLocalOf<WindowInsets> { error("No WindowInsets provided") }
 val LocalDownloadUtil = staticCompositionLocalOf<DownloadUtil> { error("No DownloadUtil provided") }
 val LocalSyncUtils = staticCompositionLocalOf<SyncUtils> { error("No SyncUtils provided") }
