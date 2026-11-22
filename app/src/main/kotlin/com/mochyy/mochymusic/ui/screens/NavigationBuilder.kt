@@ -428,6 +428,10 @@ fun NavGraphBuilder.navigationBuilder(
         com.mochyy.mochymusic.ui.screens.settings.integrations.IntegrationsScreen(navController = navController)
     }
 
+    composable(com.mochyy.mochymusic.ui.screens.settings.integrations.AndroidAutoSettingsRoute) {
+        com.mochyy.mochymusic.ui.screens.settings.integrations.AndroidAutoSettingsScreen(navController = navController)
+    }
+
     composable(com.mochyy.mochymusic.ui.screens.settings.integrations.spotify.SpotifyRoute) {
         com.mochyy.mochymusic.ui.screens.settings.integrations.spotify.SpotifyScreen(navController = navController)
     }

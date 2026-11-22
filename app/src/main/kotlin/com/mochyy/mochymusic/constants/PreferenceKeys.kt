@@ -342,6 +342,7 @@ val TransportEffectKey = stringPreferencesKey("transportEffect")
 
 // skips and backs cross over on two players, the songs either side fetched ahead so they start at once
 val SkipBlendKey = booleanPreferencesKey("skipBlend")
+val PreloadNextTrackKey = booleanPreferencesKey("preloadNextTrack")
 
 // how many songs coming up get their start fetched for blend skips, 1 to 4; data saver keeps it at 1
 val SkipBlendAheadKey = intPreferencesKey("skipBlendAhead")
@@ -959,6 +960,9 @@ val ShowLyricsKey = booleanPreferencesKey("showLyrics")
 val SwipeLyricsKey = booleanPreferencesKey("swipeLyrics")
 // the line being sung shown as the title and cover on android auto's player while a car is connected, on unless turned off
 val CarLyricsKey = booleanPreferencesKey("carLyrics")
+val CarOnlineRecommendationsKey = booleanPreferencesKey("carOnlineRecommendations")
+val CarOnlineVoiceSearchKey = booleanPreferencesKey("carOnlineVoiceSearch")
+val CarMeteredArtworkKey = booleanPreferencesKey("carMeteredArtwork")
 // the line being sung floating over other apps in a little pill, off until turned on and allowed to draw over them
 val FloatingLyricsKey = booleanPreferencesKey("floatingLyrics")
 // where the floating lyrics pill was left on screen, in px from the top left; missing until it's first moved

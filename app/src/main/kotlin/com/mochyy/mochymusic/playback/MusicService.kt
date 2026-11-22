@@ -109,6 +109,7 @@ import com.mochyy.mochymusic.constants.TransportFadeMinSeconds
 import com.mochyy.mochymusic.constants.TransportFadeSecondsKey
 import com.mochyy.mochymusic.constants.CrossfadeGaplessKey
 import com.mochyy.mochymusic.constants.SkipBlendKey
+import com.mochyy.mochymusic.constants.PreloadNextTrackKey
 import com.mochyy.mochymusic.constants.SkipBlendAheadKey
 import com.mochyy.mochymusic.constants.SkipBlendAheadMax
 import com.mochyy.mochymusic.constants.StudioForVideosKey
@@ -257,6 +258,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.decodeFromString
@@ -576,7 +578,9 @@ class MusicService :
     @Volatile private var skipBlend = false
     // how many songs coming up get their start fetched, so a few skips in a row still blend
     @Volatile private var blendAhead = 1
+    @Volatile private var preloadNextTrack = true
     private var prefetchJob: Job? = null
+    private var prefetchIds = emptyList<String>()
 
     // "studio version for music videos": a music video plays its song's studio upload when there is one
     @Volatile private var studioForVideos = false
@@ -1249,7 +1253,15 @@ class MusicService :
                 skipBlend = blend
                 studioForVideos = studio
                 blendAhead = ahead.coerceIn(1, SkipBlendAheadMax)
-                if (blend) prefetchNeighbours() else prefetchJob?.cancel()
+                prefetchNeighbours()
+            }
+
+        dataStore.data
+            .map { it[PreloadNextTrackKey] ?: true }
+            .distinctUntilChanged()
+            .collect(scope) { enabled ->
+                preloadNextTrack = enabled
+                prefetchNeighbours()
             }
 
         if (dataStore.get(PersistentQueueKey, true)) {
@@ -3063,9 +3075,6 @@ class MusicService :
                 player.volume = targetVolume()
             }
         }
-        // the songs either side of the new one get their first seconds fetched, for a blended skip
-        prefetchNeighbours()
-
         if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
             val repeatMode = runBlocking { dataStore.get(RepeatModeKey, REPEAT_MODE_OFF) }
             if (repeatMode == REPEAT_MODE_ONE &&
@@ -3197,6 +3206,15 @@ class MusicService :
         player: Player,
         events: Player.Events,
     ) {
+        if (events.containsAny(
+                Player.EVENT_MEDIA_ITEM_TRANSITION,
+                Player.EVENT_TIMELINE_CHANGED,
+                Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
+                Player.EVENT_REPEAT_MODE_CHANGED,
+                Player.EVENT_IS_PLAYING_CHANGED,
+            )
+        ) prefetchNeighbours()
+
         if (events.containsAny(
                 Player.EVENT_PLAYBACK_STATE_CHANGED,
                 Player.EVENT_PLAY_WHEN_READY_CHANGED
@@ -4895,22 +4913,31 @@ class MusicService :
         return true
     }
 
-    // with "blend skips" on, the songs either side get their first seconds fetched ahead, so a skip either way starts at once
+    // Ordinary playback warms one song ahead. Blended skips also need the previous song.
     private fun prefetchNeighbours() {
+        if (!::player.isInitialized) return
+        val blend = skipBlend
+        val ids = if (player.mediaItemCount == 0 || !canFetchAhead()) {
+            emptyList()
+        } else if (blend) {
+            val ahead = if (com.mochyy.mochymusic.utils.DataSaver.isActive(this)) 1 else blendAhead
+            val upcoming = upcomingIndices(ahead)
+            (upcoming.take(1) + player.previousMediaItemIndex + upcoming.drop(1))
+                .filter { it in 0 until player.mediaItemCount }
+                .map { player.getMediaItemAt(it).mediaId }
+                .distinct()
+        } else if (player.isPlaying && canPreloadNextTrack() && player.repeatMode != REPEAT_MODE_ONE) {
+            upcomingIndices(1).map { player.getMediaItemAt(it).mediaId }
+        } else {
+            emptyList()
+        }
+        if (ids == prefetchIds) return
+        prefetchIds = ids
         prefetchJob?.cancel()
-        if (!skipBlend || player.mediaItemCount == 0 || !canFetchAhead()) return
-        // data saver keeps it to the next one, the extra songs are only worth it on a connection that doesn't count
-        val ahead = if (com.mochyy.mochymusic.utils.DataSaver.isActive(this)) 1 else blendAhead
-        val upcoming = upcomingIndices(ahead)
-        // the next one first, then back, then the rest coming up
-        val ids = (upcoming.take(1) + player.previousMediaItemIndex + upcoming.drop(1))
-            .filter { it != C.INDEX_UNSET && it < player.mediaItemCount }
-            .map { player.getMediaItemAt(it).mediaId }
-            .distinct()
         if (ids.isEmpty()) return
         prefetchJob = scope.launch(Dispatchers.IO) {
-            // the playing song's own start gets the network first
             delay(PrefetchDelayMs)
+            if (!canFetchAhead() || (!blend && !canPreloadNextTrack())) return@launch
             for (id in ids) {
                 if (!isActive) break
                 if (onThePhone(id)) continue
@@ -4918,6 +4945,9 @@ class MusicService :
             }
         }
     }
+
+    private fun canPreloadNextTrack(): Boolean = preloadNextTrack &&
+        !connectivityManager.isActiveNetworkMetered && !com.mochyy.mochymusic.utils.DataSaver.isActive(this)
 
     // only songs youtube plays get their start fetched ahead: a source module's stream is found and cached its own way
     private fun canFetchAhead(): Boolean =
@@ -4955,7 +4985,7 @@ class MusicService :
     }
 
     // reads a song's first bytes through the player's own data source, which keeps them in the player's cache
-    private fun warmStart(mediaId: String) {
+    private suspend fun warmStart(mediaId: String) {
         if (playerCache.isCached(mediaId, 0, PrefetchBytes)) return
         val source = createDataSourceFactory().createDataSource()
         try {
@@ -4969,6 +4999,7 @@ class MusicService :
             val buffer = ByteArray(32 * 1024)
             var total = 0L
             while (total < PrefetchBytes) {
+                currentCoroutineContext().ensureActive()
                 val read = source.read(buffer, 0, buffer.size)
                 if (read == C.RESULT_END_OF_INPUT) break
                 total += read

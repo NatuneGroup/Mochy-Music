@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="playback_preload_next">Preload next song</string>
+    <string name="playback_preload_next_desc">Cache the start of the next YouTube song on unmetered networks, even with Blend skips off</string>
     <string name="appearance_player">Player appearance</string>
     <string name="appearance_customize_player">Customize player</string>
     <string name="appearance_customize_player_desc">Customize player cover, background, style</string>

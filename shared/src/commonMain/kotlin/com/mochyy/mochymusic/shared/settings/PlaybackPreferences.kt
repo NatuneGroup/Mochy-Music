@@ -37,7 +37,7 @@ internal class PlaybackPreferences(private val store: DataStore<Preferences>) {
 
     /** A failed read stays distinguishable from a valid empty queue so startup can never erase it. */
     val upcomingQueue: Flow<UpcomingQueueRead> = store.data
-        .map { preferences -> UpcomingQueueRead.Loaded(decodeQueue(preferences[UpcomingQueueKey])) }
+        .map<Preferences, UpcomingQueueRead> { preferences -> UpcomingQueueRead.Loaded(decodeQueue(preferences[UpcomingQueueKey])) }
         .catch { error ->
             if (error is IOException) emit(UpcomingQueueRead.Unavailable) else throw error
         }

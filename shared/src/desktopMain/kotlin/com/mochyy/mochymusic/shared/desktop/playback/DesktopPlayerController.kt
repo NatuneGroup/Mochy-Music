@@ -37,7 +37,7 @@ class DesktopPlayerController(
     private var generation = 0L
 
     /** Resolve one upcoming URL in the background; this deliberately does not open an audio engine. */
-    fun preloadNext(song: SongItem?) {
+    override fun preloadNext(song: SongItem?) {
         if (released) return
         val candidate = song?.takeIf { it.id != state.value.song?.id }
         if (candidate == null) {
@@ -58,15 +58,14 @@ class DesktopPlayerController(
         activePreload?.resolved?.cancel()
         activePreload = null
         retireEngine()
-        val prepared = preload?.takeIf { it.songId == song.id }
-        if (prepared != null) {
+        val queuedPreload = preload?.takeIf { it.songId == song.id }
+        val prepared = queuedPreload?.takeIf {
+            System.nanoTime() - it.createdAtNanos <= PreloadedStreamMaxAgeNanos
+        }
+        if (queuedPreload != null) {
             preload = null
-            if (System.nanoTime() - prepared.createdAtNanos > PreloadedStreamMaxAgeNanos) {
-                prepared.resolved.cancel()
-                activePreload = null
-            } else {
-                activePreload = prepared
-            }
+            if (prepared == null) queuedPreload.resolved.cancel()
+            else activePreload = prepared
         }
         mutableState.value = PlayerState(song = song, isLoading = true, durationMs = (song.duration ?: 0) * 1000L)
         loadJob = scope.launch {

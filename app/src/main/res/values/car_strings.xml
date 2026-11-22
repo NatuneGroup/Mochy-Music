@@ -1,6 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- android auto -->
+    <string name="car_settings_title">Android Auto</string>
+    <string name="car_settings_integration_desc">Connection, content and artwork settings for the car</string>
+    <string name="car_settings_connection">Connection</string>
+    <string name="car_settings_projected">Connected to Android Auto</string>
+    <string name="car_settings_native">Running on Android Automotive</string>
+    <string name="car_settings_disconnected">Not connected</string>
+    <string name="car_settings_content">Content</string>
+    <string name="car_settings_recommendations">Online recommendations</string>
+    <string name="car_settings_recommendations_desc">Show suggested mixes and collections on the car’s Home tab</string>
+    <string name="car_settings_voice">Online voice search</string>
+    <string name="car_settings_voice_desc">Look beyond your library when you ask for music in the car</string>
+    <string name="car_settings_lyrics">Lyrics on the car player</string>
+    <string name="car_settings_lyrics_desc">Show the current lyric on the car’s Now Playing screen</string>
+    <string name="car_settings_mobile_data">Mobile data</string>
+    <string name="car_settings_artwork">Artwork on metered networks</string>
+    <string name="car_settings_artwork_desc">Fetch new album covers for the car over mobile or metered data</string>
     <string name="car_tab_home">Home</string>
     <string name="car_tab_remote">Remote</string>
     <string name="car_tab_recent">Recent</string>

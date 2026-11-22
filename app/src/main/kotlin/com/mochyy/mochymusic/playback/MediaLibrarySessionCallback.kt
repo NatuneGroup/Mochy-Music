@@ -392,6 +392,7 @@ constructor(
         pageSize: Int,
         params: MediaLibraryService.LibraryParams?
     ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
+        val allowOnline = allowOnlineSearch(session, browser)
         return scope.future(Dispatchers.IO) {
             if (query.isEmpty()) {
                 return@future LibraryResult.ofItemList(emptyList(), params.withContentStyleHints())
@@ -429,7 +430,7 @@ constructor(
                     ))
                 }
 
-                try {
+                if (allowOnline) try {
                     val onlineResults = YouTube.search(query, YouTube.SearchFilter.FILTER_SONG)
                         .getOrNull()
                         ?.items
@@ -727,7 +728,7 @@ constructor(
             player.play()
             return
         }
-        val queue = voice.queueFor(request)
+        val queue = voice.queueFor(request, allowOnline = allowOnlineSearch(session, controller))
         if (queue == null) {
             val heard = query?.trim().orEmpty()
             val message = if (heard.isEmpty()) {
@@ -740,6 +741,10 @@ constructor(
         }
         service.playQueue(queue)
     }
+
+    private fun allowOnlineSearch(session: MediaSession, controller: MediaSession.ControllerInfo): Boolean =
+        !(session.isAutoCompanionController(controller) || session.isAutomotiveController(controller)) ||
+            context.dataStore.get(com.mochyy.mochymusic.constants.CarOnlineVoiceSearchKey, true)
 
     private fun drawableUri(
         @DrawableRes id: Int,

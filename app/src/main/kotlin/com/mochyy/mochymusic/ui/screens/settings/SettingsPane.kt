@@ -28,6 +28,7 @@ import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.ui.screens.settings.devspace.DevPlaygroundRoute
 import com.mochyy.mochymusic.ui.screens.settings.importsync.ImportSyncRoute
 import com.mochyy.mochymusic.ui.screens.settings.integrations.IntegrationsRoute
+import com.mochyy.mochymusic.ui.screens.settings.integrations.AndroidAutoSettingsRoute
 import com.mochyy.mochymusic.ui.screens.settings.integrations.ScrobbleServiceRoute
 import com.mochyy.mochymusic.ui.screens.settings.integrations.backup.BackupRoute
 import com.mochyy.mochymusic.ui.screens.settings.integrations.discord.DiscordRoute
@@ -53,6 +54,7 @@ val SettingsPaneRoutes = setOf(
     "gesture_settings",
     StorageRoute,
     IntegrationsRoute,
+    AndroidAutoSettingsRoute,
     DiscordRoute,
     ScrobbleServiceRoute,
     com.mochyy.mochymusic.ui.screens.settings.integrations.ListenBrainzRoute,

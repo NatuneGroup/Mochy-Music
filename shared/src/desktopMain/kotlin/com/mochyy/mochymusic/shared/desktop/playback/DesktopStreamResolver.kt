@@ -21,6 +21,8 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 
@@ -78,7 +80,7 @@ class DesktopStreamResolver : AutoCloseable {
         activeClient?.close()
     }
 
-    @Volatile
+    private val prewarmMutex = Mutex()
     private var prewarmed = false
 
     suspend fun resolve(videoId: String): ResolvedStream? {
@@ -109,8 +111,8 @@ class DesktopStreamResolver : AutoCloseable {
     }
 
     /** Warming is an optimisation: a failed warm never fails playback and the next resolve tries again. */
-    private suspend fun prewarmOnce() {
-        if (prewarmed) return
+    private suspend fun prewarmOnce() = prewarmMutex.withLock {
+        if (prewarmed) return@withLock
         try {
             extractor.prewarm()
             prewarmed = true

@@ -29,6 +29,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -91,6 +92,7 @@ import com.mochyy.mochymusic.shared.ui.player.MiniPlayerBar
 import com.mochyy.mochymusic.shared.ui.search.SearchScreen
 import com.mochyy.mochymusic.shared.ui.search.SongRow
 import com.music.innertube.models.SongItem
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -98,6 +100,7 @@ import okio.IOException
 import org.jetbrains.compose.resources.stringResource
 
 private enum class PlayerPanel { Queue, Lyrics, Settings }
+private const val PreloadStartDelayMs = 2_000L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -127,6 +130,10 @@ internal fun StandaloneMusicApp(
     val recent by library.recent.collectAsState(initial = emptyList())
     var libraryUpdateFailed by remember { mutableStateOf(false) }
     var lastRecorded by remember { mutableStateOf<String?>(null) }
+
+    DisposableEffect(player) {
+        onDispose { player.preloadNext(null) }
+    }
 
     LaunchedEffect(storedQueue) {
         if (!queueReady) {
@@ -197,6 +204,16 @@ internal fun StandaloneMusicApp(
 
     LaunchedEffect(playback.hasEnded) {
         if (playback.hasEnded) playNext()
+    }
+
+    val nextSong = queued.firstOrNull()
+    LaunchedEffect(player, queueReady, playback.isPlaying, playback.isLoading, nextSong?.id) {
+        // A restored queue stays offline until playback actually gets underway; pauses and queue
+        // changes also cancel any pending or completed prefetch before choosing the new head.
+        player.preloadNext(null)
+        if (!queueReady || !playback.isPlaying || playback.isLoading || nextSong == null) return@LaunchedEffect
+        delay(PreloadStartDelayMs)
+        player.preloadNext(nextSong)
     }
 
     MochyShell(
