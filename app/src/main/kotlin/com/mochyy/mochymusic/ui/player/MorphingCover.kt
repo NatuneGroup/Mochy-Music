@@ -642,9 +642,10 @@ fun MorphingCover(
     // the new flagship's open player hides the backdrop completely under its cover and mirror, so nothing there needs to move
     val backdropHidden = frostedCover && coverBlur && coverStyle == PlayerCoverStyle.EDGE_TO_EDGE
     val appObscured = com.mochyy.mochymusic.LocalAppContentObscured.current
-    LaunchedEffect(editMode, alternateStyle, backdropHidden) {
+    // paused means the warp stands still, so it doesn't redraw the backdrop for nothing
+    LaunchedEffect(editMode, alternateStyle, backdropHidden, isPlaying) {
         snapshotFlow {
-            !alternateStyle && !editMode && !appObscured.value && progressProvider() > 0.02f && lyricsProgressProvider() < 0.6f &&
+            isPlaying && !alternateStyle && !editMode && !appObscured.value && progressProvider() > 0.02f && lyricsProgressProvider() < 0.6f &&
                 !(backdropHidden && progressProvider() >= 0.999f && lyricsProgressProvider() <= 0.001f)
         }
             .collectLatest { active ->
@@ -1526,7 +1527,8 @@ private fun PlayerBackdropCrossfade(
                     thumbnailUrl = trackInfo.thumbnailUrl,
                     pureBlack = pureBlack,
                     modifier = Modifier.requiredSize(maxWidth, maxHeight),
-                    animate = backdropAnimate,
+                    // paused means the drift stands still (also stops the cover gradient's own clock)
+                    animate = backdropAnimate && isPlaying,
                 )
             } else {
                 CoverBackdropFade(

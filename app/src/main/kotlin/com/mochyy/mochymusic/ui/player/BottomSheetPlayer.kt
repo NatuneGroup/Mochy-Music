@@ -1138,6 +1138,7 @@ private fun PlayerSheet(
                     statusBarTop = statusBarTopInset,
                     enabled = { !studio.engaged },
                     modifier = Modifier.align(Alignment.TopCenter),
+                    playing = transportState.isPlaying,
                 )
                 return@BottomSheet
             }
@@ -1256,6 +1257,7 @@ private fun PlayerSheet(
                     statusBarTop = 0.dp,
                     enabled = { !studio.engaged },
                     modifier = Modifier.align(Alignment.TopCenter),
+                    playing = transportState.isPlaying,
                 )
                 return@BottomSheet
             }
@@ -1829,6 +1831,7 @@ private fun PlayerSheet(
                 statusBarTop = statusBarTopInset,
                 enabled = { !studio.engaged },
                 modifier = Modifier.align(Alignment.TopCenter),
+                playing = transportState.isPlaying,
             )
         }
 

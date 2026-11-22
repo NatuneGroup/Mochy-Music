@@ -777,6 +777,16 @@ class MusicService :
     override fun onCreate() {
         super.onCreate()
         isRunning = true
+        screenOn = getSystemService(android.os.PowerManager::class.java)?.isInteractive != false
+        androidx.core.content.ContextCompat.registerReceiver(
+            this,
+            screenReceiver,
+            android.content.IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_ON)
+                addAction(Intent.ACTION_SCREEN_OFF)
+            },
+            androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
 
         playerInitialized.value = false
 
@@ -4421,8 +4431,10 @@ class MusicService :
                     }
 
                     // the loop sleeps half the audio buffer, and speed on the audio track sizes that for 8x, so it slept a whole second and the position went that stale
-                    override fun getDurationToProgressUs(positionUs: Long, elapsedRealtimeUs: Long, isOnBufferAvailableListenerRegistered: Boolean): Long =
-                        minOf(super.getDurationToProgressUs(positionUs, elapsedRealtimeUs, isOnBufferAvailableListenerRegistered), PositionWakeUs)
+                    override fun getDurationToProgressUs(positionUs: Long, elapsedRealtimeUs: Long, isOnBufferAvailableListenerRegistered: Boolean): Long {
+                        val wait = super.getDurationToProgressUs(positionUs, elapsedRealtimeUs, isOnBufferAvailableListenerRegistered)
+                        return if (screenOn) minOf(wait, PositionWakeUs) else wait
+                    }
                 })
                 // after the phone's own, so it only takes what the phone can't decode: alac on most phones, flac on old ones, 192 kHz masters
                 out.add(object : FfmpegFallbackRenderer(eventHandler, eventListener, audioSink) {
@@ -4430,8 +4442,10 @@ class MusicService :
                         songs?.sourceFormat = format
                     }
 
-                    override fun getDurationToProgressUs(positionUs: Long, elapsedRealtimeUs: Long): Long =
-                        minOf(super.getDurationToProgressUs(positionUs, elapsedRealtimeUs), PositionWakeUs)
+                    override fun getDurationToProgressUs(positionUs: Long, elapsedRealtimeUs: Long): Long {
+                        val wait = super.getDurationToProgressUs(positionUs, elapsedRealtimeUs)
+                        return if (screenOn) minOf(wait, PositionWakeUs) else wait
+                    }
                 })
             }
         }.apply {
@@ -4591,6 +4605,7 @@ class MusicService :
 
     override fun onDestroy() {
         isRunning = false
+        runCatching { unregisterReceiver(screenReceiver) }
 
         audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
         audioOutputs.release()
@@ -4677,6 +4692,16 @@ class MusicService :
     }
 
     private val powerManager by lazy { getSystemService(android.os.PowerManager::class.java) }
+
+    // the screen's state for the playback loop: with it off nothing reads the position every 100 ms
+    @Volatile
+    private var screenOn = true
+
+    private val screenReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            screenOn = intent?.action == Intent.ACTION_SCREEN_ON
+        }
+    }
 
     // which lyric line the now playing widgets show; the scope is asked for each time because the service replaces it
     private val widgetLyrics by lazy {
