@@ -1,7 +1,13 @@
 name: Build PR
 
-# One-off ARM64 package for the current dev integration.
-on: workflow_dispatch
+# Builds the ARM64 FOSS APK from the current integration.
+on:
+  workflow_dispatch:
+    inputs:
+      compact:
+        description: Build without the offline Japanese kanji dictionary
+        type: boolean
+        default: true
 
 jobs:
   build:
@@ -43,7 +49,9 @@ jobs:
           fi
 
       - name: Build and Lint ARM64 FOSS Release APK
-        run: ./gradlew --console=plain :app:assembleArm64FossRelease :app:lintArm64FossRelease --warning-mode summary
+        run: >-
+          ./gradlew --console=plain :app:assembleArm64FossRelease :app:lintArm64FossRelease
+          -Pmochy.compactApk="${{ inputs.compact }}" --warning-mode summary
         env:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
           PULL_REQUEST: "true"
@@ -56,6 +64,8 @@ jobs:
           ONEDRIVE_CLIENT_ID: ${{ secrets.ONEDRIVE_CLIENT_ID }}
 
       - name: Verify ARM64-only APK and signature
+        env:
+          COMPACT_APK: ${{ inputs.compact }}
         run: |
           set -euo pipefail
           shopt -s nullglob
@@ -69,12 +79,19 @@ jobs:
           sha256sum "${apks[0]}"
           python3 - "${apks[0]}" <<'PYTHON'
           from collections import Counter
+          from os import environ
           from pathlib import Path
           from sys import argv
           from zipfile import ZipFile
           apk = Path(argv[1])
           print(f"APK size: {apk.stat().st_size:,} bytes")
           with ZipFile(apk) as archive:
+              has_dictionary = any(
+                  name.startswith("com/atilika/kuromoji/ipadic/") and name.endswith(".bin")
+                  for name in archive.namelist()
+              )
+              if has_dictionary == (environ["COMPACT_APK"] == "true"):
+                  raise SystemExit("APK contains the wrong dictionary configuration")
               sizes = Counter()
               for entry in archive.infolist():
                   group = entry.filename.split("/")[0]
@@ -90,7 +107,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v6
         with:
-          name: mochy-arm64-v8a-foss-release-${{ github.event.number || github.sha }}
+          name: mochy-arm64-v8a-foss-${{ inputs.compact && 'compact' || 'release' }}-${{ github.sha }}
           path: app/build/outputs/apk/arm64Foss/release/*.apk
           # a pr's apk is for trying it before merging, after a week it's just eating actions storage
           retention-days: 7
