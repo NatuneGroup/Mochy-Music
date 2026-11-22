@@ -32,11 +32,23 @@ import com.mochyy.mochymusic.extensions.isManualQueued
 import com.mochyy.mochymusic.extensions.withAutoplay
 import com.mochyy.mochymusic.extensions.metadata
 import com.mochyy.mochymusic.models.MediaMetadata
+import com.mochyy.mochymusic.models.toMediaMetadata
+import com.mochyy.mochymusic.extensions.toMediaItem
 import com.mochyy.mochymusic.songedit.SongEdits
 import com.mochyy.mochymusic.playback.MusicService.MusicBinder
 import com.mochyy.mochymusic.link.isTelevision
 import com.mochyy.mochymusic.playback.queues.Queue
+import com.mochyy.mochymusic.playback.queues.ListQueue
+import com.mochyy.mochymusic.playback.queues.YouTubeQueue
 import com.mochyy.mochymusic.ui.player.models.ProgressState
+import com.mochyy.mochymusic.shared.playback.PlaybackQueueItem
+import com.mochyy.mochymusic.shared.playback.PlaybackQueueState
+import com.mochyy.mochymusic.shared.playback.PlaybackRepeatMode
+import com.mochyy.mochymusic.shared.playback.PlayerController
+import com.mochyy.mochymusic.shared.playback.PlayerState
+import com.music.innertube.models.Album as YouTubeAlbum
+import com.music.innertube.models.Artist as YouTubeArtist
+import com.music.innertube.models.SongItem
 import com.mochyy.mochymusic.utils.NotRecommended
 import com.mochyy.mochymusic.utils.reportException
 import kotlinx.coroutines.CoroutineScope
@@ -66,7 +78,7 @@ class PlayerConnection(
     binder: MusicBinder,
     val database: MusicDatabase,
     parentScope: CoroutineScope,
-) : Player.Listener {
+) : Player.Listener, PlayerController {
     private companion object {
         private const val TAG = "PlayerConnection"
         private const val PLAYER_INIT_TIMEOUT_MS = 5000L
@@ -864,6 +876,113 @@ class PlayerConnection(
 
     val uiState: com.mochyy.mochymusic.ui.player.PlayerUiState by lazy { com.mochyy.mochymusic.ui.player.PlayerUiState(this) }
 
+    override val state: StateFlow<PlayerState> = combine(
+        mediaMetadata,
+        isPlaying,
+        progressState,
+        playbackState,
+        error,
+    ) { metadata, playing, progress, playerState, playbackError ->
+        val song = metadata?.toSongItem()
+        PlayerState(
+            song = song,
+            isPlaying = playing,
+            isLoading = playerState == Player.STATE_BUFFERING,
+            hasEnded = playerState == STATE_ENDED,
+            positionMs = progress.position,
+            durationMs = progress.duration.takeIf { it > 0L } ?: ((song?.duration ?: 0) * 1000L),
+            error = playbackError?.localizedMessage,
+        )
+    }.stateIn(scope, SharingStarted.Eagerly, PlayerState())
+
+    override val queueState: StateFlow<PlaybackQueueState> = combine(
+        queueSnapshot,
+        shuffleModeEnabled,
+        repeatMode,
+        canSkipNext,
+        canSkipPrevious,
+    ) { snapshot, shuffle, repeat, canNext, canPrevious ->
+        PlaybackQueueState(
+            title = snapshot.title,
+            items = snapshot.items.map { item ->
+                PlaybackQueueItem(
+                    queueId = item.uid.toString(),
+                    songId = item.mediaId,
+                    title = item.title,
+                    artist = item.artist,
+                    artworkUrl = item.artworkUri?.toString(),
+                    durationMs = item.duration,
+                    isAutoplay = item.isAutoplay,
+                    isManual = item.isManual,
+                )
+            },
+            currentIndex = snapshot.currentIndex,
+            shuffleEnabled = shuffle,
+            repeatMode = repeat.toPlaybackRepeatMode(),
+            canSkipNext = canNext,
+            canSkipPrevious = canPrevious,
+        )
+    }.stateIn(scope, SharingStarted.Eagerly, PlaybackQueueState())
+
+    override fun play(song: SongItem) {
+        playQueue(YouTubeQueue.radio(song.toMediaMetadata()))
+    }
+
+    override fun playQueue(songs: List<SongItem>, startIndex: Int, title: String?) {
+        if (songs.isEmpty()) return
+        playQueue(
+            ListQueue(
+                title = title,
+                items = songs.map { it.toMediaItem() },
+                startIndex = startIndex.coerceIn(songs.indices),
+            ),
+        )
+    }
+
+    override fun queueSongs(songs: List<SongItem>) {
+        if (songs.isNotEmpty()) addToQueue(songs.map { it.toMediaItem() })
+    }
+
+    override fun queueNext(songs: List<SongItem>) {
+        if (songs.isNotEmpty()) playNext(songs.map { it.toMediaItem() })
+    }
+
+    override fun skipToNext() = seekToNext()
+
+    override fun skipToPrevious() = seekToPrevious()
+
+    override fun playQueueItem(queueId: String) {
+        queueId.toIntOrNull()?.let { playQueueItem(it) }
+    }
+
+    override fun playQueueItemNext(queueId: String) {
+        queueId.toIntOrNull()?.let { playQueueItemNext(it) }
+    }
+
+    override fun removeQueueItem(queueId: String) {
+        queueId.toIntOrNull()?.let { removeQueueItems(listOf(it)) }
+    }
+
+    override fun moveQueueItem(queueId: String, afterQueueId: String) {
+        val uid = queueId.toIntOrNull() ?: return
+        val afterUid = afterQueueId.toIntOrNull() ?: return
+        moveQueueItem(uid, afterUid)
+    }
+
+    override fun setShuffleEnabled(enabled: Boolean) {
+        player.shuffleModeEnabled = enabled
+    }
+
+    override fun setRepeatMode(mode: PlaybackRepeatMode) {
+        player.repeatMode = when (mode) {
+            PlaybackRepeatMode.OFF -> Player.REPEAT_MODE_OFF
+            PlaybackRepeatMode.ONE -> Player.REPEAT_MODE_ONE
+            PlaybackRepeatMode.ALL -> Player.REPEAT_MODE_ALL
+        }
+    }
+
+    override fun release() = dispose()
+
     fun dispose() {
         try {
             attachedPlayer?.removeListener(this)
@@ -875,3 +994,23 @@ class PlayerConnection(
         }
     }
 }
+
+private fun Int.toPlaybackRepeatMode(): PlaybackRepeatMode = when (this) {
+    Player.REPEAT_MODE_ONE -> PlaybackRepeatMode.ONE
+    Player.REPEAT_MODE_ALL -> PlaybackRepeatMode.ALL
+    else -> PlaybackRepeatMode.OFF
+}
+
+private fun MediaMetadata.toSongItem() = SongItem(
+    id = id,
+    title = title,
+    artists = artists.map { YouTubeArtist(name = it.name, id = it.id) },
+    album = album?.let { YouTubeAlbum(name = it.title, id = it.id) },
+    duration = duration.takeIf { it >= 0 },
+    musicVideoType = musicVideoType,
+    thumbnail = thumbnailUrl.orEmpty(),
+    explicit = explicit,
+    setVideoId = setVideoId,
+    libraryAddToken = libraryAddToken,
+    libraryRemoveToken = libraryRemoveToken,
+)

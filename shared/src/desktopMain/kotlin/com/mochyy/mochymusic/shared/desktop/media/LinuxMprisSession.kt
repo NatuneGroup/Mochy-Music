@@ -65,6 +65,12 @@ internal class LinuxMprisSession(
                 .distinctUntilChanged()
                 .collect { publish() }
         }
+        scope.launch {
+            player.queueState
+                .map { it.canSkipNext }
+                .distinctUntilChanged()
+                .collect { publish() }
+        }
         scope.launch { connect() }
     }
 
@@ -146,7 +152,7 @@ internal class LinuxMprisSession(
         return mapOf(
             "PlaybackStatus" to Variant(status),
             "Metadata" to Variant(metadata(state, durationMs), "a{sv}"),
-            "CanGoNext" to Variant(song != null && controls.onNext != null),
+            "CanGoNext" to Variant(song != null && (controls.onNext != null || player.queueState.value.canSkipNext)),
             "CanGoPrevious" to Variant(song != null),
             "CanPlay" to Variant(song != null),
             "CanPause" to Variant(song != null),

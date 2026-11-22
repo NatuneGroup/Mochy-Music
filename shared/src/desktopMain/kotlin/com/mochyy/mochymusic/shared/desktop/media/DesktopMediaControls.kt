@@ -27,11 +27,14 @@ class DesktopMediaControls(private val player: PlayerController) {
 
     fun pause() = onMain { if (player.state.value.isPlaying) player.togglePlayPause() }
 
-    fun next() = onMain { onNext?.invoke() }
+    fun next() = onMain {
+        val handler = onNext
+        if (handler != null) handler() else player.skipToNext()
+    }
 
     fun previous() = onMain {
         val handler = onPrevious
-        if (handler != null) handler() else player.seekTo(0L)
+        if (handler != null) handler() else player.skipToPrevious()
     }
 
     fun seekTo(positionMs: Long) = onMain { player.seekTo(positionMs) }
