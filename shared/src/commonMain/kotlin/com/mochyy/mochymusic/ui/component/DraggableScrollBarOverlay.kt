@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.max
+import kotlin.time.TimeSource
 
 @Composable
 fun DraggableScrollbar(
@@ -101,7 +102,7 @@ fun DraggableScrollbar(
                         lastScrollTime = 0L
                     }
                 ) { change, _ ->
-                    val currentTime = System.currentTimeMillis()
+                    val currentTime = scrollClock.elapsedNow().inWholeMilliseconds
                     val viewportHeight = size.height.toFloat()
                     val constThumbHeight = with(density) { thumbHeight.toPx() }
                     val maxThumbY = viewportHeight - constThumbHeight
@@ -242,3 +243,6 @@ fun DraggableScrollbar(
         }
     }
 }
+
+// monotonic clock for the drag throttle; common code has no System.currentTimeMillis
+private val scrollClock = TimeSource.Monotonic.markNow()
