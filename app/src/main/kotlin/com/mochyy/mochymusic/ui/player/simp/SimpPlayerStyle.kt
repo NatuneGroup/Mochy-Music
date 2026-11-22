@@ -1,8 +1,3 @@
-// The Simp player style: the artwork as a big rounded square, the title and artist left-aligned
-// under it, a slim seek bar, a centred row of large transport circles, and the lyrics and queue
-// buttons along the bottom. Built from the style kit (StyleFrame, StyleCircle, StyleMenu) and the
-// app's own theme, so it follows the cover colours like the other alternate styles.
-
 package com.mochyy.mochymusic.ui.player.simp
 
 import androidx.compose.foundation.Canvas
@@ -152,7 +147,7 @@ internal fun SimpPlayerStyle(
                 StyleCircle(
                     icon = if (liked) R.drawable.favorite else R.drawable.favorite_border,
                     tones = tones,
-                    onClick = connection::toggleLike,
+                    onClick = tap(connection::toggleLike),
                     size = 48.dp,
                     enabled = !preview,
                     active = liked,
@@ -317,7 +312,7 @@ private fun SimpSeekBar(
             val corner = CornerRadius(trackH / 2f, trackH / 2f)
 
             drawRoundRect(
-                color = Color.White.copy(alpha = 0.18f),
+                color = tones.ink.copy(alpha = 0.18f),
                 topLeft = Offset(0f, centerY - trackH / 2f),
                 size = Size(size.width, trackH),
                 cornerRadius = corner,
@@ -330,7 +325,7 @@ private fun SimpSeekBar(
                     cornerRadius = corner,
                 )
             }
-            drawCircle(color = Color.White, radius = knobR, center = Offset(thumbX.coerceIn(knobR, size.width - knobR), centerY))
+            drawCircle(color = tones.ink, radius = knobR, center = Offset(thumbX.coerceIn(knobR, size.width - knobR), centerY))
         }
 
         Row(
