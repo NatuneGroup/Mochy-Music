@@ -3,6 +3,7 @@ package com.mochyy.mochymusic.shared.ios
 
 import com.mochyy.mochymusic.shared.playback.PlayerController
 import com.mochyy.mochymusic.shared.playback.PlayerState
+import com.mochyy.mochymusic.shared.playback.QueueTransport
 import com.mochyy.mochymusic.shared.playback.StreamFormat
 import com.music.innertube.models.SongItem
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -16,6 +17,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -52,6 +54,7 @@ import platform.darwin.NSObjectProtocol
 @OptIn(ExperimentalForeignApi::class)
 internal class IosPlayerController(
     private val youtube: IosYouTubeClient,
+    private val queueTransport: QueueTransport,
     private val playbackFailedText: () -> String,
 ) : PlayerController {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -88,6 +91,10 @@ internal class IosPlayerController(
             finishInterruption(shouldResume)
         }
         observeBridgeEvent(IosPlaybackBridgeEvents.outputRemoved) { pauseFromSystemControl() }
+        observeBridgeEvent(IosPlaybackBridgeEvents.remoteNext) { queueTransport.next() }
+        observeBridgeEvent(IosPlaybackBridgeEvents.remotePrevious) { if (!queueTransport.previous()) skipToPrevious() }
+        // Next-track availability follows the phone queue, so republish when it changes.
+        scope.launch { queueTransport.canGoNext.collect { publishNowPlaying() } }
     }
 
     override fun play(song: SongItem) {
@@ -152,14 +159,9 @@ internal class IosPlayerController(
                     player.play()
                 }
                 publishNowPlaying()
-                var nowPlayingTicks = 0
                 while (isActive) {
                     check(item.status != AVPlayerItemStatusFailed)
                     updatePosition(item)
-                    if (++nowPlayingTicks >= 4) {
-                        publishNowPlaying()
-                        nowPlayingTicks = 0
-                    }
                     delay(250)
                 }
             } catch (cancelled: CancellationException) {
@@ -226,6 +228,8 @@ internal class IosPlayerController(
             durationMs = durationMs,
             positionMs = if (current.hasEnded && durationMs > 0) durationMs else positionMs,
         )
+        // Lock-screen duration arrives after the first poll; publish it once, not on every tick.
+        if (durationMs != current.durationMs) publishNowPlaying()
     }
 
     private fun failPlayback() {
@@ -265,6 +269,9 @@ internal class IosPlayerController(
             put("durationSeconds", current.durationMs / 1000.0)
             put("elapsedSeconds", current.positionMs / 1000.0)
             put("isPlaying", current.isPlaying)
+            put("canGoNext", queueTransport.canGoNext.value)
+            // previous always has an action (restart the song, or step back), so it is on whenever a song is loaded
+            put("canGoPrevious", song != null && player.currentItem != null)
         }
         postBridgeEvent(IosPlaybackBridgeEvents.publishNowPlaying, payload.toString())
     }
@@ -336,6 +343,8 @@ private object IosPlaybackBridgeEvents {
     const val remoteToggle = "${prefix}remoteToggle"
     const val remotePlay = "${prefix}remotePlay"
     const val remotePause = "${prefix}remotePause"
+    const val remoteNext = "${prefix}remoteNext"
+    const val remotePrevious = "${prefix}remotePrevious"
     const val remoteSeek = "${prefix}remoteSeek"
     const val interruptionBegan = "${prefix}interruptionBegan"
     const val interruptionEnded = "${prefix}interruptionEnded"
