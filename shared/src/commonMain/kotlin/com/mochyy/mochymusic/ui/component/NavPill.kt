@@ -38,7 +38,7 @@ private val NavHighlightInset = 8.dp
 private val NavHighlightGap = 4.dp
 
 // half the gap is the row's padding and half is inside each slot, so the pill sits as far from the ends as from the top and bottom
-internal val NavRowPadding = NavHighlightInset - NavHighlightGap / 2
+val NavRowPadding = NavHighlightInset - NavHighlightGap / 2
 
 // the front edge springs to the new tab faster than the back one, so it stretches toward the tab and settles into it instead of sliding over as a block
 private val NavHighlightLead = spring<Float>(dampingRatio = 0.82f, stiffness = 700f)
@@ -56,7 +56,7 @@ class ChromePill(val rect: Rect, val shown: Float, val lift: Float)
 
 /** where the pill is, in tabs: its back and front edges, how shown it is, and how lifted by a finger */
 @Stable
-internal class NavPillState(initial: Int) {
+class NavPillState(initial: Int) {
     val start = Animatable(initial.coerceAtLeast(0).toFloat())
     val end = Animatable(initial.coerceAtLeast(0).toFloat())
     val shown = Animatable(if (initial >= 0) 1f else 0f)
@@ -87,7 +87,7 @@ internal class NavPillState(initial: Int) {
 
 /** the pill for a bar, following [selectedIndex]: it fades out when no tab is lit and back in where it belongs */
 @Composable
-internal fun rememberNavPill(selectedIndex: Int): NavPillState {
+fun rememberNavPill(selectedIndex: Int): NavPillState {
     val pill = remember { NavPillState(selectedIndex) }
     LaunchedEffect(selectedIndex) {
         if (selectedIndex < 0) {
@@ -107,7 +107,7 @@ internal fun rememberNavPill(selectedIndex: Int): NavPillState {
 }
 
 /** mochy's own pill behind the lit tab, left out while [drawn] says the look's glass draws it; only read while drawing, so it never recomposes the bar */
-internal fun Modifier.navHighlight(pill: NavPillState, tabCount: Int, drawn: () -> Boolean = { true }): Modifier = drawBehind {
+fun Modifier.navHighlight(pill: NavPillState, tabCount: Int, drawn: () -> Boolean = { true }): Modifier = drawBehind {
     if (!drawn()) return@drawBehind
     val rect = pill.rect(size, tabCount, this) ?: return@drawBehind
     val lift = pill.lift.value
@@ -167,7 +167,7 @@ private fun Modifier.navPillGesture(pill: NavPillState, tabCount: Int, selectedI
 
 /** lifts the pill under a finger and lets it be dragged across the tabs, picking the one it's let go on with [onPick] */
 @Composable
-internal fun Modifier.navPillDrag(pill: NavPillState, tabCount: Int, selectedIndex: Int, onPick: (Int) -> Unit): Modifier {
+fun Modifier.navPillDrag(pill: NavPillState, tabCount: Int, selectedIndex: Int, onPick: (Int) -> Unit): Modifier {
     val lit by rememberUpdatedState(selectedIndex)
     val pick by rememberUpdatedState(onPick)
     return navPillGesture(pill, tabCount, { lit }) { pick(it) }
