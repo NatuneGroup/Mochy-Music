@@ -112,8 +112,9 @@
 -dontwarn java.beans.Introspector
 -dontwarn java.beans.PropertyDescriptor
 
-# Keep all classes within the kuromoji package
--keep class com.atilika.kuromoji.** { *; }
+# keep only kuromoji's dictionary and tokenizer packages so resource loading works while unused helpers shrink
+-keep class com.atilika.kuromoji.ipadic.Tokenizer { *; }
+-keep class com.atilika.kuromoji.ipadic.dict.** { *; }
 
 ## Queue Persistence Rules
 # Keep queue-related classes to prevent serialization issues in release builds
@@ -128,11 +129,6 @@
     private void writeObject(java.io.ObjectOutputStream);
     private void readObject(java.io.ObjectInputStream);
 }
-
-## UCrop Rules
--dontwarn com.yalantis.ucrop**
--keep class com.yalantis.ucrop** { *; }
--keep interface com.yalantis.ucrop** { *; }
 
 ## Google Cast Rules
 -keep class com.mochyy.mochymusic.cast.** { *; }
@@ -152,14 +148,8 @@
 # a zip module's own code reaches mochy only through these, by their original names
 -keep class com.mochyy.mochymusic.module.bridge.shared.** { *; }
 
-## Kotlin Reflection Fix
--keep class kotlin.Metadata { *; }
--keep class kotlin.reflect.** { *; }
--dontwarn kotlin.reflect.**
-
-## Ktor Serialization
--keep class io.ktor.** { *; }
--keepclassmembers class io.ktor.** { *; }
+## Ktor client engine (let r8 strip unused ktor openapi, network, and server packages)
+-keep class io.ktor.client.engine.okhttp.** { *; }
 -dontwarn io.ktor.**
 
 ## Shazam Models
