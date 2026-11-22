@@ -135,6 +135,27 @@ jobs:
           PY
           done
 
+      - name: Size report
+        if: ${{ inputs.release == 'Foss' || inputs.release == 'Gms' }}
+        run: |
+          apk=$(ls app/build/outputs/apk/arm64*/release/*.apk | head -1)
+          map=$(ls app/build/outputs/mapping/arm64*Release/mapping.txt | head -1)
+          analyzer="$(find "$ANDROID_HOME/cmdline-tools" -name apkanalyzer -type f | sort -V | tail -n 1)"
+          echo "== APK $(stat -c %s "$apk") bytes"
+          "$analyzer" files list "$apk" >/dev/null 2>&1 || true
+          # defined dex bytes per package, real names via the R8 mapping, three levels deep
+          "$analyzer" dex packages --defined-only --proguard-mappings "$map" "$apk" > dexpkgs.txt
+          awk -F'\t' '$1=="P" { n=split($5,a,"."); if (n<=3) print $4"\t"$5 }' dexpkgs.txt | sort -rn | head -60
+          mkdir -p size-report && cp "$map" dexpkgs.txt size-report/
+
+      - name: Upload size report
+        if: ${{ inputs.release == 'Foss' || inputs.release == 'Gms' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: size-report-${{ github.sha }}
+          path: size-report/
+          retention-days: 14
+
       - name: Upload release APK
         if: ${{ inputs.release == 'Foss' || inputs.release == 'Gms' }}
         uses: actions/upload-artifact@v6
