@@ -118,19 +118,8 @@ class App : Application(), SingletonImageLoader.Factory {
             }
         }
 
-        applicationScope.launch(Dispatchers.IO) {
-            // the plain 5 s crossfade used to be the default and onboarding's pick, and it never mixed a thing: anyone left on it moves to crossmix once
-            try {
-                if (dataStore.data.first()[CrossmixDefaultMovedKey] != true) {
-                    dataStore.edit { prefs ->
-                        if (prefs[CrossmixModeKey] == CrossmixMode.AUTO_CROSSFADE.name) prefs[CrossmixModeKey] = CrossmixMode.CROSSMIX.name
-                        prefs[CrossmixDefaultMovedKey] = true
-                    }
-                }
-            } catch (e: Exception) {
-                reportException(e)
-            }
-        }
+        // the plain crossfade (AUTO_CROSSFADE) is a choice, not a leftover: nobody is moved off it to Crossmix,
+        // which analyses every song and costs more battery. Those already moved by an earlier version stay where they are.
 
         applicationScope.launch(Dispatchers.IO) {
             // lyrics saved by older versions are cleared once, the first time 7.1.0 runs, so every

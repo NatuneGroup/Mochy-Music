@@ -1219,6 +1219,7 @@
 
     <!-- crossmix: the dj-style transition and how the listener can shape it -->
     <string name="crossmix_desc">DJ-style: reads each song\'s tempo, beats, key, energy and where its voice is, then picks the transition that fits and locks the two on the beat, so two voices never sing over each other</string>
+    <string name="crossmix_battery_note">Crossmix listens to every song before it mixes it: it decodes and analyses the song playing and the next one in the background. That uses more battery and processor time than a plain crossfade. Each song is only analysed once and remembered after that. If you just want songs to fade into each other, pick Auto Crossfade.</string>
     <string name="crossmix_style_title">Transition</string>
     <string name="crossmix_style_desc">Let Mochy pick the one that fits each pair, or hear the same one every time</string>
     <string name="crossmix_style_auto">Let Mochy choose</string>
