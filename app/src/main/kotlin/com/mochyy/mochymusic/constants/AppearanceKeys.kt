@@ -19,3 +19,6 @@ val UiScalePercentKey = intPreferencesKey("uiScalePercent")
 
 // use the tablet (wide) layout on any screen size, not only on a wide one
 val TabletLayoutKey = booleanPreferencesKey("tabletLayout")
+
+// the app's text in the phone's system font instead of mochy's own
+val SystemFontKey = booleanPreferencesKey("systemFont")

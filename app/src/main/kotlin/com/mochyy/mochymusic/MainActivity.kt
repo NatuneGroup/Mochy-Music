@@ -665,6 +665,8 @@ class MainActivity : ComponentActivity() {
                 val (landscapeUnlocked) = rememberPreference(com.mochyy.mochymusic.constants.LandscapeUnlockedKey, defaultValue = false)
                 val (tabletLayout) = rememberPreference(com.mochyy.mochymusic.constants.TabletLayoutKey, defaultValue = false)
                 LaunchedEffect(tabletLayout) { com.mochyy.mochymusic.ui.utils.TabletLayout.forced = tabletLayout }
+                val (systemFont) = rememberPreference(com.mochyy.mochymusic.constants.SystemFontKey, defaultValue = false)
+                LaunchedEffect(systemFont) { com.mochyy.mochymusic.ui.theme.AppFontChoice.useSystem = systemFont }
                 LaunchedEffect(landscapeUnlocked) {
                     if (!isTelevision()) com.mochyy.mochymusic.ui.utils.WindowTurning.setUnlocked(this@MainActivity, landscapeUnlocked)
                 }

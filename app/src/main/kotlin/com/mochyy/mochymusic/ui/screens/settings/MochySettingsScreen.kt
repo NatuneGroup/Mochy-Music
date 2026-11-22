@@ -165,6 +165,7 @@ private val SettingsIndex = listOf(
     SettingsEntry("Accent colour", "Appearance", "appearance_settings", "accent colour color palette theme primary highlight album art cover", R.string.settings_accent),
     SettingsEntry("UI scale", "Appearance", "appearance_settings", "scale size zoom bigger smaller density text display", R.string.settings_ui_scale),
     SettingsEntry("Tablet layout", "Appearance", "appearance_settings", "tablet wide layout side rail landscape big screen split pane", R.string.settings_tablet_layout),
+    SettingsEntry("System font", "Appearance", "appearance_settings", "font typeface text system phone default inter", R.string.settings_system_font),
 
     // Customisation
     SettingsEntry("Customisation", "Customisation", "customisation_settings", "customize cover rounding playlist player home styles gesture swipe blur animation lyrics"),

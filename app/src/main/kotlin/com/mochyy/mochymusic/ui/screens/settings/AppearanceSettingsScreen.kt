@@ -35,6 +35,7 @@ import com.mochyy.mochymusic.constants.AccentColorKey
 import com.mochyy.mochymusic.constants.AccentFromArtKey
 import com.mochyy.mochymusic.constants.DefaultOpenTabKey
 import com.mochyy.mochymusic.constants.HideNavOnScrollKey
+import com.mochyy.mochymusic.constants.SystemFontKey
 import com.mochyy.mochymusic.constants.TabletLayoutKey
 import com.mochyy.mochymusic.constants.UiScalePercentKey
 import com.mochyy.mochymusic.ui.component.DefaultPlayerSeekBarSlider
@@ -58,7 +59,7 @@ fun AppearanceSettingsScreen(navController: NavController) {
         searchBar = { SubSettingsSearchBar(query = query, onQueryChange = { query = it }) },
     ) {
         SettingsSection(title = null, items = (startItems() + navBarItems() + accentItems()).matching(query))
-        SettingsSection(title = null, items = (scaleItems() + tabletItems()).matching(query))
+        SettingsSection(title = null, items = (scaleItems() + tabletItems() + fontItems()).matching(query))
         Spacer(Modifier.height(140.dp))
     }
 }
@@ -129,6 +130,21 @@ private fun scaleItems(): List<SettingsItem> {
             },
             icon = painterResource(R.drawable.fullscreen),
             iconShape = CircleShape,
+        ),
+    )
+}
+
+@Composable
+private fun fontItems(): List<SettingsItem> {
+    val (systemFont, setSystemFont) = rememberPreference(SystemFontKey, defaultValue = false)
+    return listOf(
+        switchItem(
+            key = "System font",
+            title = stringResource(R.string.settings_system_font),
+            description = stringResource(R.string.settings_system_font_desc),
+            icon = painterResource(R.drawable.translate),
+            checked = systemFont,
+            onCheckedChange = setSystemFont,
         ),
     )
 }

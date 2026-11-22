@@ -14,4 +14,6 @@
     <string name="settings_ui_scale_desc">Makes everything in the app bigger or smaller.</string>
     <string name="settings_tablet_layout">Tablet layout</string>
     <string name="settings_tablet_layout_desc">Use the wide layout with the side bar on any screen, even a phone held upright.</string>
+    <string name="settings_system_font">System font</string>
+    <string name="settings_system_font_desc">Show the app in your phone's own font instead of Mochy's.</string>
 </resources>
