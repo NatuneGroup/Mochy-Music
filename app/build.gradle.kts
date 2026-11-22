@@ -19,6 +19,8 @@ plugins {
 }
 
 extensions.configure<ApplicationExtension> {
+    val compactApk = providers.gradleProperty("mochy.compactApk").map(String::toBoolean).getOrElse(true)
+
     namespace = "com.mochyy.mochymusic"
     compileSdk = 37
     ndkVersion = "27.0.12077973"
@@ -32,6 +34,7 @@ extensions.configure<ApplicationExtension> {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
+        buildConfigField("boolean", "COMPACT_APK", compactApk.toString())
 
         // LastFM API keys from local.properties locally, GitHub Secrets on CI. never commit them
         val lastFmKey = localProperties.getProperty("LASTFM_API_KEY") ?: System.getenv("LASTFM_API_KEY") ?: ""
@@ -39,14 +42,6 @@ extensions.configure<ApplicationExtension> {
 
         buildConfigField("String", "LASTFM_API_KEY", "\"$lastFmKey\"")
         buildConfigField("String", "LASTFM_SECRET", "\"$lastFmSecret\"")
-
-        // the module store only answers builds with this key: local.properties here, a github secret on ci, never git, so forks build without it
-        val storeKey = localProperties.getProperty("MODULE_STORE_KEY") ?: System.getenv("MODULE_STORE_KEY") ?: ""
-        // scrambled the same way StoreSignature undoes it, so the key isn't plain text in the apk
-        val storeMask = "mochy-module-store"
-        val scrambledStoreKey = storeKey.toByteArray().mapIndexed { i, b -> (b.toInt() xor storeMask[i % storeMask.length].code) and 0xff }
-            .joinToString("") { "%02x".format(it) }
-        buildConfigField("String", "MODULE_STORE_KEY", "\"$scrambledStoreKey\"")
 
         // Libre.fm the same way. It takes any 32-character key and never checks the secret, so a
         // build without its own (a fork, a CI run with no secrets) gets one made from the app id
@@ -287,6 +282,7 @@ extensions.configure<ApplicationExtension> {
             )
         }
         resources {
+            if (compactApk) excludes += "com/atilika/kuromoji/ipadic/*.bin"
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
             excludes += "META-INF/NOTICE.md"
             excludes += "META-INF/CONTRIBUTORS.md"

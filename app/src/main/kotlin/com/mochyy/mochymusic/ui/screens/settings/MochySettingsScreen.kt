@@ -2,8 +2,10 @@
 
 package com.mochyy.mochymusic.ui.screens.settings
 
-import com.mochyy.mochymusic.modules.browser.ModuleFeed
-import com.mochyy.mochymusic.ui.screens.settings.modules.ModuleBrowserRoute
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.mochyy.mochymusic.ui.screens.settings.modules.showFindModulesSheet
+import com.mochyy.mochymusic.ui.screens.settings.modules.moduleRoute
+import com.mochyy.mochymusic.viewmodels.ModulesViewModel
 import com.mochyy.mochymusic.ui.component.navigateToTab
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -286,6 +288,7 @@ internal val IconBgColor = Color(0xFF333338)
 fun MochySettingsScreen(navController: NavController, pane: SettingsPane? = null) {
     val focusManager = LocalFocusManager.current
     val sheets = com.mochyy.mochymusic.ui.component.LocalZoomOutOverlayState.current
+    val modules: ModulesViewModel = hiltViewModel()
     val devices = com.mochyy.mochymusic.ui.screens.devices.rememberDevicesLink()
     // on a wide screen the list stays put and its pages open beside it; device integration is a sheet over either
     val open: (String) -> Unit = { route ->
@@ -441,14 +444,11 @@ fun MochySettingsScreen(navController: NavController, pane: SettingsPane? = null
                 ) {
                     RecommendedCard(recommendations = recommendations, open = open)
 
-                    // a build without the module feed (most forks) has no store to open
-                    if (ModuleFeed.FeedUrl.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(14.dp))
-                        ModuleStoreCard(
-                            onClick = { navController.navigate(ModuleBrowserRoute) },
-                            modifier = Modifier.padding(horizontal = 20.dp),
-                        )
-                    }
+                    Spacer(modifier = Modifier.height(14.dp))
+                    ModuleStoreCard(
+                        onClick = { sheets.showFindModulesSheet(modules) { id -> navController.navigate(moduleRoute(id)) } },
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                    )
 
                     Spacer(modifier = Modifier.height(18.dp))
 

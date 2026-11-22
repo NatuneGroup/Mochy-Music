@@ -9,6 +9,9 @@ import android.content.Context
 import android.content.res.Configuration
 import android.os.Build
 import androidx.datastore.preferences.core.edit
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
@@ -26,6 +29,7 @@ import com.music.kugou.KuGou
 import com.mochyy.mochymusic.constants.*
 import com.mochyy.mochymusic.di.ApplicationScope
 import com.mochyy.mochymusic.i18n.AppLanguage
+import com.mochyy.mochymusic.lyrics.JapaneseLanguagePackManager
 import com.mochyy.mochymusic.extensions.toEnum
 import com.mochyy.mochymusic.utils.CrashHandler
 import com.mochyy.mochymusic.utils.PreferencesCache
@@ -85,6 +89,12 @@ class App : Application(), SingletonImageLoader.Factory {
         }
 
         PreferencesCache.start(this, applicationScope)
+        if (BuildConfig.COMPACT_APK) {
+            JapaneseLanguagePackManager.initialize(this)
+            ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
+                override fun onStart(owner: LifecycleOwner) = JapaneseLanguagePackManager.onForeground()
+            })
+        }
         // tokens saved before the vault existed are sealed on the first start after the update
         applicationScope.launch(kotlinx.coroutines.Dispatchers.IO) { (dataStore as? com.mochyy.mochymusic.utils.SecretPreferences)?.sealLeftovers() }
         com.mochyy.mochymusic.utils.NotRecommended.init(this)
