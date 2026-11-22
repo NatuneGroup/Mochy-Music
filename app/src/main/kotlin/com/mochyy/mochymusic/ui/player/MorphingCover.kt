@@ -743,6 +743,7 @@ fun MorphingCover(
         val coverMagnify = remember { { animatedPauseScale } }
 
         SheetBackdrop(
+            isPlaying = isPlaying,
             progressProvider = progressProvider,
             endpointsPx = endpointsPx,
             trackInfo = trackInfo,
@@ -1458,6 +1459,7 @@ private fun CoverPicture(thumbnailUrl: String?, modifier: Modifier = Modifier, z
 @Composable
 private fun PlayerBackdropCrossfade(
     trackInfo: TrackInfo,
+    isPlaying: Boolean = true,
     backgroundStyle: PlayerBackgroundStyle,
     pureBlack: Boolean,
     playVideoBackground: Boolean,
@@ -1925,6 +1927,7 @@ private fun SheetPillGlass(
  */
 @Composable
 private fun SheetBackdrop(
+    isPlaying: Boolean = true,
     progressProvider: () -> Float,
     endpointsPx: MorphEndpointsPx,
     trackInfo: TrackInfo,
@@ -1980,6 +1983,7 @@ private fun SheetBackdrop(
         if (!alternateStyle && (trackInfo.thumbnailUrl != null || backgroundStyle != PlayerBackgroundStyle.COVER_GRADIENT)) {
             PlayerBackdropCrossfade(
                 trackInfo = trackInfo,
+                isPlaying = isPlaying,
                 backgroundStyle = backgroundStyle,
                 pureBlack = pureBlack,
                 playVideoBackground = playVideoBackground,
