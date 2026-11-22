@@ -50,6 +50,8 @@ val SettingsPaneRoutes = setOf(
     "general_settings",
     PlaybackSettingsRoute,
     NowPlayingSettingsRoute,
+    "appearance_settings",
+    "nav_bar_settings",
     "customisation_settings",
     "gesture_settings",
     StorageRoute,

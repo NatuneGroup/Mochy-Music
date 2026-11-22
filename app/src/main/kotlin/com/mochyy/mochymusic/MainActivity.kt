@@ -469,12 +469,22 @@ class MainActivity : ComponentActivity() {
             lifecycle,
         )
         setContent(parent = motionRecomposer) {
-            mochyApp(
-                playerConnection = playerConnection,
-                database = database,
-                downloadUtil = downloadUtil,
-                syncUtils = syncUtils,
-            )
+            // the UI scale is applied once here, at the root: every dp and sp in the app grows or shrinks with it
+            val (uiScale) = rememberPreference(com.mochyy.mochymusic.constants.UiScalePercentKey, defaultValue = 100)
+            val baseDensity = LocalDensity.current
+            CompositionLocalProvider(
+                LocalDensity provides androidx.compose.ui.unit.Density(
+                    density = baseDensity.density * uiScale / 100f,
+                    fontScale = baseDensity.fontScale,
+                ),
+            ) {
+                mochyApp(
+                    playerConnection = playerConnection,
+                    database = database,
+                    downloadUtil = downloadUtil,
+                    syncUtils = syncUtils,
+                )
+            }
         }
     }
 
@@ -613,9 +623,19 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // the chrome's accent: the picked colour, or the cover's colour when the user chose that
+        val (accentInt) = rememberPreference(com.mochyy.mochymusic.constants.AccentColorKey, defaultValue = 0)
+        val (accentFromArt) = rememberPreference(com.mochyy.mochymusic.constants.AccentFromArtKey, defaultValue = false)
+        val chromeAccent: Color? = when {
+            accentFromArt -> themeColor
+            accentInt != 0 -> Color(accentInt)
+            else -> null
+        }
+
         MochyTheme(
             darkTheme = useDarkTheme,
             pureBlack = pureBlack,
+            accent = chromeAccent,
         ) {
             BoxWithConstraints(
                 modifier = Modifier
@@ -637,12 +657,17 @@ class MainActivity : ComponentActivity() {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val (previousTab, setPreviousTab) = rememberSaveable { mutableStateOf("home") }
 
-                val navigationItems = remember {
-                        Screens.MainScreens
+                val (navTabs) = rememberPreference(com.mochyy.mochymusic.constants.NavTabsKey, defaultValue = "")
+                val navigationItems = remember(navTabs) {
+                    com.mochyy.mochymusic.ui.component.navigationTabs(navTabs)
                 }
                 val (slimNav) = rememberPreference(SlimNavBarKey, defaultValue = false)
                 // flipped in Experimental while the app is open: it starts (or stops) turning right away
                 val (landscapeUnlocked) = rememberPreference(com.mochyy.mochymusic.constants.LandscapeUnlockedKey, defaultValue = false)
+                val (tabletLayout) = rememberPreference(com.mochyy.mochymusic.constants.TabletLayoutKey, defaultValue = false)
+                LaunchedEffect(tabletLayout) { com.mochyy.mochymusic.ui.utils.TabletLayout.forced = tabletLayout }
+                val (systemFont) = rememberPreference(com.mochyy.mochymusic.constants.SystemFontKey, defaultValue = false)
+                LaunchedEffect(systemFont) { com.mochyy.mochymusic.ui.theme.AppFontChoice.useSystem = systemFont }
                 LaunchedEffect(landscapeUnlocked) {
                     if (!isTelevision()) com.mochyy.mochymusic.ui.utils.WindowTurning.setUnlocked(this@MainActivity, landscapeUnlocked)
                 }
@@ -735,6 +760,17 @@ class MainActivity : ComponentActivity() {
                 // the row the tabs take along the bottom: the wide bar's shrinks with a short screen
                 val navRowHeight = wideBar?.rowHeight ?: NavigationBarHeight
                 val navPadding = if (slimNav && wideBar == null) SlimNavBarHeight else navRowHeight
+                // the bar slides away on scroll only on a phone's bottom bar, not the wide pill
+                val (hideNavOnScroll) = rememberPreference(com.mochyy.mochymusic.constants.HideNavOnScrollKey, defaultValue = false)
+                val navHide = remember { com.mochyy.mochymusic.ui.component.NavBarHide() }
+                val navHideConnection = com.mochyy.mochymusic.ui.component.rememberNavBarHideConnection(
+                    state = navHide,
+                    barHeightPx = with(density) { navRowHeight.toPx() },
+                    enabled = hideNavOnScroll && wideBar == null,
+                )
+                LaunchedEffect(hideNavOnScroll) {
+                    if (!hideNavOnScroll) navHide.progress = 0f
+                }
 
                 val playerBottomSheetState = rememberBottomSheetState(
                     dismissedBound = 0.dp,
@@ -791,6 +827,8 @@ class MainActivity : ComponentActivity() {
                     }
 
                     topAppBarScrollBehavior.state.resetHeightOffset()
+                    // a new page always shows the bar again
+                    navHide.progress = 0f
 
                     navController.currentBackStackEntry?.destination?.route?.let {
                         setPreviousTab(it)
@@ -1147,7 +1185,10 @@ class MainActivity : ComponentActivity() {
                                                     navController.navigateToTab(route)
                                                 },
                                                 obscured = { playerBottomSheetState.progress > 0.001f },
-                                                modifier = barMotion,
+                                                // slides down out of the screen as the list scrolls, read while drawing
+                                                modifier = barMotion.graphicsLayer {
+                                                    translationY = navBarTotalHeight.toPx() * navHide.progress
+                                                },
                                             )
                                         }
                                         }
@@ -1157,6 +1198,7 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier
                                 .fillMaxSize()
                                 .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection)
+                                .nestedScroll(navHideConnection)
                         ) {
                             Row(Modifier.fillMaxSize()) {
                                 Box(
@@ -1237,6 +1279,7 @@ class MainActivity : ComponentActivity() {
                                         startDestination = when (tabOpenedFromShortcut ?: defaultOpenTab) {
                                             NavigationTab.HOME -> Screens.Home
                                             NavigationTab.SEARCH -> Screens.Search
+                                            NavigationTab.LIBRARY -> Screens.Library
                                             else -> Screens.Home
                                         }.route,
 

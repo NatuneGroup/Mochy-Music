@@ -156,6 +156,7 @@ private val LocalizedSettingsPages = mapOf(
     "Playback" to R.string.settings_playback_category,
     "Now playing" to R.string.settings_now_playing,
     "Customisation" to R.string.settings_customisation_category,
+    "Appearance" to R.string.settings_appearance,
     "Storage" to R.string.storage,
     "Audio Lab" to R.string.settings_audio_lab_category,
     "Modules" to R.string.settings_modules_category,
@@ -163,6 +164,16 @@ private val LocalizedSettingsPages = mapOf(
 )
 
 private val SettingsIndex = listOf(
+    // Appearance
+    SettingsEntry("Appearance", "Appearance", "appearance_settings", "look theme tabs navigation bar layout scale colour color font tablet", R.string.settings_appearance),
+    SettingsEntry("Default start tab", "Appearance", "appearance_settings", "start open launch first tab home search library", R.string.settings_start_tab),
+    SettingsEntry("Hide navigation bar on scroll", "Appearance", "appearance_settings", "nav navigation bar tabs hide slide scroll list auto", R.string.settings_hide_nav_on_scroll),
+    SettingsEntry("Navigation bar", "Appearance", "nav_bar_settings", "nav bar tabs order reorder show hide home search library settings choose", R.string.settings_nav_bar),
+    SettingsEntry("Accent colour", "Appearance", "appearance_settings", "accent colour color palette theme primary highlight album art cover", R.string.settings_accent),
+    SettingsEntry("UI scale", "Appearance", "appearance_settings", "scale size zoom bigger smaller density text display", R.string.settings_ui_scale),
+    SettingsEntry("Tablet layout", "Appearance", "appearance_settings", "tablet wide layout side rail landscape big screen split pane", R.string.settings_tablet_layout),
+    SettingsEntry("System font", "Appearance", "appearance_settings", "font typeface text system phone default inter", R.string.settings_system_font),
+
     // Customisation
     SettingsEntry("Customisation", "Customisation", "customisation_settings", "customize cover rounding playlist player home styles gesture swipe blur animation lyrics"),
     SettingsEntry("Cover rounding", "Customisation", "customisation_settings", "square rounded corner radius px thumbnail art"),
@@ -543,6 +554,13 @@ fun MochySettingsScreen(navController: NavController, pane: SettingsPane? = null
                             iconRes = R.drawable.settings,
                             selected = selected == "general_settings",
                             onClick = { open("general_settings") }
+                        )
+
+                        CategoryBubble(
+                            title = stringResource(R.string.settings_appearance),
+                            iconRes = R.drawable.contrast,
+                            selected = selected == "appearance_settings",
+                            onClick = { open("appearance_settings") }
                         )
 
                         CategoryBubble(
