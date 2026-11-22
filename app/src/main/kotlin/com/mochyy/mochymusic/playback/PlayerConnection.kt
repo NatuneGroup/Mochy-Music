@@ -33,6 +33,7 @@ import com.mochyy.mochymusic.songedit.SongEdits
 import com.mochyy.mochymusic.playback.MusicService.MusicBinder
 import com.mochyy.mochymusic.link.isTelevision
 import com.mochyy.mochymusic.playback.queues.Queue
+import com.mochyy.mochymusic.ui.player.models.ProgressState
 import com.mochyy.mochymusic.utils.NotRecommended
 import com.mochyy.mochymusic.utils.reportException
 import kotlinx.coroutines.CoroutineScope
@@ -43,6 +44,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
@@ -50,7 +52,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import timber.log.Timber
@@ -268,34 +269,20 @@ class PlayerConnection(
         )
     }
 
-    // mainactivity turns this off while the app is hidden, the poll below rests then instead of recomposing the player for nobody
     val isUiVisible = MutableStateFlow(true)
+    private val isPositionAdvancing = MutableStateFlow(false)
+    private val progress = MutableStateFlow(ProgressState())
+    val progressState: StateFlow<ProgressState> = progress.asStateFlow()
 
-    val progressState: kotlinx.coroutines.flow.StateFlow<com.mochyy.mochymusic.ui.player.models.ProgressState> =
-        kotlinx.coroutines.flow.callbackFlow {
-            while (true) {
-                isUiVisible.first { it }
-                try {
-                    val p = attachedPlayer
-                    if (p != null) {
-                        val position = p.currentPosition.coerceAtLeast(0L)
-                        val duration = p.duration.coerceAtLeast(0L)
-                        trySend(
-                            com.mochyy.mochymusic.ui.player.models.ProgressState(
-                                position = position,
-                                duration = duration,
-                                percentage = if (duration > 0L) position.toFloat() / duration else 0f,
-                            )
-                        )
-                    }
-                } catch (_: Exception) {}
-                kotlinx.coroutines.delay(66L)
-            }
-        }.distinctUntilChanged().stateIn(
-            scope,
-            SharingStarted.Lazily,
-            com.mochyy.mochymusic.ui.player.models.ProgressState(),
+    private fun publishProgress(player: Player) {
+        val position = player.currentPosition.coerceAtLeast(0L)
+        val duration = player.duration.coerceAtLeast(0L)
+        progress.value = ProgressState(
+            position = position,
+            duration = duration,
+            percentage = if (duration > 0L) position.toFloat() / duration else 0f,
         )
+    }
 
     val shuffleModeEnabled = MutableStateFlow(false)
     val repeatMode = MutableStateFlow(REPEAT_MODE_OFF)
@@ -333,6 +320,18 @@ class PlayerConnection(
 
     init {
         try {
+            scope.launch {
+                // Player events handle paused seeks and track changes without a periodic wakeup.
+                combine(isUiVisible, isPositionAdvancing) { visible, advancing -> visible && advancing }
+                    .distinctUntilChanged()
+                    .collectLatest { poll ->
+                        if (!poll) return@collectLatest
+                        while (true) {
+                            attachedPlayer?.let(::publishProgress)
+                            delay(66L)
+                        }
+                    }
+            }
 
             scope.launch {
                 service.playerFlow.collect { newPlayer ->
@@ -359,6 +358,8 @@ class PlayerConnection(
         attachedPlayer = newPlayer
         newPlayer.addListener(this)
 
+        publishProgress(newPlayer)
+        isPositionAdvancing.value = newPlayer.isPlaying
         playbackState.value = newPlayer.playbackState
         playWhenReady.value = newPlayer.playWhenReady
         showMetadata(newPlayer.currentMetadata)
@@ -371,6 +372,21 @@ class PlayerConnection(
         publishQueueSnapshot()
 
         Timber.tag(TAG).d("Attached to new player instance: $newPlayer")
+    }
+
+    override fun onEvents(player: Player, events: Player.Events) {
+        if (player !== attachedPlayer) return
+        if (events.containsAny(
+                Player.EVENT_IS_PLAYING_CHANGED,
+                Player.EVENT_PLAYBACK_STATE_CHANGED,
+                Player.EVENT_TIMELINE_CHANGED,
+                Player.EVENT_MEDIA_ITEM_TRANSITION,
+                Player.EVENT_POSITION_DISCONTINUITY,
+            )
+        ) {
+            publishProgress(player)
+            isPositionAdvancing.value = player.isPlaying
+        }
     }
 
     // a device this phone steers takes the songs picked here; never on a tv, which steers nothing
