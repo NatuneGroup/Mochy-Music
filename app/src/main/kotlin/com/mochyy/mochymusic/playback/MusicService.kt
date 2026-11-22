@@ -4438,8 +4438,11 @@ class MusicService :
                 out: ArrayList<Renderer>,
             ) {
                 val songs = router
-                // lossy youtube audio is decoded in this process first (see InProcessLossyRenderer); the phone's codec stays first for everything else
-                if (efficientDecoding) out.add(InProcessLossyRenderer(eventHandler, eventListener, audioSink, { songs?.sourceFormat = it }, { screenOn }, PositionWakeUs))
+                // lossy youtube audio is decoded in this process first: opus by libopus, aac by ffmpeg; the phone's codec stays first for everything else
+                if (efficientDecoding) {
+                    out.add(InProcessOpusRenderer(eventHandler, eventListener, audioSink, { songs?.sourceFormat = it }, { screenOn }, PositionWakeUs))
+                    out.add(InProcessLossyRenderer(eventHandler, eventListener, audioSink, { songs?.sourceFormat = it }, { screenOn }, PositionWakeUs))
+                }
                 out.add(object : MediaCodecAudioRenderer(
                     context, codecAdapterFactory, mediaCodecSelector, enableDecoderFallback, eventHandler, eventListener, audioSink,
                 ) {

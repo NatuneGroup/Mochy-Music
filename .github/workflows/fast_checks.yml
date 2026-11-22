@@ -30,6 +30,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v5
         with:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
+      - name: String resources
+        run: python3 scripts/ci/check_string_resources.py
       - run: chmod +x gradlew
       - name: Compile
         run: ./gradlew --console=plain :app:compileArm64FossDebugKotlin :desktopApp:compileKotlinJvm --warning-mode summary

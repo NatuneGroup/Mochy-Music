@@ -425,6 +425,8 @@ dependencies {
     implementation(libs.media3.okhttp)
     // ffmpeg decodes alac (and flac, opus...) on phones that have no decoder of their own for it
     implementation(libs.media3.ffmpeg)
+    // libopus in-process, as metrolist does: youtube serves opus, and jellyfin's ffmpeg build has no opus decoder
+    implementation(project(":opusDecoder"))
     // song share videos: decode the background, mix in the song, encode the mp4
     implementation(libs.media3.transformer)
     implementation(libs.media3.effect)
