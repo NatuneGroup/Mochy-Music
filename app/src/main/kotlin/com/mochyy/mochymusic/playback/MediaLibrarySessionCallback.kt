@@ -484,6 +484,9 @@ constructor(
         if (controller.packageName == OriginCard.Package) {
             mediaItems.singleOrNull()?.let { playFromOriginCard(mediaSession, it.mediaId) }?.let { return it }
         }
+        // the song the car asked for by name (the path's last part), unless it asked for shuffle
+        val requestedSong = mediaItems.firstOrNull()?.mediaId?.substringAfterLast('/')
+            ?.takeIf { it.isNotEmpty() && it != MusicService.SHUFFLE_ACTION }
         val resolved = scope.future {
             val defaultResult = MediaItemsWithStartPosition(emptyList(), startIndex, startPositionMs)
             val path = mediaItems.firstOrNull()?.mediaId?.split("/")
@@ -681,7 +684,12 @@ constructor(
             if (kept.size == items.size) return@future result
             if (kept.isEmpty()) throw IllegalStateException("Streaming on mobile data is off in the car")
             val start = items.getOrNull(result.startIndex)?.mediaId
-            MediaItemsWithStartPosition(kept, kept.indexOfFirst { it.mediaId == start }.coerceAtLeast(0), result.startPositionMs)
+            val keptStart = kept.indexOfFirst { it.mediaId == start }
+            // a tapped song that can't play is refused, not swapped for whichever saved song is first
+            val tapped = start != null && requestedSong != null && start.endsWith(requestedSong)
+            if (tapped && keptStart == -1) throw IllegalStateException("Streaming on mobile data is off in the car")
+            // the start position belonged to the song that was left out
+            MediaItemsWithStartPosition(kept, keptStart.coerceAtLeast(0), if (keptStart == -1) 0L else result.startPositionMs)
         }
     }
 

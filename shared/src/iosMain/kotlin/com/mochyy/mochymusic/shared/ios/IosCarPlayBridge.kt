@@ -51,6 +51,8 @@ private object IosCarPlayBridge {
         installed = true
         observe(IosCarPlayEvents.libraryRequest, ::requestLibrary)
         observe(IosCarPlayEvents.playRequest, ::requestPlay)
+        // a reconnecting car missed every change made while it was away, so it gets the current state even if unchanged
+        observe(IosCarPlayEvents.playbackRequest) { player?.let { publishPlaybackState(it.state.value, force = true) } }
         attachRuntime()
     }
 
@@ -165,9 +167,9 @@ private object IosCarPlayBridge {
         )
     }
 
-    private fun publishPlaybackState(state: PlayerState) {
+    private fun publishPlaybackState(state: PlayerState, force: Boolean = false) {
         val key = state.song?.id to state.isPlaying
-        if (lastPlaybackKey == key) return
+        if (!force && lastPlaybackKey == key) return
         lastPlaybackKey = key
         post(
             IosCarPlayEvents.playbackChanged,
@@ -200,4 +202,5 @@ private object IosCarPlayEvents {
     const val playRequest = "${prefix}playRequest"
     const val playResult = "${prefix}playResult"
     const val playbackChanged = "${prefix}playbackChanged"
+    const val playbackRequest = "${prefix}playbackRequest"
 }
