@@ -34,6 +34,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -56,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.theme.LocalChromeAccent
 import com.mochyy.mochymusic.scrobble.ScrobbleSite
 import com.mochyy.mochymusic.ui.screens.devices.showDeviceIntegration
 import com.mochyy.mochymusic.ui.screens.settings.importsync.YouTubeSyncRoute
@@ -406,7 +408,7 @@ fun MochySettingsScreen(navController: NavController, pane: SettingsPane? = null
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black),
+            .background(MaterialTheme.colorScheme.background),
     ) {
         Box(
             modifier = Modifier
@@ -447,7 +449,7 @@ fun MochySettingsScreen(navController: NavController, pane: SettingsPane? = null
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(20.dp))
-                                    .background(BubbleColor)
+                                    .background(settingsBubbleColor(selected = false))
                                     .clickable {
                                         SettingsHighlight.pending = entry.highlightKey
                                         open(entry.route)
@@ -691,6 +693,14 @@ fun MochySettingsScreen(navController: NavController, pane: SettingsPane? = null
 }
 
 @Composable
+private fun settingsBubbleColor(selected: Boolean): Color = when {
+    LocalChromeAccent.current != null && selected -> MaterialTheme.colorScheme.primaryContainer
+    LocalChromeAccent.current != null -> MaterialTheme.colorScheme.surfaceContainer
+    selected -> SelectedBubbleColor
+    else -> BubbleColor
+}
+
+@Composable
 internal fun CategoryBubble(
     title: String,
     iconRes: Int,
@@ -703,7 +713,7 @@ internal fun CategoryBubble(
             .fillMaxWidth()
             .height(64.dp)
             .clip(RoundedCornerShape(22.dp))
-            .background(if (selected) SelectedBubbleColor else BubbleColor)
+            .background(settingsBubbleColor(selected))
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp),
         contentAlignment = Alignment.CenterStart

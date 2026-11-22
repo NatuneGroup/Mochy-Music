@@ -13,7 +13,7 @@ import com.mochyy.mochymusic.shared.resources.inter_regular
 import com.mochyy.mochymusic.shared.resources.inter_semibold
 import com.mochyy.mochymusic.shared.resources.playback_failed
 import com.mochyy.mochymusic.shared.ui.shell.StandaloneMusicApp
-import com.mochyy.mochymusic.shared.ui.theme.MochySharedTheme
+import com.mochyy.mochymusic.shared.ui.theme.StandaloneMochyTheme
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.stringResource
 import platform.UIKit.UIViewController
@@ -31,7 +31,7 @@ fun MainViewController(): UIViewController = ComposeUIViewController {
         Font(Res.font.inter_regular, FontWeight.Normal),
         Font(Res.font.inter_semibold, FontWeight.SemiBold),
     )
-    MochySharedTheme(font = inter) {
+    StandaloneMochyTheme(inter, iosPlaybackPreferences) {
         StandaloneMusicApp(
             source = youtube,
             player = player,

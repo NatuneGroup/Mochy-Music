@@ -1,6 +1,5 @@
 // MochyColors.kt
-// Mochy's own palette (from Mochy Music by realidkroo); dynamic Material You colour is deliberately not
-// used. Shared so every platform's app paints the same greys.
+// Mochy's palette (from Mochy Music by realidkroo), shared by every platform.
 
 package com.mochyy.mochymusic.shared.ui.theme
 
@@ -10,9 +9,13 @@ import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
+import com.materialkolor.PaletteStyle
+import com.materialkolor.dynamicColorScheme
 
 /**
  * mochy renders dark-only. The light palette was never finished - large parts of the UI hardcode white
@@ -20,9 +23,24 @@ import androidx.compose.ui.text.font.FontFamily
  */
 const val ForceDarkTheme = true
 
+/** Null when the default gray theme is active. Custom controls can use the generated accent. */
+val LocalMochyAccent = compositionLocalOf<Color?> { null }
+
+val MochyAccentPresets = listOf(
+    0xFFFF6B6B.toInt(),
+    0xFFFFB300.toInt(),
+    0xFF9CCC65.toInt(),
+    0xFF26C6DA.toInt(),
+    0xFF42A5F5.toInt(),
+    0xFFAB78FF.toInt(),
+    0xFFF06292.toInt(),
+)
+
 /** Mochy's base scheme; the light one exists but the app never turns it on, see [ForceDarkTheme]. */
-fun mochyColorScheme(darkTheme: Boolean): ColorScheme =
-    if (darkTheme) {
+fun mochyColorScheme(darkTheme: Boolean, accent: Color? = null): ColorScheme =
+    if (accent != null) {
+        dynamicColorScheme(seedColor = accent, isDark = darkTheme, style = PaletteStyle.TonalSpot)
+    } else if (darkTheme) {
         darkColorScheme(
             primary = Color(0xFFE0E0E0),
             onPrimary = Color.Black,
@@ -64,21 +82,23 @@ fun ColorScheme.pureBlack(apply: Boolean): ColorScheme =
     if (apply) copy(surface = Color.Black, background = Color.Black) else this
 
 /**
- * The theme for platforms without the Android app's extras (desktop, iOS): Mochy's palette and type in
- * [font]. The Android app keeps its own MochyTheme wrapper, built on the same two functions.
+ * The shared theme owns all Material roles so the selected palette reaches every screen.
  */
 @Composable
 fun MochySharedTheme(
     font: FontFamily,
     darkTheme: Boolean = ForceDarkTheme,
     pureBlack: Boolean = false,
+    accent: Color? = null,
     content: @Composable () -> Unit,
 ) {
-    val colorScheme = remember(darkTheme, pureBlack) {
-        mochyColorScheme(darkTheme).let { if (darkTheme) it.pureBlack(pureBlack) else it }
+    val colorScheme = remember(darkTheme, pureBlack, accent) {
+        mochyColorScheme(darkTheme, accent).pureBlack(darkTheme && pureBlack)
     }
     val typography = remember(font) { mochyTypography(font) }
-    MaterialTheme(colorScheme = colorScheme, typography = typography) {
-        ProvideTextStyle(value = typography.bodyLarge, content = content)
+    CompositionLocalProvider(LocalMochyAccent provides accent?.let { colorScheme.primary }) {
+        MaterialTheme(colorScheme = colorScheme, typography = typography) {
+            ProvideTextStyle(value = typography.bodyLarge, content = content)
+        }
     }
 }

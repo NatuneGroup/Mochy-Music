@@ -626,7 +626,7 @@ class PlayerConnection(
         }
     }
 
-    fun togglePlayPause() {
+    override fun togglePlayPause() {
         try {
             val castHandler = service.castConnectionHandler
             if (castHandler?.isCasting?.value == true) {
@@ -669,14 +669,14 @@ class PlayerConnection(
         }
     }
 
-    fun seekTo(position: Long) {
+    override fun seekTo(positionMs: Long) {
         try {
             val castHandler = service.castConnectionHandler
             if (castHandler?.isCasting?.value == true) {
-                castHandler.seekTo(position)
+                castHandler.seekTo(positionMs)
             } else {
                 service.transport.cancel()
-                player.seekTo(position)
+                player.seekTo(positionMs)
             }
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Error in seekTo")
@@ -893,7 +893,7 @@ class PlayerConnection(
             durationMs = progress.duration.takeIf { it > 0L } ?: ((song?.duration ?: 0) * 1000L),
             error = playbackError?.localizedMessage,
         )
-    }.stateIn(scope, SharingStarted.Eagerly, PlayerState())
+    }.stateIn(scope, SharingStarted.WhileSubscribed(5_000L), PlayerState())
 
     override val queueState: StateFlow<PlaybackQueueState> = combine(
         queueSnapshot,
@@ -922,7 +922,7 @@ class PlayerConnection(
             canSkipNext = canNext,
             canSkipPrevious = canPrevious,
         )
-    }.stateIn(scope, SharingStarted.Eagerly, PlaybackQueueState())
+    }.stateIn(scope, SharingStarted.WhileSubscribed(5_000L), PlaybackQueueState())
 
     override fun play(song: SongItem) {
         playQueue(YouTubeQueue.radio(song.toMediaMetadata()))

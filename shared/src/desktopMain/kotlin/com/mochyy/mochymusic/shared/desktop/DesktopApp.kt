@@ -20,7 +20,7 @@ import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.shared.resources.app_name
 import com.mochyy.mochymusic.shared.resources.playback_failed
 import com.mochyy.mochymusic.shared.ui.shell.StandaloneMusicApp
-import com.mochyy.mochymusic.shared.ui.theme.MochySharedTheme
+import com.mochyy.mochymusic.shared.ui.theme.StandaloneMochyTheme
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
@@ -54,7 +54,7 @@ fun runDesktopApp(font: FontFamily) = application {
         title = stringResource(Res.string.app_name),
         state = rememberWindowState(width = 1100.dp, height = 720.dp),
     ) {
-        MochySharedTheme(font = font) {
+        StandaloneMochyTheme(font, desktopPlaybackPreferences) {
             StandaloneMusicApp(search, player, providers, desktopPlaybackPreferences, desktopLibrary)
         }
     }
