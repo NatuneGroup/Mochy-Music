@@ -3066,6 +3066,11 @@ class MusicService :
     private var previousMediaItemIndex = C.INDEX_UNSET
 
     private val sponsorBlock by lazy { SponsorBlockSkipper(this) }
+    private val cpuWake by lazy { CpuWakeHold(this).also { it.attach(scope) } }
+
+    override fun onIsPlayingChanged(isPlaying: Boolean) {
+        cpuWake.onPlayingChanged(isPlaying)
+    }
 
     override fun onMediaItemTransition(
         mediaItem: MediaItem?,
@@ -4631,6 +4636,7 @@ class MusicService :
         playerReplayGain.remove(player)
 
         sponsorBlock.cancel()
+        cpuWake.release()
         player.release()
         super.onDestroy()
     }

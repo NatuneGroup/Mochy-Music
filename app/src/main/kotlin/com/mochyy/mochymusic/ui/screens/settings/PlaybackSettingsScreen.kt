@@ -20,6 +20,7 @@ import androidx.navigation.NavController
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.DontSkipOnFailureKey
 import com.mochyy.mochymusic.constants.InfiniteQueueKey
+import com.mochyy.mochymusic.constants.KeepCpuAwakeKey
 import com.mochyy.mochymusic.constants.QueueAddInOrderKey
 import com.mochyy.mochymusic.constants.QueueEditLockKey
 import com.mochyy.mochymusic.constants.QueuePreventDuplicatesKey
@@ -72,6 +73,7 @@ private fun listeningItems(): List<SettingsItem> {
     val (skipSilence, onSkipSilenceChange) = rememberPreference(SkipSilenceKey, defaultValue = false)
     val (preloadNextTrack, onPreloadNextTrackChange) = rememberPreference(PreloadNextTrackKey, defaultValue = true)
     val (infiniteQueue, onInfiniteQueueChange) = rememberPreference(InfiniteQueueKey, defaultValue = true)
+    val (keepCpuAwake, onKeepCpuAwakeChange) = rememberPreference(KeepCpuAwakeKey, defaultValue = false)
     val (preventDuplicates, onPreventDuplicatesChange) = rememberPreference(QueuePreventDuplicatesKey, defaultValue = false)
     val (addInOrder, onAddInOrderChange) = rememberPreference(QueueAddInOrderKey, defaultValue = true)
     val (queueLocked, onQueueLockedChange) = rememberPreference(QueueEditLockKey, defaultValue = false)
@@ -84,6 +86,14 @@ private fun listeningItems(): List<SettingsItem> {
             icon = painterResource(R.drawable.playlist_play),
             checked = infiniteQueue,
             onCheckedChange = onInfiniteQueueChange,
+        ),
+        switchItem(
+            key = "Keep CPU awake during playback",
+            title = stringResource(R.string.settings_keep_cpu_awake),
+            description = stringResource(R.string.settings_keep_cpu_awake_desc),
+            icon = painterResource(R.drawable.sleep_timer),
+            checked = keepCpuAwake,
+            onCheckedChange = onKeepCpuAwakeChange,
         ),
         switchItem(
             key = "Prevent duplicates in queue",

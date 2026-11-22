@@ -205,6 +205,7 @@ private val SettingsIndex = listOf(
     SettingsEntry("Pause when muted", "Playback", PlaybackSettingsRoute, "pause mute volume silent zero off automatic", R.string.pause_music_when_media_is_muted),
     SettingsEntry("Save Player's last state", "Playback", PlaybackSettingsRoute, "persistent queue restore track state"),
     SettingsEntry("Infinite queue", "Playback", PlaybackSettingsRoute, "autoplay radio related endless queue songs keep going never stop", R.string.playback_infinite_queue),
+    SettingsEntry("Keep CPU awake during playback", "Playback", PlaybackSettingsRoute, "cpu wake lock awake screen off background sleep stop music battery", R.string.settings_keep_cpu_awake),
     SettingsEntry("Prevent duplicates in queue", "Playback", PlaybackSettingsRoute, "queue duplicate copy twice same song move again", R.string.settings_queue_prevent_duplicates),
     SettingsEntry("Add to queue in order", "Playback", PlaybackSettingsRoute, "queue play next order sequence keep add later", R.string.settings_queue_add_in_order),
     SettingsEntry("Lock queue", "Playback", PlaybackSettingsRoute, "queue lock remove move swipe reorder protect", R.string.settings_queue_lock),

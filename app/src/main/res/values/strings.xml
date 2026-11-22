@@ -533,4 +533,6 @@
     <string name="settings_sponsorblock_intro_desc">Lead-in before the song starts</string>
     <string name="settings_sponsorblock_outro">Outros</string>
     <string name="settings_sponsorblock_outro_desc">Credits or chatter after the song ends</string>
+    <string name="settings_keep_cpu_awake">Keep CPU awake during playback</string>
+    <string name="settings_keep_cpu_awake_desc">Stops the phone from pausing music when the screen is off. Uses more battery</string>
 </resources>
