@@ -29,6 +29,8 @@ import com.mochyy.mochymusic.BuildConfig
 import com.mochyy.mochymusic.constants.AlbumsFromLikedSongsKey
 import com.mochyy.mochymusic.constants.DataSaverKey
 import com.mochyy.mochymusic.constants.DataSaverMobileOnlyKey
+import com.mochyy.mochymusic.constants.HideExplicitKey
+import com.mochyy.mochymusic.constants.HideVideoSongsKey
 import com.mochyy.mochymusic.constants.HideSettingsDescriptionsKey
 import com.mochyy.mochymusic.constants.HideUpdateNoticeKey
 import com.mochyy.mochymusic.constants.LarpLevelKey
@@ -76,6 +78,7 @@ fun AppBehaviourSettingsScreen(navController: NavController) {
         SettingsSection(title = null, items = larpItems().matching(query))
         SettingsSection(stringResource(R.string.general_app_settings), generalItems().matching(query))
         SettingsSection(stringResource(R.string.settings_section_network), networkItems(navController).matching(query))
+        SettingsSection(stringResource(R.string.settings_section_content), contentItems().matching(query))
         SettingsSection(stringResource(R.string.settings_section_library_privacy), libraryItems().matching(query))
         SettingsSection(stringResource(R.string.settings_section_lyrics), lyricsItems().matching(query))
         SettingsSection(stringResource(R.string.settings_related), relatedItems(navController).matching(query))
@@ -236,6 +239,31 @@ private fun networkItems(navController: NavController): List<SettingsItem> {
             },
             icon = painterResource(R.drawable.wifi_proxy),
             onClick = { navController.navigate(ProxySettingsRoute) },
+        ),
+    )
+}
+
+// these switches only hide songs in the lists; the filters themselves are the ones that already run on home, search and radio
+@Composable
+private fun contentItems(): List<SettingsItem> {
+    val (hideExplicit, onHideExplicitChange) = rememberPreference(HideExplicitKey, defaultValue = false)
+    val (hideVideos, onHideVideosChange) = rememberPreference(HideVideoSongsKey, defaultValue = false)
+    return listOf(
+        switchItem(
+            key = "Hide explicit content",
+            title = stringResource(R.string.hide_explicit),
+            description = stringResource(R.string.settings_hide_explicit_desc),
+            icon = painterResource(R.drawable.explicit),
+            checked = hideExplicit,
+            onCheckedChange = onHideExplicitChange,
+        ),
+        switchItem(
+            key = "Hide music videos",
+            title = stringResource(R.string.settings_hide_music_videos),
+            description = stringResource(R.string.settings_hide_music_videos_desc),
+            icon = painterResource(R.drawable.slow_motion_video),
+            checked = hideVideos,
+            onCheckedChange = onHideVideosChange,
         ),
     )
 }

@@ -116,6 +116,7 @@
     <string name="settings_related">Related</string>
     <string name="settings_section_network">Network &amp; data</string>
     <string name="settings_section_library_privacy">Library &amp; privacy</string>
+    <string name="settings_section_content">Content</string>
     <string name="settings_section_listening">While you listen</string>
     <string name="settings_section_failures">When a song won\'t play</string>
     <string name="settings_section_lyrics">Lyrics</string>
