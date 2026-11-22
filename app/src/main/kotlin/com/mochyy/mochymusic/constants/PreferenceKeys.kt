@@ -722,54 +722,50 @@ enum class PlayerCoverStyle {
  * its disc label and [POSTER] its visualizer; the others are complete designs of their own,
  * each of which can be turned sideways from its menu.
  */
-enum class PlayerStyle(val displayName: String, val selectorName: String) {
+enum class PlayerStyle(
+    val displayName: String,
+    val selectorName: String,
+    // everything the player needs to know about the style; see PlayerStyleTraits
+    val traits: PlayerStyleTraits = PlayerStyleTraits(),
+) {
     // the flagship as it is now: frosted cover fade, moving cover colours, the new buttons and bottom bar
-    FLAGSHIP("Flagship", "Flagship"),
+    FLAGSHIP("Flagship", "Flagship", PlayerStyleTraits(StyleFamily.Flagship, StyleEditor.Full, onTv = true)),
     // the flagship before its layout refresh, kept as a variant under it in the selector
-    CLASSIC("Classic", "Classic"),
+    CLASSIC("Classic", "Classic", PlayerStyleTraits(StyleFamily.Flagship, StyleEditor.Full)),
     /** the flagship with a record player for its cover, whose arm is the seek bar */
-    TURNTABLE("Turntable", "Turntable"),
+    TURNTABLE("Turntable", "Turntable", PlayerStyleTraits(StyleFamily.Flagship, StyleEditor.Simple, turnable = true)),
     // the song's youtube video across the whole screen, turned sideways, with its lyrics in a pane
-    VIDEO("Full video", "Full video"),
+    VIDEO("Full video", "Full video", PlayerStyleTraits(onTv = true, showsHandle = false)),
     // the ipod classic, click wheel and all, browsing the library from inside the player
-    IPOD("iPod", "iPod"),
-    POSTER("Poster", "Poster"),
-    TIMELINE("Timeline", "Timeline"),
-    LYRICS("Lyrics", "Lyrics stage"),
+    IPOD("iPod", "iPod", PlayerStyleTraits(editor = StyleEditor.Simple, showsHandle = false)),
+    POSTER("Poster", "Poster", PlayerStyleTraits(editor = StyleEditor.Simple, turnable = true, onTv = true, menuFromLyrics = true)),
+    TIMELINE("Timeline", "Timeline", PlayerStyleTraits(turnable = true, onTv = true)),
+    LYRICS("Lyrics", "Lyrics stage", PlayerStyleTraits(turnable = true, menuFromLyrics = true)),
     // a big quiet clock for the nightstand, with the song a swipe away, that can stay up over the lock screen
-    BEDSIDE("Bedside clock", "Big clock"),
+    BEDSIDE("Bedside clock", "Big clock", PlayerStyleTraits(StyleFamily.Bedside, StyleEditor.Simple, turnable = true, onTv = true, showsHandle = false)),
     // the nightstand as two tiles side by side, the music on one and the lyrics or a clock on the other, each scrolled on its own
-    BEDSIDE_TILES("Bedside", "Bedside"),
+    BEDSIDE_TILES("Bedside", "Bedside", PlayerStyleTraits(StyleFamily.Bedside, StyleEditor.Simple, turnable = true, startsSideways = true, onTv = true, showsHandle = false)),
     // namida's player: a rounded panel in the cover's colour, a waveform seek bar and its own queue page
     NAMIDA("Namida", "Namida"),
     // the apple music look: the artwork filling the top with a floating-light background and white type
     APPLE_MUSIC("Apple Music", "Apple Music"),
     // the queue as a vertical feed with a right rail of actions, the tiktok look
     TIKTOK("TikTok", "TikTok"),
-    METROLIST("Metrolist", "Metrolist"),
-    METROLIST_VINTAGE("Metrolist Vintage", "Vintage"),
+    METROLIST("Metrolist", "Metrolist", PlayerStyleTraits(turnable = true)),
+    METROLIST_VINTAGE("Metrolist Vintage", "Vintage", PlayerStyleTraits(turnable = true)),
     // a look module's own player, drawn from its layout; kept last so the others keep their places, and only offered while such a module is on
-    MODULE("Module", "Module");
+    MODULE("Module", "Module", PlayerStyleTraits(turnable = true));
 
-    val editable: Boolean get() = this == FLAGSHIP || this == CLASSIC || this == TURNTABLE || this == POSTER || this == IPOD || isBedside
-
-    // the two nightstand styles share their sheet, their night look and their lock screen rules
-    val isBedside: Boolean get() = this == BEDSIDE || this == BEDSIDE_TILES
+    // read from the traits, so callers keep their names and a new style only fills in its traits
+    val editable: Boolean get() = traits.editor != StyleEditor.None
+    val isBedside: Boolean get() = traits.family == StyleFamily.Bedside
 
     /** drawn by the flagship's own player (cover, controls, card), not a design of its own */
-    val flagshipFamily: Boolean get() = this == FLAGSHIP || this == CLASSIC || this == TURNTABLE
-
-    // the two flagships the full editor works on: cover, middle part, controls and bottom bar
-    val hasFullEditor: Boolean get() = this == FLAGSHIP || this == CLASSIC
-
-    // the styles whose menu has a rotate button, each with a landscape layout of its own to turn into
-    val turnable: Boolean get() = this == TURNTABLE || this == POSTER || this == TIMELINE || this == LYRICS || this == METROLIST || this == METROLIST_VINTAGE || this == MODULE || isBedside
-
-    // laid out sideways until someone turns it upright, the way a phone stands on a nightstand
-    val startsSideways: Boolean get() = this == BEDSIDE_TILES
-
-    // the looks that read well across a room and stay smooth on a tv's gpu; the rest stay on phones
-    val availableOnTv: Boolean get() = this == FLAGSHIP || this == POSTER || this == VIDEO || this == TIMELINE || isBedside
+    val flagshipFamily: Boolean get() = traits.family == StyleFamily.Flagship
+    val hasFullEditor: Boolean get() = traits.editor == StyleEditor.Full
+    val turnable: Boolean get() = traits.turnable
+    val startsSideways: Boolean get() = traits.startsSideways
+    val availableOnTv: Boolean get() = traits.onTv
 
     companion object {
         /** the styles these replaced, so a stored choice lands on its nearest successor */

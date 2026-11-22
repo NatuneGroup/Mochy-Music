@@ -535,8 +535,8 @@ private fun PlayerSheet(
         com.mochyy.mochymusic.ui.player.styles.StyleActions(
             onOtherMenu = {
                 // the styles that perform the lyrics get the lyrics tools too: provider, translation
-                menuFromLyrics = currentPlayerStyleForStudio == PlayerStyle.POSTER ||
-                    currentPlayerStyleForStudio == PlayerStyle.LYRICS
+                menuFromLyrics =
+                    currentPlayerStyleForStudio.traits.menuFromLyrics
                 showActionMenu = true
             },
             onEditPlayer = openStudio,
@@ -1132,7 +1132,7 @@ private fun PlayerSheet(
                     onCoveredChange = { styleQueueCovered = it },
                 )
                 // the ipod, the full video mode and the bedside each have their own close, a bar over them would just be in the way
-                if (!onTv && playerStyle != PlayerStyle.IPOD && playerStyle != PlayerStyle.VIDEO && !playerStyle.isBedside) PlayerHandle(
+                if (!onTv && playerStyle.traits.showsHandle) PlayerHandle(
                     state = handleState,
                     sheet = state,
                     statusBarTop = statusBarTopInset,
