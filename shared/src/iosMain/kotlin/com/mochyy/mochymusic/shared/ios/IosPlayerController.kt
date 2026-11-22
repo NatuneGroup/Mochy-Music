@@ -68,6 +68,9 @@ internal class IosPlayerController(
     private var interruptionActive = false
     private var resumeAfterInterruption = false
     private var interruptedSongId: String? = null
+    // the user's play/pause intent. Kept even before an item exists, so a pause or route loss
+    // during stream resolution stops the song once it loads.
+    private var wantsToPlay = false
 
     init {
         observeBridgeEvent(IosPlaybackBridgeEvents.remoteToggle) { togglePlayPause() }
@@ -100,6 +103,7 @@ internal class IosPlayerController(
     override fun play(song: SongItem) {
         playbackJob?.cancel()
         clearItem()
+        wantsToPlay = true
         resumeAfterInterruption = interruptionActive
         interruptedSongId = song.id.takeIf { interruptionActive }
         mutableState.value = PlayerState(song = song, isLoading = true, durationMs = (song.duration ?: 0) * 1000L)
@@ -139,24 +143,30 @@ internal class IosPlayerController(
                         failPlayback()
                     }
                 }
+                val format = stream.codecs?.takeIf { it.isNotBlank() }?.let { codec ->
+                    StreamFormat(
+                        codec = if (codec.startsWith("mp4a")) "AAC" else codec.uppercase(),
+                        sampleRate = stream.sampleRate ?: 0,
+                        bitrate = stream.bitrate ?: 0,
+                    )
+                }
                 player.replaceCurrentItemWithPlayerItem(item)
+                // a pause or route loss while resolving clears wantsToPlay: install the item paused
+                val playNow = wantsToPlay && !interruptionActive
                 mutableState.value = mutableState.value.copy(
-                    isPlaying = !interruptionActive,
-                    format = stream.codecs?.takeIf { it.isNotBlank() }?.let { codec ->
-                        StreamFormat(
-                            codec = if (codec.startsWith("mp4a")) "AAC" else codec.uppercase(),
-                            sampleRate = stream.sampleRate ?: 0,
-                            bitrate = stream.bitrate ?: 0,
-                        )
-                    },
+                    isPlaying = playNow,
+                    isLoading = if (playNow) mutableState.value.isLoading else false,
+                    format = format,
                 )
-                if (interruptionActive) {
-                    resumeAfterInterruption = true
-                    interruptedSongId = song.id
-                    player.pause()
-                } else {
+                if (playNow) {
                     activateAudioSession()
                     player.play()
+                } else {
+                    player.pause()
+                    if (wantsToPlay && interruptionActive) {
+                        resumeAfterInterruption = true
+                        interruptedSongId = song.id
+                    }
                 }
                 publishNowPlaying()
                 while (isActive) {
@@ -178,12 +188,14 @@ internal class IosPlayerController(
             return
         }
         if (mutableState.value.isPlaying) {
+            wantsToPlay = false
             player.pause()
             mutableState.value = mutableState.value.copy(isPlaying = false, isLoading = false)
             resumeAfterInterruption = false
             interruptedSongId = null
             if (!interruptionActive) deactivateAudioSession()
         } else {
+            wantsToPlay = true
             if (mutableState.value.hasEnded) seekTo(0)
             if (interruptionActive) {
                 resumeAfterInterruption = true
@@ -282,6 +294,7 @@ internal class IosPlayerController(
 
     private fun resumeFromSystemControl() {
         if (player.currentItem == null || mutableState.value.isPlaying) return
+        wantsToPlay = true
         if (mutableState.value.hasEnded) seekTo(0)
         if (interruptionActive) {
             resumeAfterInterruption = true
@@ -296,7 +309,10 @@ internal class IosPlayerController(
         publishNowPlaying()
     }
 
+    // also the route-loss path (outputRemoved). Clears intent before the item-exists check, so a
+    // song still resolving does not start on speakers.
     private fun pauseFromSystemControl() {
+        wantsToPlay = false
         resumeAfterInterruption = false
         interruptedSongId = null
         if (player.currentItem == null || !mutableState.value.isPlaying) return
