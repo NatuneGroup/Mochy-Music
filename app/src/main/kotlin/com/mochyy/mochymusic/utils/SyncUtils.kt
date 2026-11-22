@@ -72,7 +72,7 @@ sealed class SyncOperation {
     data object SavedPlaylists : SyncOperation()
     data object AutoSyncPlaylists : SyncOperation()
     data class SinglePlaylist(val browseId: String, val playlistId: String) : SyncOperation()
-    data class LikeSong(val song: SongEntity) : SyncOperation()
+    data class LikeSong(val song: SongEntity, val accountId: String?) : SyncOperation()
     data object CleanupDuplicates : SyncOperation()
     data object ClearAllSynced : SyncOperation()
 }
@@ -153,11 +153,14 @@ class SyncUtils @Inject constructor(
             is SyncOperation.SavedPlaylists -> executeSyncSavedPlaylists()
             is SyncOperation.AutoSyncPlaylists -> executeSyncAutoSyncPlaylists()
             is SyncOperation.SinglePlaylist -> executeSyncPlaylist(operation.browseId, operation.playlistId)
-            is SyncOperation.LikeSong -> executeLikeSong(operation.song)
+            is SyncOperation.LikeSong -> executeLikeSong(operation.song, operation.accountId)
             is SyncOperation.CleanupDuplicates -> executeCleanupDuplicatePlaylists()
             is SyncOperation.ClearAllSynced -> executeClearAllSyncedContent()
         }
     }
+
+    // stable id of the signed-in account (see SavedAccount.id), null when nobody is signed in
+    private suspend fun activeAccountId(): String? = SavedAccount.fromActive(context.dataStore.data.first())?.id
 
     private suspend fun isLoggedIn(): Boolean {
         return try {
@@ -242,8 +245,10 @@ class SyncUtils @Inject constructor(
     }
 
     fun likeSong(s: SongEntity) {
+        // tagged with the account signed in at the tap (read now, not once the launch runs), so a switch before it runs drops it
+        val owner = SavedAccount.fromActive(PreferencesCache.current(context.dataStore))?.id
         syncScope.launch {
-            syncChannel.send(SyncOperation.LikeSong(s))
+            syncChannel.send(SyncOperation.LikeSong(s, owner))
         }
     }
 
@@ -411,7 +416,7 @@ class SyncUtils @Inject constructor(
     private fun MusicDatabase.tagFromYouTube(songId: String, now: LocalDateTime) =
         insert(ImportedSong(songId = songId, source = ImportSource.YOUTUBE_MUSIC.key, importedAt = now))
 
-    private suspend fun executeLikeSong(s: SongEntity) = withContext(Dispatchers.IO) {
+    private suspend fun executeLikeSong(s: SongEntity, owner: String?) = withContext(Dispatchers.IO) {
         // before the YouTube check: a love on Last.fm or Libre.fm doesn't need a YouTube account
         val artist = database.song(s.id).firstOrNull()?.artists?.firstOrNull()?.name
         if (artist != null) scrobbler.love(artist, s.title, s.liked)
@@ -421,6 +426,10 @@ class SyncUtils @Inject constructor(
             return@withContext
         }
         if (s.id in excludedFromYouTube()) return@withContext
+        if (!belongsToActiveAccount(owner, activeAccountId())) {
+            Timber.w("Dropping queued like: it was queued for another account")
+            return@withContext
+        }
 
         withRetry {
             YouTube.likeVideo(s.id, s.liked)
@@ -438,10 +447,11 @@ class SyncUtils @Inject constructor(
 
         updateState { copy(likedSongs = SyncStatus.Syncing, currentOperation = "Syncing liked songs") }
 
-        YouTubeLikesMemory.exclusive { pullLikedSongs() }
+        val owner = activeAccountId()
+        YouTubeLikesMemory.exclusive { pullLikedSongs(owner) }
     }
 
-    private suspend fun pullLikedSongs() {
+    private suspend fun pullLikedSongs(owner: String?) {
         withRetry {
             YouTube.playlist("LM").completed()
         }.onSuccess { result ->
@@ -463,6 +473,8 @@ class SyncUtils @Inject constructor(
                         localSongs.filter { it.id in pendingLikes && it.id !in remoteIds }.forEach { song ->
                             when {
                                 song.id in excluded -> keptLikes += song.id
+                                // the session may have moved to another account since this sync started
+                                !belongsToActiveAccount(owner, activeAccountId()) -> keptLikes += song.id
                                 YouTube.likeVideo(song.id, true).isSuccess -> pushedLikes += song.id
                                 else -> keptLikes += song.id
                             }
@@ -1185,6 +1197,8 @@ class SyncUtils @Inject constructor(
     }
 
     fun cancelAllSyncs() {
+        // drop what is queued too, so nothing from the old account runs after the session swap
+        while (syncChannel.tryReceive().isSuccess) { }
         processingJob?.cancel()
         startProcessingQueue()
         updateState { SyncState() }

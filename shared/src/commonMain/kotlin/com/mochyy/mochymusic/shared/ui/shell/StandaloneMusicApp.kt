@@ -211,6 +211,7 @@ internal fun StandaloneMusicApp(
         // session played, since a song played again jumps to the top of that list
         val previous = history.stepBack(current)
             ?: recent.firstOrNull { it.id != current.id && !history.playedThisSession(it.id) }
+                ?.also(history::startedBefore)
         if (previous == null) {
             player.seekTo(0L)
             return

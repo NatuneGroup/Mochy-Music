@@ -136,6 +136,9 @@ val prepareIosFonts = tasks.register<Sync>("prepareIosFonts") {
  */
 object ResourceBridge {
     private val localeDir = Regex("values(-([a-z]{2,3})(-r([A-Z]{2}))?)?")
+    // android's BCP 47 form, e.g. values-b+sr+Latn: compose has no script qualifier, so it becomes
+    // values-sr (plus -rREGION when given), unless a plain folder already holds that name
+    private val bcp47Dir = Regex("values-b\\+([a-z]{2,3})(\\+[A-Z][a-z]{3})?(\\+([A-Z]{2}))?")
 
     // compose matches the platform locale's language, and ios and desktop say "he" and "id"
     private val legacyLanguages = mapOf("iw" to "he", "in" to "id")
@@ -144,17 +147,25 @@ object ResourceBridge {
         out.deleteRecursively()
         sharedResources.copyRecursively(out)
 
-        val locales = res.listFiles().orEmpty().filter { it.isDirectory && localeDir.matches(it.name) }
-        val parsed = locales.associate { dir -> dir.name to readValues(dir) }
-        val defaults = parsed["values"].orEmpty()
+        val dirs = res.listFiles().orEmpty().filter { it.isDirectory }
+        val locales = dirs.filter { localeDir.matches(it.name) }
         val taken = locales.map { it.name }.toSet()
+        // every folder under the name compose will read it by
+        val named = locales.associateBy { it.name } + dirs.mapNotNull { dir ->
+            val match = bcp47Dir.matchEntire(dir.name) ?: return@mapNotNull null
+            val region = match.groupValues[4].takeIf { it.isNotEmpty() }?.let { "-r$it" }.orEmpty()
+            val name = "values-${match.groupValues[1]}$region"
+            if (name in taken) null else name to dir
+        }
+        val parsed = named.mapValues { (_, dir) -> readValues(dir) }
+        val defaults = parsed["values"].orEmpty()
         for ((dirName, values) in parsed) {
             if (values.isEmpty()) continue
             val match = localeDir.matchEntire(dirName)!!
             val language = match.groupValues[2]
             val target = legacyLanguages[language]
                 ?.let { dirName.replaceFirst("values-$language", "values-$it") }
-                ?.takeIf { it !in taken } ?: dirName
+                ?.takeIf { it !in parsed } ?: dirName
             write(File(out, "$target/app_strings.xml"), values) { ref -> values[ref] ?: defaults[ref] }
         }
 

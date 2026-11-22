@@ -20,9 +20,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
 import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.models.MediaMetadata
 import com.mochyy.mochymusic.playback.PlayerConnection
 import com.mochyy.mochymusic.widget.MusicWidgetReceiver
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -92,6 +96,9 @@ fun VideoPipLayer(activity: Activity, enabled: Boolean, playerConnection: Player
     val session = VideoPip.session?.takeIf { enabled }
     val isPlaying = remember(playerConnection) { playerConnection?.isPlaying ?: MutableStateFlow(false) }
     val playing by isPlaying.collectAsState()
+    val metadata by remember(playerConnection) {
+        playerConnection?.mediaMetadata ?: MutableStateFlow<MediaMetadata?>(null)
+    }.collectAsState()
 
     LaunchedEffect(activity, session, playing) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return@LaunchedEffect
@@ -101,9 +108,22 @@ fun VideoPipLayer(activity: Activity, enabled: Boolean, playerConnection: Player
         }
     }
 
-    if (inPip && session != null) {
-        Box(Modifier.fillMaxSize().background(Color.Black)) {
-            YouTubeVideoSurface(session = session, isPlaying = playing, modifier = Modifier.fillMaxSize())
+    // while in picture-in-picture this opaque layer covers the whole activity, so the app's own ui never shows in the window;
+    // with no video (loading, or an audio-only track) the current song's artwork stands in for it
+    if (inPip) {
+        Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
+            if (session != null) {
+                YouTubeVideoSurface(session = session, isPlaying = playing, modifier = Modifier.fillMaxSize())
+            } else {
+                metadata?.thumbnailUrl?.let { url ->
+                    AsyncImage(
+                        model = url,
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize(0.9f),
+                    )
+                }
+            }
         }
     }
 }
