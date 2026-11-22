@@ -1,4 +1,6 @@
-// CarPlay template scene for Mochy. Playback and library data remain owned by the shared Kotlin runtime.
+// CarPlay template scene for Mochy — the one iOS surface that does not use the shared Compose UI.
+// Apple only allows audio apps to display system CPTemplate views in CarPlay (never custom views),
+// so this scene builds templates natively while playback and library data stay in the shared Kotlin runtime.
 
 import CarPlay
 import Foundation

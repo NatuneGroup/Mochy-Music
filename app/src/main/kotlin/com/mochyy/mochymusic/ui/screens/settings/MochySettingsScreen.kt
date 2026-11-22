@@ -302,7 +302,7 @@ private val SettingsIndex = listOf(
     SettingsEntry("Apple Music", "Modules", "module/applemusic", "apple music itunes subscription stream aac"),
     SettingsEntry("Monochrome", "Modules", "module/monochrome", "monochrome lossless flac hi-res tidal"),
     SettingsEntry("Provider order", "Audio Lab", "audio_quality", "source order apple music monochrome youtube priority"),
-    SettingsEntry("YouTube Music", "Audio Lab", "audio_quality", "youtube turn off disable provider only monochrome apple music"),
+    SettingsEntry("YouTube Music as a source", "Audio Lab", "audio_quality", "youtube turn off disable provider only monochrome apple music", R.string.settings_index_youtube_source),
 
     // Integrations
     SettingsEntry("Android Auto", "Integrations", AndroidAutoSettingsRoute, "car carplay driving upcoming recommendations voice artwork lyrics mobile data"),
@@ -314,7 +314,7 @@ private val SettingsIndex = listOf(
     SettingsEntry("Libre.fm", "Integrations", scrobbleServiceRoute(ScrobbleSite.LIBREFM), "librefm scrobble scrobbling history stats account sign in"),
     SettingsEntry("Now Playing", "Integrations", scrobbleServiceRoute(ScrobbleSite.LASTFM), "scrobble now playing status profile lastfm librefm"),
     SettingsEntry("Send likes", "Integrations", scrobbleServiceRoute(ScrobbleSite.LASTFM), "love loved songs lastfm librefm scrobble"),
-    SettingsEntry("YouTube Music", "Integrations", YouTubeSyncRoute, "youtube ytm sync account sign in likes library playlists history"),
+    SettingsEntry("YouTube Music sync", "Integrations", YouTubeSyncRoute, "youtube ytm sync account sign in likes library playlists history", R.string.settings_index_youtube_sync),
 
     // Storage
     SettingsEntry("Storage", "Storage", "storage_settings", "space disk size cache downloads clear free junk delete"),
