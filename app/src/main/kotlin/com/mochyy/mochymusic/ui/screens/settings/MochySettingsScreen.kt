@@ -274,6 +274,7 @@ private val SettingsIndex = listOf(
     // Storage
     SettingsEntry("Storage", "Storage", "storage_settings", "space disk size cache downloads clear free junk delete"),
     SettingsEntry("Music cache limit", "Storage", "storage_settings", "cache size limit space song stream"),
+    SettingsEntry("Image cache limit", "Storage", "storage_settings", "image cache size limit covers pictures artwork space"),
     SettingsEntry("Manage downloads", "Storage", "storage_settings", "downloads delete remove biggest offline space"),
     SettingsEntry("Remove all downloads", "Storage", "storage_settings", "delete clear downloads offline space"),
 
