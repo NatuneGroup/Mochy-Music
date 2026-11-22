@@ -55,7 +55,7 @@
     <string name="car_lyrics">Lyrics</string>
     <string name="car_lyrics_on_player">On the player</string>
     <string name="car_lyrics_none">No lyrics for this song.</string>
-    <string name="car_lyrics_player_on">lyrics now may show on the player while you drive, hey, its in beta!</string>
+    <string name="car_lyrics_player_on">Lyrics on the player are on. They may show while you drive.</string>
     <string name="car_lyrics_player_off">Lyrics on the player are off.</string>
 
     <string name="car_pair_code">Pairing code</string>
