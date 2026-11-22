@@ -1,13 +1,7 @@
 name: Build PR
 
-# Full universal assemble + lint. Pull requests into dev use the smaller
-# Fast checks workflow; this one runs after they land, and on demand.
-on:
-  pull_request:
-    branches-ignore: [dev]
-  push:
-    branches: [dev]
-  workflow_dispatch:
+# One-off ARM64 package for the current dev integration.
+on: workflow_dispatch
 
 jobs:
   build:
@@ -48,8 +42,8 @@ jobs:
               -dname "CN=Android Debug,O=Android,C=US"
           fi
 
-      - name: Build and Lint Universal FOSS Debug APK
-        run: ./gradlew --console=plain assembleUniversalFossDebug :app:lintUniversalFossDebug --warning-mode summary
+      - name: Build and Lint ARM64 FOSS Release APK
+        run: ./gradlew --console=plain :app:assembleArm64FossRelease :app:lintArm64FossRelease --warning-mode summary
         env:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
           PULL_REQUEST: "true"
@@ -61,10 +55,42 @@ jobs:
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
           ONEDRIVE_CLIENT_ID: ${{ secrets.ONEDRIVE_CLIENT_ID }}
 
+      - name: Verify ARM64-only APK and signature
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          apks=(app/build/outputs/apk/arm64Foss/release/*.apk)
+          test "${#apks[@]}" -eq 1
+          abis=$(unzip -Z1 "${apks[0]}" | awk -F/ '$1 == "lib" && $3 ~ /[.]so$/ {print $2}' | sort -u)
+          printf 'APK native ABIs: %s\n' "$abis"
+          test "$abis" = arm64-v8a
+          apksigner=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
+          "$apksigner" verify --print-certs "${apks[0]}"
+          sha256sum "${apks[0]}"
+          python3 - "${apks[0]}" <<'PYTHON'
+          from collections import Counter
+          from pathlib import Path
+          from sys import argv
+          from zipfile import ZipFile
+          apk = Path(argv[1])
+          print(f"APK size: {apk.stat().st_size:,} bytes")
+          with ZipFile(apk) as archive:
+              sizes = Counter()
+              for entry in archive.infolist():
+                  group = entry.filename.split("/")[0]
+                  sizes["dex" if group.endswith(".dex") else group] += entry.compress_size
+              for group, size in sizes.most_common(12):
+                  print(f"{size / 1_000_000:6.2f} MB {group}")
+              print("Largest APK entries")
+              for entry in sorted(archive.infolist(), key=lambda item: item.compress_size, reverse=True)[:20]:
+                  print(f"{entry.compress_size / 1_000_000:6.2f} MB {entry.filename}")
+          PYTHON
+
+
       - name: Upload APK
         uses: actions/upload-artifact@v6
         with:
-          name: app-universal-debug-${{ github.event.number || github.sha }}
-          path: app/build/outputs/apk/universalFoss/debug/*.apk
+          name: mochy-arm64-v8a-foss-release-${{ github.event.number || github.sha }}
+          path: app/build/outputs/apk/arm64Foss/release/*.apk
           # a pr's apk is for trying it before merging, after a week it's just eating actions storage
           retention-days: 7
