@@ -172,17 +172,27 @@ object ResourceBridge {
 
         val drawables = File(out, "drawable").apply { mkdirs() }
         res.resolve("drawable").listFiles().orEmpty().forEach { file ->
-            val plainVector = file.extension == "xml" && file.readText().let { text ->
-                "<vector" in text && "?attr" !in text && "@color/" !in text && "@android:" !in text && "@drawable/" !in text
-            }
+            // Android also reads "24.0dip"; Compose resources only read dp or px and throw at runtime on
+            // anything else (a crash the first time a shared screen draws that icon), so sizes are rewritten
+            // here, and a vector still sized some other way is left out: asking for it fails the build instead
+            val vectorText = if (file.extension == "xml") file.readText().let { text ->
+                val plain = "<vector" in text && "?attr" !in text && "@color/" !in text && "@android:" !in text && "@drawable/" !in text
+                if (plain) text.replace(DipSize) { "${it.groupValues[1]}${it.groupValues[2]}dp\"" } else null
+            }?.takeIf { text -> VectorSize.findAll(text).all { it.groupValues[2] == "dp" || it.groupValues[2] == "px" } } else null
             val raster = file.extension in setOf("png", "webp", "jpg")
-            if ((plainVector || raster) && !File(drawables, file.name).exists() &&
+            if ((vectorText != null || raster) && !File(drawables, file.name).exists() &&
                 drawables.listFiles().orEmpty().none { it.nameWithoutExtension == file.nameWithoutExtension }
             ) {
-                file.copyTo(File(drawables, file.name))
+                if (vectorText != null) File(drawables, file.name).writeText(vectorText) else file.copyTo(File(drawables, file.name))
             }
         }
     }
+
+    // android:width="24.0dip" → android:width="24.0dp"
+    private val DipSize = Regex("""(android:(?:width|height)=")([0-9.]+)dip"""")
+
+    // every vector's size and its unit, which Compose resources needs to be dp or px
+    private val VectorSize = Regex("""android:(?:width|height)="([0-9.]+)([a-z]*)"""")
 
     private sealed interface Value
     private data class Text(val text: String) : Value
