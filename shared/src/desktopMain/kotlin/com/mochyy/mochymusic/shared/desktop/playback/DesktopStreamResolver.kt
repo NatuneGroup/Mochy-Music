@@ -33,9 +33,14 @@ data class ResolvedStream(
     val bitrate: Int,
 )
 
-class DesktopStreamResolver {
-    private val http by lazy {
-        HttpClient(OkHttp) {
+class DesktopStreamResolver : AutoCloseable {
+    private val clientLock = Any()
+    @Volatile private var closed = false
+    private var client: HttpClient? = null
+
+    private fun httpClient(): HttpClient = synchronized(clientLock) {
+        check(!closed) { "Desktop stream resolver is closed" }
+        client ?: HttpClient(OkHttp) {
             expectSuccess = false
             install(ContentNegotiation) {
                 json(Json { ignoreUnknownKeys = true; explicitNulls = false; encodeDefaults = true })
@@ -45,10 +50,11 @@ class DesktopStreamResolver {
                 requestTimeoutMillis = 30_000
                 socketTimeoutMillis = 30_000
             }
-        }
+        }.also { client = it }
     }
 
     private val extractor by lazy {
+        val http = httpClient()
         val logger = InnerTubeLogger { }
         val innerTube = InnerTubeX(http, logger = logger)
         val configStore = RemotePlayerConfigStore(http, PlayerConfigRepository.disabled(), logger)
@@ -61,6 +67,15 @@ class DesktopStreamResolver {
             tokenProvider = null,
             logger = logger,
         )
+    }
+
+    /** Closes the HTTP connection pool when the desktop player is released. */
+    override fun close() {
+        val activeClient = synchronized(clientLock) {
+            closed = true
+            client.also { client = null }
+        }
+        activeClient?.close()
     }
 
     @Volatile

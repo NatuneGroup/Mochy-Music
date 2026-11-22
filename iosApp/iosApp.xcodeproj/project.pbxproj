@@ -8,12 +8,14 @@
 
 /* Begin PBXBuildFile section */
 		48D55D6E3B0150F6A3E5DBD2 /* iosApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E06ED7E670B5D21A160DA9E /* iosApp.swift */; };
+		D7F848D2917C45AC8BBE17A3 /* IosSystemMediaBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3C01A90A5494FD49A72D991 /* IosSystemMediaBridge.swift */; };
 		A6A0F9B42F3D4A2B91B6C814 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1E6D6B4964F047A8A6DC43F5 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		C2DBF4EF9D605889B54F6416 /* Mochy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Mochy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5E06ED7E670B5D21A160DA9E /* iosApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iosApp.swift; sourceTree = "<group>"; };
+		F3C01A90A5494FD49A72D991 /* IosSystemMediaBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosSystemMediaBridge.swift; sourceTree = "<group>"; };
 		0418C23F19355BB18E625B53 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Configuration/Config.xcconfig; sourceTree = "<group>"; };
 		B0FD6575DF35547EA4A7F264 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Configuration/Info.plist; sourceTree = "<group>"; };
 		1E6D6B4964F047A8A6DC43F5 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -42,6 +44,7 @@
 			isa = PBXGroup;
 			children = (
 				5E06ED7E670B5D21A160DA9E /* iosApp.swift */,
+				F3C01A90A5494FD49A72D991 /* IosSystemMediaBridge.swift */,
 				1E6D6B4964F047A8A6DC43F5 /* Assets.xcassets */,
 				A2402BE361735165BE944747 /* Configuration */,
 			);
@@ -155,6 +158,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				48D55D6E3B0150F6A3E5DBD2 /* iosApp.swift in Sources */,
+				D7F848D2917C45AC8BBE17A3 /* IosSystemMediaBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

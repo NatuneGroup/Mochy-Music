@@ -7,10 +7,12 @@ import com.mochyy.mochymusic.shared.playback.StreamFormat
 import com.music.innertube.models.SongItem
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,12 +30,44 @@ class DesktopPlayerController(
 
     private var engine: DesktopAudioEngine? = null
     private var loadJob: Job? = null
+    private data class Preload(val songId: String, val resolved: Deferred<ResolvedStream?>, val createdAtNanos: Long)
+    private var preload: Preload? = null
+    private var activePreload: Preload? = null
+    private var released = false
     private var generation = 0L
 
+    /** Resolve one upcoming URL in the background; this deliberately does not open an audio engine. */
+    fun preloadNext(song: SongItem?) {
+        if (released) return
+        val candidate = song?.takeIf { it.id != state.value.song?.id }
+        if (candidate == null) {
+            clearPreload()
+            return
+        }
+        if (preload?.songId == candidate.id) return
+
+        clearPreload()
+        val deferred = scope.async(Dispatchers.IO) { resolver.resolve(candidate.id) }
+        preload = Preload(candidate.id, deferred, System.nanoTime())
+    }
+
     override fun play(song: SongItem) {
+        if (released) return
         val request = ++generation
         loadJob?.cancel()
+        activePreload?.resolved?.cancel()
+        activePreload = null
         retireEngine()
+        val prepared = preload?.takeIf { it.songId == song.id }
+        if (prepared != null) {
+            preload = null
+            if (System.nanoTime() - prepared.createdAtNanos > PreloadedStreamMaxAgeNanos) {
+                prepared.resolved.cancel()
+                activePreload = null
+            } else {
+                activePreload = prepared
+            }
+        }
         mutableState.value = PlayerState(song = song, isLoading = true, durationMs = (song.duration ?: 0) * 1000L)
         loadJob = scope.launch {
             val next = DesktopAudioEngine(
@@ -52,7 +86,8 @@ class DesktopPlayerController(
             )
             var adopted = false
             try {
-                val stream = checkNotNull(resolver.resolve(song.id))
+                val stream = checkNotNull(resolveForPlayback(song.id, prepared))
+                if (activePreload === prepared) activePreload = null
                 val opened = withContext(Dispatchers.IO) { next.open(stream.url, stream.headers) }
                 engine = next
                 adopted = true
@@ -103,8 +138,16 @@ class DesktopPlayerController(
     }
 
     override fun release() {
+        if (released) return
+        released = true
         generation++
+        loadJob?.cancel()
+        loadJob = null
+        activePreload?.resolved?.cancel()
+        activePreload = null
+        clearPreload()
         retireEngine()
+        resolver.close()
         scope.cancel()
     }
 
@@ -117,5 +160,27 @@ class DesktopPlayerController(
         val active = engine ?: return
         engine = null
         scope.launch(NonCancellable + Dispatchers.IO) { active.close() }
+    }
+
+    private fun clearPreload() {
+        preload?.resolved?.cancel()
+        preload = null
+    }
+
+    private suspend fun resolveForPlayback(songId: String, prepared: Preload?): ResolvedStream? {
+        if (prepared != null) {
+            try {
+                prepared.resolved.await()?.let { return it }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                // A prefetch is only an optimisation; retry resolution for the track being played.
+            }
+        }
+        return resolver.resolve(songId)
+    }
+
+    private companion object {
+        const val PreloadedStreamMaxAgeNanos = 30L * 60L * 1_000_000_000L
     }
 }
