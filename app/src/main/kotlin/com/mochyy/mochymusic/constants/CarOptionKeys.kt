@@ -8,3 +8,6 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 
 // the car's library shows a row of songs saved on this phone (local files and downloads)
 val CarDeviceSongsKey = booleanPreferencesKey("carDeviceSongs")
+
+// starting streams in the car over mobile data; off means only songs saved or cached on the phone play there
+val CarMeteredStreamingKey = booleanPreferencesKey("carMeteredStreaming")

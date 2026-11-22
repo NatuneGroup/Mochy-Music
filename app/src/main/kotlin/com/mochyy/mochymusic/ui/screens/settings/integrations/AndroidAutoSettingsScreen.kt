@@ -21,6 +21,7 @@ import androidx.navigation.NavController
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.CarDeviceSongsKey
 import com.mochyy.mochymusic.constants.CarLyricsKey
+import com.mochyy.mochymusic.constants.CarMeteredStreamingKey
 import com.mochyy.mochymusic.constants.CarMeteredArtworkKey
 import com.mochyy.mochymusic.constants.CarOnlineRecommendationsKey
 import com.mochyy.mochymusic.constants.CarOnlineVoiceSearchKey
@@ -51,6 +52,7 @@ fun AndroidAutoSettingsScreen(navController: NavController) {
     val (recommendations, setRecommendations) = rememberPreference(CarOnlineRecommendationsKey, defaultValue = true)
     val (onlineVoice, setOnlineVoice) = rememberPreference(CarOnlineVoiceSearchKey, defaultValue = true)
     val (meteredArtwork, setMeteredArtwork) = rememberPreference(CarMeteredArtworkKey, defaultValue = true)
+    val (meteredStreaming, setMeteredStreaming) = rememberPreference(CarMeteredStreamingKey, defaultValue = true)
     val (lyrics, setLyrics) = rememberPreference(CarLyricsKey, defaultValue = true)
     val (deviceSongs, setDeviceSongs) = rememberPreference(CarDeviceSongsKey, defaultValue = true)
 
@@ -101,6 +103,14 @@ fun AndroidAutoSettingsScreen(navController: NavController) {
                 icon = painterResource(R.drawable.wifi),
                 checked = meteredArtwork,
                 onCheckedChange = setMeteredArtwork,
+            ),
+            switchItem(
+                key = "Stream on mobile data",
+                title = stringResource(R.string.car_settings_metered_streaming),
+                description = stringResource(R.string.car_settings_metered_streaming_desc),
+                icon = painterResource(R.drawable.wifi),
+                checked = meteredStreaming,
+                onCheckedChange = setMeteredStreaming,
             ),
         ))
         Spacer(Modifier.height(140.dp))

@@ -67,6 +67,7 @@ class CarShelf(
 class CarCatalog(
     private val context: Context,
     private val database: MusicDatabase,
+    private val gate: CarStreamGate,
 ) {
     private val hideVideoSongs: Boolean get() = context.dataStore.get(HideVideoSongsKey, false)
 
@@ -111,6 +112,18 @@ class CarCatalog(
         val local = database.localSongs(SongSortType.CREATE_DATE, true).first()
         val downloaded = database.downloadedSongs(SongSortType.CREATE_DATE, true).first()
         (local + downloaded).distinctBy { it.id }.map { it.toCarSong() }
+    }
+
+    // what may start of a queue on this connection: the queue itself when all of it may, a shorter list when some of it may, null when none of it may
+    suspend fun allowedToPlay(queue: Queue): Queue? = io {
+        if (!gate.blocksStreams()) return@io queue
+        // a radio starts from youtube, so on mobile data it can't play at all
+        if (queue !is ListQueue) return@io null
+        val kept = gate.playable(queue.items)
+        if (kept.isEmpty()) return@io null
+        if (kept.size == queue.items.size) return@io queue
+        val start = queue.items.getOrNull(queue.startIndex)?.mediaId
+        ListQueue(title = queue.title, items = kept, startIndex = kept.indexOfFirst { it.mediaId == start }.coerceAtLeast(0))
     }
 
     suspend fun liked(): List<CarSong> = io { database.likedSongs(SongSortType.CREATE_DATE, true).first().map { it.toCarSong() } }

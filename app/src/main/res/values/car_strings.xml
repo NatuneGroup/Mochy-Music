@@ -17,6 +17,8 @@
     <string name="car_settings_lyrics">Lyrics on the car player</string>
     <string name="car_settings_lyrics_desc">Show the current lyric on the car’s Now Playing screen</string>
     <string name="car_settings_mobile_data">Mobile data</string>
+    <string name="car_settings_metered_streaming">Stream on mobile data</string>
+    <string name="car_settings_metered_streaming_desc">Play songs that aren’t saved on this phone when the car is on mobile data. Off plays only saved and cached songs there</string>
     <string name="car_settings_artwork">Artwork on metered networks</string>
     <string name="car_settings_artwork_desc">Fetch new album covers for the car over mobile or metered data</string>
     <string name="car_tab_home">Home</string>
@@ -39,6 +41,8 @@
     <string name="car_albums">Albums</string>
     <string name="car_artists">Artists</string>
     <string name="car_list_empty">Nothing in here yet.</string>
+    <string name="car_metered_blocked">Streaming on mobile data is off in the car. Only songs saved on this phone can play.</string>
+    <string name="car_metered_partial">On mobile data only songs saved on this phone play. The rest were left out.</string>
     <string name="car_couldnt_load">Couldn\'t load this. Check your connection and try again.</string>
     <string name="car_shuffle">Shuffle</string>
 
