@@ -1212,7 +1212,8 @@ class MusicService :
         dataStore.data
             .map { prefs ->
                 // offline mode keeps every play on the phone too
-                val enabled = (prefs[YtReportPlaysKey] ?: true) && prefs[OfflineModeKey] != true
+                // pause listen history stops the youtube reports too, not only the local listen log
+                val enabled = (prefs[YtReportPlaysKey] ?: true) && prefs[OfflineModeKey] != true && prefs[PauseListenHistoryKey] != true
                 enabled to ((prefs[HistoryDuration] ?: 30f) * 1000).toLong()
             }
             .distinctUntilChanged()

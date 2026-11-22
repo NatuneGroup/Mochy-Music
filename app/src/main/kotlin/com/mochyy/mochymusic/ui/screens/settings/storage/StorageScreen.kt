@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.MaxImageCacheSizeKey
 import com.mochyy.mochymusic.constants.MaxSongCacheSizeKey
 import com.mochyy.mochymusic.playback.ExportStep
 import com.mochyy.mochymusic.playback.MoveStep
@@ -55,6 +56,8 @@ const val StorageRoute = "storage_settings"
 
 // song cache limits on offer, in mb, -1 is no limit, the player's default is 1 gb
 private val CacheLimitSteps = listOf(0, 256, 512, 1024, 2048, 4096, 8192, -1)
+// images are read in megabytes at app start and have no unlimited step
+private val ImageCacheLimitSteps = listOf(0, 128, 256, 512, 1024, 2048)
 
 @Composable
 fun StorageScreen(navController: NavController, viewModel: StorageViewModel = hiltViewModel()) {
@@ -63,6 +66,8 @@ fun StorageScreen(navController: NavController, viewModel: StorageViewModel = hi
     val (cacheLimit, setCacheLimit) = rememberPreference(MaxSongCacheSizeKey, 1024)
     // the player picked its limit when the app started; a new one only applies from the next start
     val startingLimit = remember { cacheLimit }
+    val (imageCacheLimit, setImageCacheLimit) = rememberPreference(MaxImageCacheSizeKey, 512)
+    val startingImageLimit = remember { imageCacheLimit }
 
     // songs removed from the Manage downloads sheet change the numbers here too
     LaunchedEffect(downloads?.size) { viewModel.measure() }
@@ -89,6 +94,14 @@ fun StorageScreen(navController: NavController, viewModel: StorageViewModel = hi
             limit = cacheLimit,
             onLimitChange = setCacheLimit,
             appliesLater = cacheLimit != startingLimit,
+        )
+        Spacer(Modifier.height(10.dp))
+        CacheLimitCard(
+            limit = imageCacheLimit,
+            onLimitChange = setImageCacheLimit,
+            appliesLater = imageCacheLimit != startingImageLimit,
+            title = stringResource(R.string.storage_image_cache_limit),
+            steps = ImageCacheLimitSteps,
         )
         Spacer(Modifier.height(10.dp))
         ClearButtons(viewModel, downloadCount = downloads?.size ?: 0, usage = usage)
@@ -205,7 +218,13 @@ private fun SmartHint(usage: StorageUsage, downloadCount: Int) {
 }
 
 @Composable
-private fun CacheLimitCard(limit: Int, onLimitChange: (Int) -> Unit, appliesLater: Boolean) {
+private fun CacheLimitCard(
+    limit: Int,
+    onLimitChange: (Int) -> Unit,
+    appliesLater: Boolean,
+    title: String = stringResource(R.string.storage_cache_limit),
+    steps: List<Int> = CacheLimitSteps,
+) {
     StorageCardColumn {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
@@ -218,11 +237,11 @@ private fun CacheLimitCard(limit: Int, onLimitChange: (Int) -> Unit, appliesLate
                 Icon(painterResource(R.drawable.cached), contentDescription = null, tint = StorageCard, modifier = Modifier.size(16.dp))
             }
             Spacer(Modifier.width(12.dp))
-            Text(stringResource(R.string.storage_cache_limit), style = storageText(15f, FontWeight.SemiBold), modifier = Modifier.weight(1f))
+            Text(title, style = storageText(15f, FontWeight.SemiBold), modifier = Modifier.weight(1f))
             Text(cacheLimitLabel(limit), style = storageText(15f, FontWeight.Bold))
         }
         Spacer(Modifier.height(12.dp))
-        StepSlider(steps = CacheLimitSteps, value = limit, onValueChange = onLimitChange)
+        StepSlider(steps = steps, value = limit, onValueChange = onLimitChange)
         Row(Modifier.padding(top = 4.dp, start = 4.dp, end = 4.dp)) {
             Text(stringResource(R.string.storage_cache_none), style = storageText(10f, FontWeight.Medium, StorageMuted, 0f), modifier = Modifier.weight(1f))
             Text(stringResource(R.string.storage_cache_unlimited), style = storageText(10f, FontWeight.Medium, StorageMuted, 0f))
