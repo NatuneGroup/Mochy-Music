@@ -65,7 +65,7 @@ fun AppearanceSettingsScreen(navController: NavController) {
         onBack = { navController.navigateUp() },
         searchBar = { SubSettingsSearchBar(query = query, onQueryChange = { query = it }) },
     ) {
-        SettingsSection(title = null, items = (startItems() + navBarItems(navController) + accentItems()).matching(query))
+        SettingsSection(title = null, items = (startItems() + navBarItems(navController) + accentItems() + customThemeItems()).matching(query))
         SettingsSection(title = null, items = (scaleItems() + tabletItems() + fontItems()).matching(query))
         Spacer(Modifier.height(140.dp))
     }
@@ -233,7 +233,7 @@ private fun AccentChoices(picked: Int, fromArt: Boolean, onPick: (Int) -> Unit, 
 }
 
 @Composable
-private fun Swatch(color: Color, selected: Boolean, onClick: () -> Unit) {
+internal fun Swatch(color: Color, selected: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .size(34.dp)

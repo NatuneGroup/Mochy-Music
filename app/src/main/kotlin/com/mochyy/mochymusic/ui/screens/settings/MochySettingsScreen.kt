@@ -172,6 +172,7 @@ private val SettingsIndex = listOf(
     SettingsEntry("Hide navigation bar on scroll", "Appearance", "appearance_settings", "nav navigation bar tabs hide slide scroll list auto", R.string.settings_hide_nav_on_scroll),
     SettingsEntry("Navigation bar", "Appearance", "nav_bar_settings", "nav bar tabs order reorder show hide home search library settings choose", R.string.settings_nav_bar),
     SettingsEntry("Accent colour", "Appearance", "appearance_settings", "accent colour color palette theme primary highlight album art cover", R.string.settings_accent),
+    SettingsEntry("Custom themes", "Appearance", "appearance_settings", "theme themes custom palette colour color seed create edit delete save saved", R.string.settings_custom_themes),
     SettingsEntry("UI scale", "Appearance", "appearance_settings", "scale size zoom bigger smaller density text display", R.string.settings_ui_scale),
     SettingsEntry("Tablet layout", "Appearance", "appearance_settings", "tablet wide layout side rail landscape big screen split pane", R.string.settings_tablet_layout),
     SettingsEntry("System font", "Appearance", "appearance_settings", "font typeface text system phone default inter", R.string.settings_system_font),
