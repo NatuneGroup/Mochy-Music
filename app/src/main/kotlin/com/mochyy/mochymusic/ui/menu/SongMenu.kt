@@ -55,6 +55,8 @@ import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import com.mochyy.mochymusic.db.entities.toggleLibrary
+import com.mochyy.mochymusic.db.entities.toggleLike
 import com.music.innertube.YouTube
 import com.mochyy.mochymusic.LocalDatabase
 import com.mochyy.mochymusic.importer.ImportedVersions

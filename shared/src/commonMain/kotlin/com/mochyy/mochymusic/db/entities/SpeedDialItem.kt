@@ -8,6 +8,7 @@ import com.music.innertube.models.ArtistItem
 import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.YTItem
+import kotlin.time.Clock
 
 @Entity(tableName = "speed_dial_item")
 data class SpeedDialItem(
@@ -18,7 +19,7 @@ data class SpeedDialItem(
     val thumbnailUrl: String? = null,
     val type: String,
     val explicit: Boolean = false,
-    val createDate: Long = System.currentTimeMillis()
+    val createDate: Long = Clock.System.now().toEpochMilliseconds()
 ) {
     fun toYTItem(): YTItem {
         return when (type) {

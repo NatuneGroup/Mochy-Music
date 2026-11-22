@@ -81,6 +81,8 @@ import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
+import com.mochyy.mochymusic.db.entities.toggleLibrary
+import com.mochyy.mochymusic.db.entities.toggleLike
 import com.mochyy.mochymusic.shared.playback.UpcomingPreloader
 import com.mochyy.mochymusic.utils.followAppProxy
 import com.music.innertube.YouTube

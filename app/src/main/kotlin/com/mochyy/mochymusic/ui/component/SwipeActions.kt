@@ -85,6 +85,7 @@ import com.mochyy.mochymusic.LocalDownloadUtil
 import com.mochyy.mochymusic.LocalPlayerConnection
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.db.entities.SongEntity
+import com.mochyy.mochymusic.db.entities.toggleLibrary
 import com.mochyy.mochymusic.extensions.metadata
 import com.mochyy.mochymusic.importer.ImportSource
 import com.mochyy.mochymusic.models.toMediaMetadata

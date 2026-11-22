@@ -6,7 +6,6 @@ import androidx.compose.runtime.Immutable
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import com.mochyy.mochymusic.models.MediaMetadata
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
@@ -31,15 +30,6 @@ data class SongEdit(
 ) {
     val artistList: List<EditedArtist>?
         get() = artists?.let(EditedArtist::decode)
-
-    // the queue's copy of the song with these edits laid over it
-    fun applyTo(metadata: MediaMetadata): MediaMetadata = metadata.copy(
-        title = title ?: metadata.title,
-        artists = artistList?.map { MediaMetadata.Artist(it.id, it.name) } ?: metadata.artists,
-        // only renames an album the song already links to, a made up album id would open an empty page
-        album = if (album != null && metadata.album != null) metadata.album.copy(title = album) else metadata.album,
-        thumbnailUrl = cover ?: metadata.thumbnailUrl,
-    )
 }
 
 @Immutable
