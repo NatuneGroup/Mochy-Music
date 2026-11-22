@@ -1450,4 +1450,3 @@ val DiscordCanvasFpsKey = intPreferencesKey("discordPresenceCanvasFps")
 val DiscordCanvasSizeKey = intPreferencesKey("discordPresenceCanvasSize")
 
 // which version of the module store's terms was agreed to; 0 means never, and a newer version asks again
-val ModuleStoreTermsKey = intPreferencesKey("moduleStoreTerms")

@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.BuildConfig
 import com.mochyy.mochymusic.constants.AlbumsFromLikedSongsKey
 import com.mochyy.mochymusic.constants.DataSaverKey
 import com.mochyy.mochymusic.constants.DataSaverMobileOnlyKey
@@ -302,26 +303,25 @@ private fun lyricsItems(): List<SettingsItem> {
         }
     }
     val title = stringResource(R.string.settings_lyrics_order_override)
-    return listOf(
-        // like larp mode: the row opens the sheet, turning the switch on asks for an order first, off just stops using it
-        SettingsItem(
-            title = { Text(title) },
-            highlightKey = "Override lyrics sorting",
-            searchText = title,
-            descriptionText = if (overridden) {
-                stringResource(R.string.settings_lyrics_order_override_on, LyricsProviderRegistry.getDisplayName(order.first()))
-            } else {
-                stringResource(R.string.settings_lyrics_order_override_desc)
-            },
-            detail = stringResource(R.string.settings_lyrics_order_override_detail),
-            icon = rememberVectorPainter(Icons.AutoMirrored.Rounded.Sort),
-            iconShape = CircleShape,
-            onClick = openSheet,
-            trailingContent = {
-                AppSwitch(checked = overridden, onCheckedChange = { on -> if (on) openSheet() else setOverridden(false) })
-            },
-        ),
+    // The row opens the sort sheet. Switching off keeps the saved order for next time.
+    val orderSetting = SettingsItem(
+        title = { Text(title) },
+        highlightKey = "Override lyrics sorting",
+        searchText = title,
+        descriptionText = if (overridden) {
+            stringResource(R.string.settings_lyrics_order_override_on, LyricsProviderRegistry.getDisplayName(order.first()))
+        } else {
+            stringResource(R.string.settings_lyrics_order_override_desc)
+        },
+        detail = stringResource(R.string.settings_lyrics_order_override_detail),
+        icon = rememberVectorPainter(Icons.AutoMirrored.Rounded.Sort),
+        iconShape = CircleShape,
+        onClick = openSheet,
+        trailingContent = {
+            AppSwitch(checked = overridden, onCheckedChange = { on -> if (on) openSheet() else setOverridden(false) })
+        },
     )
+    return if (BuildConfig.COMPACT_APK) listOf(orderSetting, japaneseLanguagePackSetting()) else listOf(orderSetting)
 }
 
 // most of what used to sit here moved to its own page, these keep it a tap away for anyone who still looks here

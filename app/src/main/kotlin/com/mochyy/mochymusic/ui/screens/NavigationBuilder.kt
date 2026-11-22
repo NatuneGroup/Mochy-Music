@@ -566,29 +566,13 @@ fun NavGraphBuilder.navigationBuilder(
     composable(com.mochyy.mochymusic.ui.screens.settings.modules.ModulesRoute) {
         com.mochyy.mochymusic.ui.screens.settings.modules.ModulesScreen(navController = navController)
     }
-    // a module's card grows into its store page like a playlist's cover, and the store recedes behind it
-    coverSourceComposable(com.mochyy.mochymusic.ui.screens.settings.modules.ModuleBrowserRoute) {
-        com.mochyy.mochymusic.ui.screens.settings.modules.ModuleBrowserScreen(navController = navController)
+    // An older app version may have saved one of the previous store routes.
+    composable("module_browser") {
+        com.mochyy.mochymusic.ui.screens.settings.modules.ModulesScreen(navController = navController)
     }
-    composable(
-        route = com.mochyy.mochymusic.ui.screens.settings.modules.ModuleStoreRoutePattern,
-        arguments = listOf(navArgument("post") { type = NavType.StringType }),
-        enterTransition = { fadeIn(tween(300)) },
-        popExitTransition = {
-            scaleOut(animationSpec = tween(260), targetScale = 0.82f, transformOrigin = TransformOrigin(0.5f, 0.22f)) + fadeOut(tween(180))
-        },
-    ) { entry ->
-        // the store page borrows the browser's list, so opening a module never waits on the feed again
-        val browser = remember(entry) { navController.getBackStackEntry(com.mochyy.mochymusic.ui.screens.settings.modules.ModuleBrowserRoute) }
-        CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
-            com.mochyy.mochymusic.ui.screens.settings.modules.ModuleStoreScreen(
-                navController = navController,
-                post = entry.arguments?.getString("post").orEmpty(),
-                viewModel = hiltViewModel(browser),
-            )
-        }
+    composable("module_store/{post}", arguments = listOf(navArgument("post") { type = NavType.StringType })) {
+        com.mochyy.mochymusic.ui.screens.settings.modules.ModulesScreen(navController = navController)
     }
-
     composable(
         route = com.mochyy.mochymusic.ui.screens.settings.modules.ModuleRoutePattern,
         arguments = listOf(navArgument("id") { type = NavType.StringType }),
