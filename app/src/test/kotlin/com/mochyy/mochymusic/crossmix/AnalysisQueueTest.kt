@@ -3,6 +3,7 @@ package com.mochyy.mochymusic.crossmix
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.runBlocking
 import java.util.Collections
 import java.util.concurrent.CountDownLatch
@@ -46,6 +47,28 @@ class AnalysisQueueTest {
         val again = queue.submit("song") { "second try" }
         busy.countDown()
         assertEquals("second try", again.await())
+    }
+
+    @Test
+    fun clearingTheQueueStopsADecodeAlreadyRunning() = runBlocking {
+        // a decode loop that, like StreamPcmDecoder, checks for cancellation as it goes
+        val started = CountDownLatch(1)
+        val decoding = queue.submit("playing") {
+            started.countDown()
+            while (true) {
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                Thread.sleep(5)
+            }
+            @Suppress("UNREACHABLE_CODE") "never"
+        }
+        assertTrue(started.await(5, TimeUnit.SECONDS))
+        // the playback queue was cleared: nothing playing, nothing next
+        queue.keepOnly(emptySet())
+        decoding.join()
+        assertTrue(decoding.isCancelled)
+        assertTrue(queue.pending().isEmpty())
+        // the thread is free again
+        assertEquals("after", queue.submit("after") { "after" }.await())
     }
 
     @Test
