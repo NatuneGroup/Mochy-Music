@@ -111,6 +111,8 @@ kotlin {
             implementation(compose.desktop.common)
             implementation(libs.sqlite.bundled)
             implementation(libs.ktor.client.okhttp)
+            // desktop device discovery, as Metrolist's desktop build does it
+            implementation(libs.jmdns)
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.json)
             implementation(libs.kotlinx.coroutines.swing)
