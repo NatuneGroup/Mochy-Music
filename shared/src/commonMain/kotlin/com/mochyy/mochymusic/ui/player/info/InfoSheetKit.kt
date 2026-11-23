@@ -27,7 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -38,19 +38,20 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.pc_info_nerds
 import com.mochyy.mochymusic.ui.player.menu.MenuRowSurface
 import com.mochyy.mochymusic.ui.component.RemoteFocus
 
 // the look both info sheets share, drawn from the about song and stream info mocks
 
-internal val InfoSidePadding = 20.dp
-internal val InfoMuted = Color.White.copy(alpha = 0.55f)
-internal val InfoLine = Color.White.copy(alpha = 0.12f)
+val InfoSidePadding = 20.dp
+val InfoMuted = Color.White.copy(alpha = 0.55f)
+val InfoLine = Color.White.copy(alpha = 0.12f)
 private val CardShape = RoundedCornerShape(26.dp)
 
 @Composable
-internal fun InfoSheetTitle(text: String) {
+fun InfoSheetTitle(text: String) {
     Text(
         text = text,
         color = Color.White,
@@ -62,7 +63,7 @@ internal fun InfoSheetTitle(text: String) {
 }
 
 @Composable
-internal fun InfoSectionTitle(text: String, modifier: Modifier = Modifier, trailing: @Composable RowScope.() -> Unit = {}) {
+fun InfoSectionTitle(text: String, modifier: Modifier = Modifier, trailing: @Composable RowScope.() -> Unit = {}) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier.fillMaxWidth()) {
         Text(
             text = text,
@@ -79,7 +80,7 @@ internal fun InfoSectionTitle(text: String, modifier: Modifier = Modifier, trail
 }
 
 @Composable
-internal fun InfoDivider(modifier: Modifier = Modifier) {
+fun InfoDivider(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -91,7 +92,7 @@ internal fun InfoDivider(modifier: Modifier = Modifier) {
 
 /** the spaced-out "stats for nerds" rule between the provider and the format cards */
 @Composable
-internal fun NerdsDivider() {
+fun NerdsDivider() {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -100,7 +101,7 @@ internal fun NerdsDivider() {
     ) {
         Box(Modifier.weight(1f).height(1.dp).background(InfoLine))
         Text(
-            text = stringResource(R.string.pc_info_nerds),
+            text = stringResource(Res.string.pc_info_nerds),
             color = InfoMuted,
             fontSize = 10.sp,
             fontFamily = FontFamily.Monospace,
@@ -112,7 +113,7 @@ internal fun NerdsDivider() {
 }
 
 @Composable
-internal fun InfoCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+fun InfoCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -125,7 +126,7 @@ internal fun InfoCard(modifier: Modifier = Modifier, content: @Composable Column
 
 /** the short line that joins one stats card to the next, like a signal path */
 @Composable
-internal fun CardConnector() {
+fun CardConnector() {
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Box(
             Modifier
@@ -138,7 +139,7 @@ internal fun CardConnector() {
 
 /** one "name : value" line of a stats card */
 @Composable
-internal fun StatLine(label: String, value: String) {
+fun StatLine(label: String, value: String) {
     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
         Text(
             text = label,
@@ -161,7 +162,7 @@ internal fun StatLine(label: String, value: String) {
 
 /** the round little buttons under the provider: outlined, or filled for the one that does something big */
 @Composable
-internal fun InfoPill(text: String, filled: Boolean, onClick: () -> Unit, enabled: Boolean = true) {
+fun InfoPill(text: String, filled: Boolean, onClick: () -> Unit, enabled: Boolean = true) {
     val shape = RoundedCornerShape(50)
     Box(
         contentAlignment = Alignment.Center,
@@ -190,7 +191,7 @@ internal fun InfoPill(text: String, filled: Boolean, onClick: () -> Unit, enable
 
 /** a soft grey block standing in for text that's still on its way */
 @Composable
-internal fun LoadingBar(width: Dp, height: Dp = 12.dp) {
+fun LoadingBar(width: Dp, height: Dp = 12.dp) {
     Box(
         Modifier
             .width(width)
@@ -201,7 +202,7 @@ internal fun LoadingBar(width: Dp, height: Dp = 12.dp) {
 }
 
 @Composable
-internal fun InfoBullet(label: String, value: String) {
+fun InfoBullet(label: String, value: String) {
     Row(verticalAlignment = Alignment.Top, modifier = Modifier.padding(vertical = 3.dp)) {
         Box(Modifier.padding(top = 5.dp).size(9.dp).clip(CircleShape).background(InfoMuted))
         Spacer(Modifier.width(9.dp))
@@ -219,7 +220,7 @@ internal fun InfoBullet(label: String, value: String) {
 }
 
 @Composable
-internal fun InfoColumn(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+fun InfoColumn(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(
         verticalArrangement = Arrangement.Top,
         modifier = modifier
