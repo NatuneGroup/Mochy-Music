@@ -9,17 +9,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.modules_beta
+import org.jetbrains.compose.resources.stringResource
 
 /** [label] in a thin pill of [color], a yellow "BETA" unless told otherwise */
 @Composable
 fun BetaBadge(
     modifier: Modifier = Modifier,
-    label: String = stringResource(R.string.modules_beta),
+    label: String = stringResource(Res.string.modules_beta),
     color: Color = BetaYellow,
 ) {
     Text(

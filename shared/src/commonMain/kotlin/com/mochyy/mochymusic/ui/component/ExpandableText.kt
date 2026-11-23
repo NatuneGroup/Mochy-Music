@@ -22,7 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -30,7 +29,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.show_less
+import com.mochyy.mochymusic.shared.resources.show_more
+import org.jetbrains.compose.resources.stringResource
 
 data class LinkSegment(
     val text: String,
@@ -104,7 +106,7 @@ fun ExpandableText(
                     .padding(horizontal = 10.dp, vertical = 4.dp)
             ) {
                 Text(
-                    text = stringResource(if (isExpanded) R.string.show_less else R.string.show_more),
+                    text = stringResource(if (isExpanded) Res.string.show_less else Res.string.show_more),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                     fontWeight = FontWeight.Bold

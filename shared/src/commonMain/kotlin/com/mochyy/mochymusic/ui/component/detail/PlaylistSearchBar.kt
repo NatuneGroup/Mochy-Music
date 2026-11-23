@@ -31,8 +31,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -40,10 +38,14 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.close
+import com.mochyy.mochymusic.shared.resources.close_search
 import com.mochyy.mochymusic.ui.component.RemoteFocus
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import com.mochyy.mochymusic.ui.utils.stableStatusBarsPadding
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 private val BarHeight = 44.dp
 private val BarFill = Color(0xFF3A3D42).copy(alpha = 0.78f)
@@ -120,8 +122,8 @@ fun PlaylistSearchBar(
                 ),
         ) {
             Icon(
-                painter = painterResource(R.drawable.close),
-                contentDescription = stringResource(R.string.close_search),
+                painter = painterResource(Res.drawable.close),
+                contentDescription = stringResource(Res.string.close_search),
                 tint = Color.White,
                 modifier = Modifier.size(20.dp),
             )
