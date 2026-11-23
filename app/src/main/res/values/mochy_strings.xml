@@ -754,6 +754,7 @@
     <string name="crash_share_logs">Share Logs</string>
     <string name="copy_logs">Copy Logs</string>
     <string name="crash_share_title">Share crash report</string>
+    <string name="crash_share_row_desc">Attach the newest saved crash report to a message. Nothing leaves your phone until you choose where to send it.</string>
     <string name="crash_report_subject">mochy Crash Report</string>
     <string name="crash_close">Close</string>
     <string name="crash_no_log">No crash log available</string>
