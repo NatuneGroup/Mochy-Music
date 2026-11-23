@@ -9,8 +9,8 @@ name: Android speed A/B
 # plus one Perfetto trace of the same walk per commit. Numbers are in the run summary and in the
 # speed-ab artifact (results.json, traces, screenshots).
 #
-# A push to a perf/** branch compares batch5 (831817f2), batch7 (96c331b7), dev and the pushed
-# commit. A manual run compares the refs it is given (the workflow has to be on the default branch
+# A push to a perf/** branch compares batch7 (96c331b7), dev and the settings-lag fix (#84); the
+# pushed commit only supplies the measuring script. A manual run compares the refs it is given (the workflow has to be on the default branch
 # for that).
 on:
   push:
@@ -45,7 +45,7 @@ jobs:
           fetch-depth: 0
       - id: resolve
         env:
-          REFS: ${{ github.event_name == 'workflow_dispatch' && inputs.refs || format('831817f2 96c331b7 origin/dev {0}', github.sha) }}
+          REFS: ${{ github.event_name == 'workflow_dispatch' && inputs.refs || '96c331b7 origin/dev origin/fix/android-res-reads' }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -217,6 +217,16 @@ jobs:
           python3 scripts/perf/android_speed_ab.py --apks apks --out speed-ab --runs "$RUNS" || status=$?
           cat speed-ab/summary.md >> "$GITHUB_STEP_SUMMARY" || true
           exit $status
+
+      # the emulator has died outright mid-run (adb wait-for-device never returns); say why in the job
+      # log itself, so diagnosing it doesn't need the artifact downloaded
+      - name: Emulator state on failure
+        if: failure()
+        run: |
+          free -m || true
+          pgrep -a qemu || echo "emulator process is gone"
+          sudo dmesg 2>/dev/null | grep -iE "oom|killed process|kvm" | tail -20 || true
+          tail -120 emulator.log || true
 
       - uses: actions/upload-artifact@v7
         if: always()
