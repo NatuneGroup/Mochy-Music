@@ -62,4 +62,13 @@
     <string name="desktop_shortcuts">Keyboard shortcuts</string>
     <string name="desktop_shortcuts_body">Ctrl/⌘ + P plays or pauses, Ctrl/⌘ + ← and → change song, Ctrl/⌘ + S opens settings. The media keys on the keyboard work too.</string>
     <string name="desktop_tray_tooltip">Mochy</string>
+    <string name="desktop_storage_place_title">Where Mochy keeps this</string>
+    <string name="desktop_storage_place_body">On this computer Mochy keeps its downloads and caches inside its own folder, next to its settings. Open the folder below to see them; moving that folder is done with the file manager while Mochy is closed.</string>
+    <string name="desktop_storage_open_folder">Open folder</string>
+    <string name="desktop_storage_export_title">Exporting downloads</string>
+    <string name="desktop_storage_export_body">Mochy on desktop streams its music, so it has no downloads to export yet. Exporting them lives in the Android app, with the download engine.</string>
+    <string name="desktop_about_title">About Mochy</string>
+    <string name="desktop_about_body">A music player with its own player styles, built for desktop, iPhone and Android from one shared app.</string>
+    <string name="desktop_about_source">Source code</string>
+    <string name="desktop_about_license">Licence</string>
 </resources>

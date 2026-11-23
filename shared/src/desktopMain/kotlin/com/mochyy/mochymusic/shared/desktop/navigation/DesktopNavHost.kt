@@ -16,6 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraphBuilder
@@ -24,7 +25,13 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import androidx.compose.runtime.rememberCoroutineScope
+import com.mochyy.mochymusic.constants.CustomBoldFontKey
+import com.mochyy.mochymusic.constants.CustomFontKey
 import com.mochyy.mochymusic.constants.NavTabsKey
+import com.mochyy.mochymusic.shared.desktop.about.DesktopAboutPage
+import com.mochyy.mochymusic.shared.desktop.storage.DesktopStoragePage
+import com.mochyy.mochymusic.shared.desktop.fonts.DesktopFonts
 import com.mochyy.mochymusic.shared.desktop.window.DesktopWindowSettingsPage
 import com.mochyy.mochymusic.shared.library.LocalLibrary
 import com.mochyy.mochymusic.shared.lyrics.LyricsProvider
@@ -38,6 +45,7 @@ import com.mochyy.mochymusic.shared.resources.cipher_settings_title
 import com.mochyy.mochymusic.shared.resources.devices_title
 import com.mochyy.mochymusic.shared.resources.discord_integration_settings
 import com.mochyy.mochymusic.shared.resources.equalizer
+import com.mochyy.mochymusic.shared.resources.experimental_settings_title
 import com.mochyy.mochymusic.shared.resources.home
 import com.mochyy.mochymusic.shared.resources.import_sync_btn_ok
 import com.mochyy.mochymusic.shared.resources.import_sync_title
@@ -52,17 +60,24 @@ import com.mochyy.mochymusic.shared.resources.settings
 import com.mochyy.mochymusic.shared.resources.settings_audio_lab_category
 import com.mochyy.mochymusic.shared.resources.settings_customisation_category
 import com.mochyy.mochymusic.shared.resources.settings_modules_category
-import com.mochyy.mochymusic.shared.resources.storage
 import com.mochyy.mochymusic.shared.resources.transition_title
 import com.mochyy.mochymusic.shared.resources.your_library
 import com.mochyy.mochymusic.shared.ui.search.SearchScreen
 import com.mochyy.mochymusic.shared.ui.search.SearchState
 import com.mochyy.mochymusic.ui.component.DefaultDialog
+import com.mochyy.mochymusic.ui.component.SettingsGroup
+import com.mochyy.mochymusic.ui.component.SettingsGroupStyle
+import com.mochyy.mochymusic.ui.component.SettingsItem
 import com.mochyy.mochymusic.ui.screens.recap.StatsScreen
 import com.mochyy.mochymusic.ui.screens.settings.AiTranslatorSettingsScreen
 import com.mochyy.mochymusic.ui.screens.settings.AppBehaviourSettingsScreen
 import com.mochyy.mochymusic.ui.screens.settings.AppearanceSettingsScreen
+import com.mochyy.mochymusic.ui.screens.settings.CustomFontActions
 import com.mochyy.mochymusic.ui.screens.settings.ExperimentalSettingsScreen
+import com.mochyy.mochymusic.ui.screens.settings.devspace.DevPlaygroundScreen
+import com.mochyy.mochymusic.ui.screens.settings.devspace.DeveloperSpaceScreen
+import com.mochyy.mochymusic.ui.screens.settings.integrations.IntegrationsScreen
+import com.mochyy.mochymusic.ui.screens.settings.integrations.ListenBrainzScreen
 import com.mochyy.mochymusic.ui.screens.settings.InternetSettingsScreen
 import com.mochyy.mochymusic.ui.screens.settings.NavBarSettingsScreen
 import com.mochyy.mochymusic.ui.screens.settings.NavTab
@@ -72,6 +87,7 @@ import com.mochyy.mochymusic.ui.screens.settings.ProxySettingsScreen
 import com.mochyy.mochymusic.ui.screens.settings.StartTabChoice
 import com.mochyy.mochymusic.utils.rememberPreference
 import org.jetbrains.compose.resources.StringResource
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -98,6 +114,14 @@ internal fun DesktopNavHost(
         composable(DesktopRoutes.Settings) { DesktopSettingsHome(navController) }
         composable(DesktopRoutes.Stats) { StatsScreen(navController) }
         composable(DesktopRoutes.DesktopWindow) { DesktopWindowSettingsPage(navController) }
+        composable(DesktopRoutes.About) { DesktopAboutPage(navController) }
+        composable(DesktopRoutes.Storage) { DesktopStoragePage(navController) }
+        composable(DesktopRoutes.Integrations) {
+            // no scrobble services, discord or cloud backup here yet: the page passes no routes and
+            // those rows stay out, while ListenBrainz (a plain token setting) is a real page below
+            IntegrationsScreen(navController = navController, scrobbleSites = emptyList())
+        }
+        composable(DesktopRoutes.ListenBrainz) { ListenBrainzScreen(navController = navController) }
         composable(DesktopRoutes.NowPlaying) { DesktopNowPlayingPage(navController, queue, providers) }
         desktopSettingsGraph(navController)
     }
@@ -114,10 +138,40 @@ private fun NavGraphBuilder.desktopSettingsGraph(navController: NavHostControlle
             StartTabChoice("SEARCH", stringResource(Res.string.search)),
             StartTabChoice("LIBRARY", stringResource(Res.string.your_library)),
         )
+        // the custom font rows: the desktop file dialog picks a ttf/otf, which is copied into Mochy's
+        // font folder; the window redraws in it as soon as the preference changes
+        val (customFont, setCustomFont) = rememberPreference(CustomFontKey, defaultValue = "")
+        val (customBoldFont, setCustomBoldFont) = rememberPreference(CustomBoldFontKey, defaultValue = "")
+        val fontScope = rememberCoroutineScope()
+        val customFonts = remember(customFont, customBoldFont) {
+            fun pick(bold: Boolean) = fontScope.launch {
+                DesktopFonts.pickAndImport()?.let { name ->
+                    if (bold) {
+                        if (customBoldFont.isNotEmpty() && customBoldFont != customFont) DesktopFonts.remove(customBoldFont)
+                        setCustomBoldFont(name)
+                    } else {
+                        if (customFont.isNotEmpty() && customFont != customBoldFont) DesktopFonts.remove(customFont)
+                        setCustomFont(name)
+                    }
+                }
+            }
+            CustomFontActions(
+                pickRegular = { pick(bold = false) },
+                pickBold = { pick(bold = true) },
+                removeRegular = {
+                    if (customFont.isNotEmpty() && customFont != customBoldFont) DesktopFonts.remove(customFont)
+                    setCustomFont("")
+                },
+                removeBold = {
+                    if (customBoldFont.isNotEmpty() && customBoldFont != customFont) DesktopFonts.remove(customBoldFont)
+                    setCustomBoldFont("")
+                },
+            )
+        }
         AppearanceSettingsScreen(
             navController = navController,
             startTabs = startTabs,
-            customFonts = null,
+            customFonts = customFonts,
             customThemeRows = emptyList(),
         )
     }
@@ -170,9 +224,6 @@ private fun NavGraphBuilder.desktopSettingsGraph(navController: NavHostControlle
     // pages whose work is still in :app (audio lab, cipher cache, SAF folders, modules, cloud
     // backup...). The shared rows open them, so the desktop keeps the navigation working and says
     // where the page lives today.
-    desktopUnavailable(navController, DesktopRoutes.Storage, Res.string.storage)
-    desktopUnavailable(navController, DesktopRoutes.Integrations, Res.string.integrations)
-    desktopUnavailable(navController, DesktopRoutes.ListenBrainz, Res.string.integrations)
     desktopUnavailable(navController, DesktopRoutes.ImportSync, Res.string.import_sync_title)
     desktopUnavailable(navController, DesktopRoutes.ImportProviders, Res.string.import_sync_title)
     desktopUnavailable(navController, DesktopRoutes.ImportTuneMyMusic, Res.string.import_sync_title)
@@ -202,8 +253,28 @@ private fun NavGraphBuilder.desktopSettingsGraph(navController: NavHostControlle
     ) {
         DesktopUnavailablePage(navController, stringResource(Res.string.integrations))
     }
-    desktopUnavailable(navController, DesktopRoutes.DeveloperSpace, Res.string.integrations)
-    desktopUnavailable(navController, DesktopRoutes.DevPlayground, Res.string.integrations)
+    composable(DesktopRoutes.DeveloperSpace) {
+        // the donate sheet is the Android app's; without it the section is left out
+        DeveloperSpaceScreen(navController = navController, onDonate = null)
+    }
+    composable(DesktopRoutes.DevPlayground) {
+        DevPlaygroundScreen(
+            navController = navController,
+            experimentalSettingsEntry = {
+                // the page's last row points back at this build's experimental settings page
+                SettingsGroup(
+                    style = SettingsGroupStyle.Grouped,
+                    items = listOf(
+                        SettingsItem(
+                            title = { Text(stringResource(Res.string.experimental_settings_title)) },
+                            highlightKey = "Experimental",
+                            onClick = { navController.navigate(DesktopRoutes.Experimental) { launchSingleTop = true } },
+                        ),
+                    ),
+                )
+            },
+        )
+    }
     desktopUnavailable(navController, DesktopRoutes.ModuleAppleMusic, Res.string.settings_modules_category)
     desktopUnavailable(navController, DesktopRoutes.ModuleMonochrome, Res.string.settings_modules_category)
     desktopUnavailable(navController, DesktopRoutes.YouTubeLogin, Res.string.import_sync_title)

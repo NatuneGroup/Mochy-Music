@@ -29,6 +29,7 @@ object DesktopRoutes {
     const val Settings = "settings"
     const val Stats = "stats"
     const val DesktopWindow = "desktop_window_settings"
+    const val About = "desktop_about"
 
     // shared settings pages with an exported route constant
     const val Playback = PlaybackSettingsRoute
@@ -95,7 +96,7 @@ object DesktopRoutes {
 
     /** Routes the Settings tab owns, so the rail keeps Settings lit while one of them is open. */
     val settingsRoutes: Set<String> = setOf(
-        Settings, Stats, DesktopWindow, Appearance, AppBehaviour, Playback, NowPlayingSettings, Internet, Proxy,
+        Settings, Stats, DesktopWindow, About, Appearance, AppBehaviour, Playback, NowPlayingSettings, Internet, Proxy,
         AiTranslator, NavBar, Experimental, Storage, Integrations, ListenBrainz, ImportSync,
         ImportProviders, ImportTuneMyMusic, ImportProgress, YouTubeSync, DeveloperSpace, DevPlayground,
         Customisation, Cipher, PlaybackDiagnostics, AudioLab, AudioFx, AudioStage, AudioQuality,
