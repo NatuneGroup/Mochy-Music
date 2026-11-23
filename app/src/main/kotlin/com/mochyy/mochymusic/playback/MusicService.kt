@@ -246,6 +246,7 @@ import com.mochyy.mochymusic.playback.queues.filterVideoSongs
 import com.mochyy.mochymusic.utils.NotRecommended
 import com.mochyy.mochymusic.utils.CoilBitmapLoader
 import com.mochyy.mochymusic.utils.NetworkConnectivityObserver
+import com.mochyy.mochymusic.scrobble.ScrobbleDefaults
 import com.mochyy.mochymusic.scrobble.ScrobbleTimer
 import com.mochyy.mochymusic.scrobble.Scrobbler
 import com.mochyy.mochymusic.utils.SyncUtils
@@ -1245,9 +1246,9 @@ class MusicService :
         dataStore.data
             .map { prefs ->
                 Triple(
-                    prefs[ScrobbleDelayPercentKey] ?: ScrobbleTimer.DEFAULT_PLAYED_FRACTION,
-                    prefs[ScrobbleMinSongDurationKey] ?: ScrobbleTimer.DEFAULT_MIN_SONG_SECONDS,
-                    prefs[ScrobbleDelaySecondsKey] ?: ScrobbleTimer.DEFAULT_MAX_WAIT_SECONDS,
+                    prefs[ScrobbleDelayPercentKey] ?: ScrobbleDefaults.DEFAULT_PLAYED_FRACTION,
+                    prefs[ScrobbleMinSongDurationKey] ?: ScrobbleDefaults.DEFAULT_MIN_SONG_SECONDS,
+                    prefs[ScrobbleDelaySecondsKey] ?: ScrobbleDefaults.DEFAULT_MAX_WAIT_SECONDS,
                 )
             }
             .distinctUntilChanged()

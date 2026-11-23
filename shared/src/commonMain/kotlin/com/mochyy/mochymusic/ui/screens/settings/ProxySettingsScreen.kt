@@ -25,8 +25,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
@@ -35,13 +33,43 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.ProxyEnabledKey
 import com.mochyy.mochymusic.constants.ProxyPasswordKey
 import com.mochyy.mochymusic.constants.ProxyTypeKey
 import com.mochyy.mochymusic.constants.ProxyUrlKey
 import com.mochyy.mochymusic.constants.ProxyUsernameKey
 import com.mochyy.mochymusic.extensions.toEnum
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.key
+import com.mochyy.mochymusic.shared.resources.link
+import com.mochyy.mochymusic.shared.resources.network_node
+import com.mochyy.mochymusic.shared.resources.network_update
+import com.mochyy.mochymusic.shared.resources.proxy
+import com.mochyy.mochymusic.shared.resources.proxy_address
+import com.mochyy.mochymusic.shared.resources.proxy_address_hint
+import com.mochyy.mochymusic.shared.resources.proxy_address_not_set
+import com.mochyy.mochymusic.shared.resources.proxy_check
+import com.mochyy.mochymusic.shared.resources.proxy_check_desc
+import com.mochyy.mochymusic.shared.resources.proxy_check_failed
+import com.mochyy.mochymusic.shared.resources.proxy_check_login
+import com.mochyy.mochymusic.shared.resources.proxy_check_no_answer
+import com.mochyy.mochymusic.shared.resources.proxy_check_not_found
+import com.mochyy.mochymusic.shared.resources.proxy_check_ok
+import com.mochyy.mochymusic.shared.resources.proxy_checking
+import com.mochyy.mochymusic.shared.resources.proxy_intro
+import com.mochyy.mochymusic.shared.resources.proxy_login
+import com.mochyy.mochymusic.shared.resources.proxy_login_clear
+import com.mochyy.mochymusic.shared.resources.proxy_login_none
+import com.mochyy.mochymusic.shared.resources.proxy_login_set
+import com.mochyy.mochymusic.shared.resources.proxy_password
+import com.mochyy.mochymusic.shared.resources.proxy_type
+import com.mochyy.mochymusic.shared.resources.proxy_type_http
+import com.mochyy.mochymusic.shared.resources.proxy_type_socks
+import com.mochyy.mochymusic.shared.resources.proxy_use
+import com.mochyy.mochymusic.shared.resources.proxy_use_desc
+import com.mochyy.mochymusic.shared.resources.proxy_use_needs_address
+import com.mochyy.mochymusic.shared.resources.proxy_username
+import com.mochyy.mochymusic.shared.resources.wifi_proxy
 import com.mochyy.mochymusic.ui.component.AppSwitch
 import com.mochyy.mochymusic.ui.component.DefaultDialog
 import com.mochyy.mochymusic.ui.component.SettingsGroup
@@ -49,16 +77,20 @@ import com.mochyy.mochymusic.ui.component.SettingsGroupStyle
 import com.mochyy.mochymusic.ui.component.SettingsItem
 import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
 import com.mochyy.mochymusic.ui.component.TextFieldDialog
-import com.mochyy.mochymusic.utils.AppProxy
-import com.mochyy.mochymusic.utils.ProxyConfig
-import com.mochyy.mochymusic.utils.ProxyRefusedException
+import com.mochyy.mochymusic.ui.component.platformCancelLabel
+import com.mochyy.mochymusic.ui.component.platformOkLabel
+import com.mochyy.mochymusic.utils.ProxyAddress
+import com.mochyy.mochymusic.utils.ProxyCheckResult
+import com.mochyy.mochymusic.utils.ProxyFailure
+import com.mochyy.mochymusic.utils.ProxyTester
+import com.mochyy.mochymusic.utils.ProxyType
+import com.mochyy.mochymusic.utils.parseProxyAddress
+import com.mochyy.mochymusic.utils.proxyAddressLabel
 import com.mochyy.mochymusic.utils.rememberPreference
 import kotlinx.coroutines.launch
-import java.net.ConnectException
-import java.net.NoRouteToHostException
-import java.net.Proxy
-import java.net.SocketTimeoutException
-import java.net.UnknownHostException
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 // the route the app behaviour row opens
 const val ProxySettingsRoute = "proxy_settings"
@@ -69,21 +101,29 @@ private sealed interface ProxyCheck {
     data object Idle : ProxyCheck
     data object Running : ProxyCheck
     data class Passed(val millis: Long) : ProxyCheck
-    data class Failed(val reason: Int) : ProxyCheck
+    data class Failed(val reason: ProxyFailure) : ProxyCheck
 }
+
+// the stored settings read as one editable proxy, so a change to any of them makes an old check stale
+private data class ProxyTarget(
+    val type: ProxyType,
+    val address: ProxyAddress,
+    val username: String,
+    val password: String,
+)
 
 // settings > app behaviour > proxy: youtube through another server, for blocked networks and countries youtube music skips
 @Composable
-fun ProxySettingsScreen(navController: NavController) {
+fun ProxySettingsScreen(navController: NavController, tester: ProxyTester? = null) {
     var enabled by rememberPreference(ProxyEnabledKey, defaultValue = false)
     var address by rememberPreference(ProxyUrlKey, defaultValue = "")
-    var typeName by rememberPreference(ProxyTypeKey, defaultValue = Proxy.Type.HTTP.name)
+    var typeName by rememberPreference(ProxyTypeKey, defaultValue = ProxyType.HTTP.name)
     var username by rememberPreference(ProxyUsernameKey, defaultValue = "")
     var password by rememberPreference(ProxyPasswordKey, defaultValue = "")
 
-    val type = typeName.toEnum(defaultValue = Proxy.Type.HTTP)
+    val type = typeName.toEnum(defaultValue = ProxyType.HTTP)
     val config = remember(type, address, username, password) {
-        AppProxy.parseAddress(address)?.let { ProxyConfig(type, it, username, password) }
+        parseProxyAddress(address)?.let { ProxyTarget(type, it, username, password) }
     }
     var dialog by remember { mutableStateOf<ProxyDialog?>(null) }
     var check by remember { mutableStateOf<ProxyCheck>(ProxyCheck.Idle) }
@@ -93,11 +133,11 @@ fun ProxySettingsScreen(navController: NavController) {
     LaunchedEffect(config) { check = ProxyCheck.Idle }
 
     SubSettingsScaffold(
-        title = stringResource(R.string.proxy),
+        title = stringResource(Res.string.proxy),
         onBack = { navController.navigateUp() },
     ) {
         Text(
-            text = stringResource(R.string.proxy_intro),
+            text = stringResource(Res.string.proxy_intro),
             style = MaterialTheme.typography.bodyMedium,
             color = Color.White.copy(alpha = 0.6f),
             modifier = Modifier.padding(start = 4.dp, end = 4.dp, bottom = 14.dp),
@@ -107,9 +147,9 @@ fun ProxySettingsScreen(navController: NavController) {
             style = SettingsGroupStyle.Grouped,
             items = listOf(
                 SettingsItem(
-                    title = { Text(stringResource(R.string.proxy_use)) },
-                    descriptionText = stringResource(if (config == null) R.string.proxy_use_needs_address else R.string.proxy_use_desc),
-                    icon = painterResource(R.drawable.wifi_proxy),
+                    title = { Text(stringResource(Res.string.proxy_use)) },
+                    descriptionText = stringResource(if (config == null) Res.string.proxy_use_needs_address else Res.string.proxy_use_desc),
+                    icon = painterResource(Res.drawable.wifi_proxy),
                     iconShape = CircleShape,
                     enabled = config != null,
                     onClick = { enabled = !enabled },
@@ -118,72 +158,76 @@ fun ProxySettingsScreen(navController: NavController) {
                     },
                 ),
                 SettingsItem(
-                    title = { Text(stringResource(R.string.proxy_address)) },
-                    descriptionText = config?.let { AppProxy.addressLabel(it.address) } ?: stringResource(R.string.proxy_address_not_set),
-                    icon = painterResource(R.drawable.link),
+                    title = { Text(stringResource(Res.string.proxy_address)) },
+                    descriptionText = config?.let { proxyAddressLabel(it.address.host, it.address.port) } ?: stringResource(Res.string.proxy_address_not_set),
+                    icon = painterResource(Res.drawable.link),
                     iconShape = CircleShape,
                     onClick = { dialog = ProxyDialog.Address },
                 ),
                 SettingsItem(
-                    title = { Text(stringResource(R.string.proxy_type)) },
+                    title = { Text(stringResource(Res.string.proxy_type)) },
                     descriptionText = stringResource(type.labelRes()),
-                    icon = painterResource(R.drawable.network_node),
+                    icon = painterResource(Res.drawable.network_node),
                     iconShape = CircleShape,
                     onClick = { dialog = ProxyDialog.Type },
                 ),
                 SettingsItem(
-                    title = { Text(stringResource(R.string.proxy_login)) },
-                    descriptionText = if (username.isEmpty()) stringResource(R.string.proxy_login_none) else stringResource(R.string.proxy_login_set, username),
-                    icon = painterResource(R.drawable.key),
+                    title = { Text(stringResource(Res.string.proxy_login)) },
+                    descriptionText = if (username.isEmpty()) stringResource(Res.string.proxy_login_none) else stringResource(Res.string.proxy_login_set, username),
+                    icon = painterResource(Res.drawable.key),
                     iconShape = CircleShape,
                     onClick = { dialog = ProxyDialog.Login },
                 ),
             ),
         )
 
-        Spacer(Modifier.height(18.dp))
+        // the live check needs the platform's connect path, so it's a row Android has and the plain shared UI doesn't
+        if (tester != null) {
+            val runCheck = tester
+            Spacer(Modifier.height(18.dp))
 
-        SettingsGroup(
-            style = SettingsGroupStyle.Grouped,
-            items = listOf(
-                SettingsItem(
-                    title = { Text(stringResource(if (check == ProxyCheck.Running) R.string.proxy_checking else R.string.proxy_check)) },
-                    descriptionText = when (val result = check) {
-                        is ProxyCheck.Passed -> stringResource(R.string.proxy_check_ok, result.millis.toInt())
-                        is ProxyCheck.Failed -> stringResource(result.reason)
-                        else -> stringResource(R.string.proxy_check_desc)
-                    },
-                    icon = painterResource(R.drawable.network_update),
-                    iconShape = CircleShape,
-                    enabled = config != null && check != ProxyCheck.Running,
-                    onClick = {
-                        val target = config
-                        if (target != null) {
-                            check = ProxyCheck.Running
-                            scope.launch {
-                                check = AppProxy.check(target).fold(
-                                    onSuccess = { ProxyCheck.Passed(it) },
-                                    onFailure = { ProxyCheck.Failed(it.checkReason()) },
-                                )
+            SettingsGroup(
+                style = SettingsGroupStyle.Grouped,
+                items = listOf(
+                    SettingsItem(
+                        title = { Text(stringResource(if (check == ProxyCheck.Running) Res.string.proxy_checking else Res.string.proxy_check)) },
+                        descriptionText = when (val result = check) {
+                            is ProxyCheck.Passed -> stringResource(Res.string.proxy_check_ok, result.millis.toInt())
+                            is ProxyCheck.Failed -> stringResource(reasonRes(result.reason))
+                            else -> stringResource(Res.string.proxy_check_desc)
+                        },
+                        icon = painterResource(Res.drawable.network_update),
+                        iconShape = CircleShape,
+                        enabled = config != null && check != ProxyCheck.Running,
+                        onClick = {
+                            val target = config
+                            if (target != null) {
+                                check = ProxyCheck.Running
+                                scope.launch {
+                                    check = when (val result = runCheck.test(target.type, target.address, target.username, target.password)) {
+                                        is ProxyCheckResult.Passed -> ProxyCheck.Passed(result.millis)
+                                        is ProxyCheckResult.Failed -> ProxyCheck.Failed(result.reason)
+                                    }
+                                }
                             }
-                        }
-                    },
+                        },
+                    ),
                 ),
-            ),
-        )
+            )
+        }
 
         Spacer(Modifier.height(140.dp))
     }
 
     when (dialog) {
         ProxyDialog.Address -> AddressDialog(
-            current = config?.let { AppProxy.addressLabel(it.address) }.orEmpty(),
+            current = config?.let { proxyAddressLabel(it.address.host, it.address.port) }.orEmpty(),
             onDone = { text ->
-                address = AppProxy.parseAddress(text)?.let(AppProxy::addressLabel).orEmpty()
+                address = parseProxyAddress(text)?.let { proxyAddressLabel(it.host, it.port) }.orEmpty()
                 // a pasted link names its own type
                 when {
-                    text.trim().startsWith("socks", ignoreCase = true) -> typeName = Proxy.Type.SOCKS.name
-                    text.trim().startsWith("http", ignoreCase = true) -> typeName = Proxy.Type.HTTP.name
+                    text.trim().startsWith("socks", ignoreCase = true) -> typeName = ProxyType.SOCKS.name
+                    text.trim().startsWith("http", ignoreCase = true) -> typeName = ProxyType.HTTP.name
                 }
                 if (address.isEmpty()) enabled = false
             },
@@ -214,11 +258,11 @@ fun ProxySettingsScreen(navController: NavController) {
 @Composable
 private fun AddressDialog(current: String, onDone: (String) -> Unit, onDismiss: () -> Unit) {
     TextFieldDialog(
-        title = { Text(stringResource(R.string.proxy_address)) },
+        title = { Text(stringResource(Res.string.proxy_address)) },
         initialTextFieldValue = TextFieldValue(current, TextRange(current.length)),
-        placeholder = { Text(stringResource(R.string.proxy_address_hint)) },
+        placeholder = { Text(stringResource(Res.string.proxy_address_hint)) },
         // empty clears the proxy, anything else has to read as host:port
-        isInputValid = { it.isBlank() || AppProxy.parseAddress(it) != null },
+        isInputValid = { it.isBlank() || parseProxyAddress(it) != null },
         keyboardType = KeyboardType.Uri,
         onDone = onDone,
         onDismiss = onDismiss,
@@ -226,13 +270,13 @@ private fun AddressDialog(current: String, onDone: (String) -> Unit, onDismiss: 
 }
 
 @Composable
-private fun TypeDialog(selected: Proxy.Type, onSelect: (Proxy.Type) -> Unit, onDismiss: () -> Unit) {
+private fun TypeDialog(selected: ProxyType, onSelect: (ProxyType) -> Unit, onDismiss: () -> Unit) {
     DefaultDialog(
         onDismiss = onDismiss,
         horizontalAlignment = Alignment.Start,
-        title = { Text(stringResource(R.string.proxy_type)) },
+        title = { Text(stringResource(Res.string.proxy_type)) },
     ) {
-        listOf(Proxy.Type.HTTP, Proxy.Type.SOCKS).forEach { option ->
+        listOf(ProxyType.HTTP, ProxyType.SOCKS).forEach { option ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -259,18 +303,18 @@ private fun LoginDialog(
     DefaultDialog(
         onDismiss = onDismiss,
         horizontalAlignment = Alignment.Start,
-        title = { Text(stringResource(R.string.proxy_login)) },
+        title = { Text(stringResource(Res.string.proxy_login)) },
         buttons = {
-            TextButton(onClick = { onDone("", "") }) { Text(stringResource(R.string.proxy_login_clear)) }
-            TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) }
-            TextButton(onClick = { onDone(newUsername, newPassword) }) { Text(stringResource(android.R.string.ok)) }
+            TextButton(onClick = { onDone("", "") }) { Text(stringResource(Res.string.proxy_login_clear)) }
+            TextButton(onClick = onDismiss) { Text(platformCancelLabel()) }
+            TextButton(onClick = { onDone(newUsername, newPassword) }) { Text(platformOkLabel()) }
         },
     ) {
         OutlinedTextField(
             value = newUsername,
             onValueChange = { newUsername = it },
             singleLine = true,
-            label = { Text(stringResource(R.string.proxy_username)) },
+            label = { Text(stringResource(Res.string.proxy_username)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
             modifier = Modifier.fillMaxWidth(),
         )
@@ -279,7 +323,7 @@ private fun LoginDialog(
             value = newPassword,
             onValueChange = { newPassword = it },
             singleLine = true,
-            label = { Text(stringResource(R.string.proxy_password)) },
+            label = { Text(stringResource(Res.string.proxy_password)) },
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
             modifier = Modifier.fillMaxWidth(),
@@ -287,12 +331,13 @@ private fun LoginDialog(
     }
 }
 
-private fun Proxy.Type.labelRes(): Int = if (this == Proxy.Type.SOCKS) R.string.proxy_type_socks else R.string.proxy_type_http
+private fun ProxyType.labelRes(): StringResource =
+    if (this == ProxyType.SOCKS) Res.string.proxy_type_socks else Res.string.proxy_type_http
 
 // the line that says what to fix, from what the check ran into
-private fun Throwable.checkReason(): Int = when (this) {
-    is UnknownHostException -> R.string.proxy_check_not_found
-    is ProxyRefusedException -> if (code == 407) R.string.proxy_check_login else R.string.proxy_check_failed
-    is ConnectException, is SocketTimeoutException, is NoRouteToHostException -> R.string.proxy_check_no_answer
-    else -> R.string.proxy_check_failed
+private fun reasonRes(reason: ProxyFailure): StringResource = when (reason) {
+    ProxyFailure.HostNotFound -> Res.string.proxy_check_not_found
+    ProxyFailure.LoginRequired -> Res.string.proxy_check_login
+    ProxyFailure.NoAnswer -> Res.string.proxy_check_no_answer
+    ProxyFailure.Failed -> Res.string.proxy_check_failed
 }

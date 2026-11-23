@@ -26,7 +26,7 @@ import com.mochyy.mochymusic.constants.LastFMUseSendLikes
 import com.mochyy.mochymusic.constants.ScrobbleDelayPercentKey
 import com.mochyy.mochymusic.constants.ScrobbleDelaySecondsKey
 import com.mochyy.mochymusic.constants.ScrobbleMinSongDurationKey
-import com.mochyy.mochymusic.scrobble.ScrobbleTimer
+import com.mochyy.mochymusic.scrobble.ScrobbleDefaults
 import com.mochyy.mochymusic.scrobble.ScrobbleSite
 import com.mochyy.mochymusic.ui.component.AppSwitch
 import com.mochyy.mochymusic.ui.component.LocalZoomOutOverlayState
@@ -55,9 +55,9 @@ fun ScrobbleServiceScreen(
     val sendResult by viewModel.sendResult.collectAsState()
     val (nowPlaying, onNowPlayingChange) = rememberPreference(LastFMUseNowPlaying, defaultValue = true)
     val (sendLikes, onSendLikesChange) = rememberPreference(LastFMUseSendLikes, defaultValue = false)
-    val (minDuration, onMinDurationChange) = rememberPreference(ScrobbleMinSongDurationKey, defaultValue = ScrobbleTimer.DEFAULT_MIN_SONG_SECONDS)
-    val (delayPercent, onDelayPercentChange) = rememberPreference(ScrobbleDelayPercentKey, defaultValue = ScrobbleTimer.DEFAULT_PLAYED_FRACTION)
-    val (delaySeconds, onDelaySecondsChange) = rememberPreference(ScrobbleDelaySecondsKey, defaultValue = ScrobbleTimer.DEFAULT_MAX_WAIT_SECONDS)
+    val (minDuration, onMinDurationChange) = rememberPreference(ScrobbleMinSongDurationKey, defaultValue = ScrobbleDefaults.DEFAULT_MIN_SONG_SECONDS)
+    val (delayPercent, onDelayPercentChange) = rememberPreference(ScrobbleDelayPercentKey, defaultValue = ScrobbleDefaults.DEFAULT_PLAYED_FRACTION)
+    val (delaySeconds, onDelaySecondsChange) = rememberPreference(ScrobbleDelaySecondsKey, defaultValue = ScrobbleDefaults.DEFAULT_MAX_WAIT_SECONDS)
 
     LaunchedEffect(sendResult) {
         sendResult?.let {

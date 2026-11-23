@@ -475,7 +475,10 @@ fun NavGraphBuilder.navigationBuilder(
         )
     }
     composable(com.mochyy.mochymusic.ui.screens.settings.ProxySettingsRoute) {
-        com.mochyy.mochymusic.ui.screens.settings.ProxySettingsScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.ProxySettingsScreen(
+            navController = navController,
+            tester = com.mochyy.mochymusic.utils.AppProxy.tester,
+        )
     }
 
     composable("crossmix_settings") {

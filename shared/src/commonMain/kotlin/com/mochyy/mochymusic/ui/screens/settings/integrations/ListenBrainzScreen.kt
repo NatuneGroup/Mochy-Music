@@ -27,18 +27,40 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.ListenBrainzEnabledKey
 import com.mochyy.mochymusic.constants.ListenBrainzPrimaryArtistOnlyKey
 import com.mochyy.mochymusic.constants.ListenBrainzTokenKey
 import com.mochyy.mochymusic.constants.ScrobbleDelayPercentKey
 import com.mochyy.mochymusic.constants.ScrobbleDelaySecondsKey
 import com.mochyy.mochymusic.constants.ScrobbleMinSongDurationKey
-import com.mochyy.mochymusic.scrobble.ScrobbleTimer
+import com.mochyy.mochymusic.scrobble.ScrobbleDefaults
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.integrations
+import com.mochyy.mochymusic.shared.resources.listenbrainz_connected
+import com.mochyy.mochymusic.shared.resources.listenbrainz_connected_desc
+import com.mochyy.mochymusic.shared.resources.listenbrainz_enter_token
+import com.mochyy.mochymusic.shared.resources.listenbrainz_enter_token_desc
+import com.mochyy.mochymusic.shared.resources.listenbrainz_token_placeholder
+import com.mochyy.mochymusic.shared.resources.listenbrainz_token_title
+import com.mochyy.mochymusic.shared.resources.login
+import com.mochyy.mochymusic.shared.resources.music_history
+import com.mochyy.mochymusic.shared.resources.music_note
+import com.mochyy.mochymusic.shared.resources.scrobble_account
+import com.mochyy.mochymusic.shared.resources.scrobble_delay
+import com.mochyy.mochymusic.shared.resources.scrobble_delay_subtitle
+import com.mochyy.mochymusic.shared.resources.scrobble_listening_desc
+import com.mochyy.mochymusic.shared.resources.scrobble_max_delay
+import com.mochyy.mochymusic.shared.resources.scrobble_max_delay_subtitle
+import com.mochyy.mochymusic.shared.resources.scrobble_min_duration
+import com.mochyy.mochymusic.shared.resources.scrobble_min_duration_subtitle
+import com.mochyy.mochymusic.shared.resources.scrobble_paused_desc
+import com.mochyy.mochymusic.shared.resources.scrobble_primary_artist_only
+import com.mochyy.mochymusic.shared.resources.scrobble_primary_artist_only_subtitle
+import com.mochyy.mochymusic.shared.resources.scrobble_seconds_value
+import com.mochyy.mochymusic.shared.resources.scrobble_timing
+import com.mochyy.mochymusic.shared.resources.scrobble_to
 import com.mochyy.mochymusic.ui.component.AppSwitch
 import com.mochyy.mochymusic.ui.component.SettingsGroup
 import com.mochyy.mochymusic.ui.component.SettingsGroupStyle
@@ -46,6 +68,8 @@ import com.mochyy.mochymusic.ui.component.SettingsItem
 import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
 import com.mochyy.mochymusic.ui.component.TextFieldDialog
 import com.mochyy.mochymusic.utils.rememberPreference
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
 const val ListenBrainzRoute = "integrations_settings/listenbrainz"
@@ -55,48 +79,48 @@ fun ListenBrainzScreen(navController: NavController) {
     val (enabled, setEnabled) = rememberPreference(ListenBrainzEnabledKey, defaultValue = false)
     val (token, setToken) = rememberPreference(ListenBrainzTokenKey, defaultValue = "")
     val (primaryOnly, setPrimaryOnly) = rememberPreference(ListenBrainzPrimaryArtistOnlyKey, defaultValue = false)
-    val (minDuration, setMinDuration) = rememberPreference(ScrobbleMinSongDurationKey, defaultValue = ScrobbleTimer.DEFAULT_MIN_SONG_SECONDS)
-    val (delayPercent, setDelayPercent) = rememberPreference(ScrobbleDelayPercentKey, defaultValue = ScrobbleTimer.DEFAULT_PLAYED_FRACTION)
-    val (delaySeconds, setDelaySeconds) = rememberPreference(ScrobbleDelaySecondsKey, defaultValue = ScrobbleTimer.DEFAULT_MAX_WAIT_SECONDS)
+    val (minDuration, setMinDuration) = rememberPreference(ScrobbleMinSongDurationKey, defaultValue = ScrobbleDefaults.DEFAULT_MIN_SONG_SECONDS)
+    val (delayPercent, setDelayPercent) = rememberPreference(ScrobbleDelayPercentKey, defaultValue = ScrobbleDefaults.DEFAULT_PLAYED_FRACTION)
+    val (delaySeconds, setDelaySeconds) = rememberPreference(ScrobbleDelaySecondsKey, defaultValue = ScrobbleDefaults.DEFAULT_MAX_WAIT_SECONDS)
     var tokenDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
     val connected = token.isNotBlank()
 
     SubSettingsScaffold(
         title = "ListenBrainz",
         onBack = { navController.navigateUp() },
-        backLabel = stringResource(R.string.integrations),
+        backLabel = stringResource(Res.string.integrations),
     ) {
         Column(
             modifier = Modifier.verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             SettingsGroup(
-                title = stringResource(R.string.scrobble_account),
+                title = stringResource(Res.string.scrobble_account),
                 style = SettingsGroupStyle.Grouped,
                 items = listOf(
                     SettingsItem(
-                        title = { Text(if (connected) stringResource(R.string.listenbrainz_connected) else stringResource(R.string.listenbrainz_enter_token)) },
-                        descriptionText = if (connected) stringResource(R.string.listenbrainz_connected_desc)
-                        else stringResource(R.string.listenbrainz_enter_token_desc),
-                        icon = painterResource(R.drawable.login),
+                        title = { Text(if (connected) stringResource(Res.string.listenbrainz_connected) else stringResource(Res.string.listenbrainz_enter_token)) },
+                        descriptionText = if (connected) stringResource(Res.string.listenbrainz_connected_desc)
+                        else stringResource(Res.string.listenbrainz_enter_token_desc),
+                        icon = painterResource(Res.drawable.login),
                         iconShape = CircleShape,
                         onClick = { tokenDialog = true },
                     ),
                     SettingsItem(
-                        title = { Text(stringResource(R.string.scrobble_to, "ListenBrainz")) },
+                        title = { Text(stringResource(Res.string.scrobble_to, "ListenBrainz")) },
                         descriptionText = stringResource(
-                            if (enabled) R.string.scrobble_listening_desc else R.string.scrobble_paused_desc,
+                            if (enabled) Res.string.scrobble_listening_desc else Res.string.scrobble_paused_desc,
                         ),
-                        icon = painterResource(R.drawable.music_history),
+                        icon = painterResource(Res.drawable.music_history),
                         iconShape = CircleShape,
                         enabled = connected,
                         onClick = { setEnabled(!enabled) },
                         trailingContent = { AppSwitch(checked = enabled && connected, onCheckedChange = setEnabled, enabled = connected) },
                     ),
                     SettingsItem(
-                        title = { Text(stringResource(R.string.scrobble_primary_artist_only)) },
-                        descriptionText = stringResource(R.string.scrobble_primary_artist_only_subtitle),
-                        icon = painterResource(R.drawable.music_note),
+                        title = { Text(stringResource(Res.string.scrobble_primary_artist_only)) },
+                        descriptionText = stringResource(Res.string.scrobble_primary_artist_only_subtitle),
+                        icon = painterResource(Res.drawable.music_note),
                         iconShape = CircleShape,
                         enabled = connected,
                         onClick = { setPrimaryOnly(!primaryOnly) },
@@ -119,9 +143,9 @@ fun ListenBrainzScreen(navController: NavController) {
 
     if (tokenDialog) {
         TextFieldDialog(
-            title = { Text(stringResource(R.string.listenbrainz_token_title)) },
+            title = { Text(stringResource(Res.string.listenbrainz_token_title)) },
             initialTextFieldValue = androidx.compose.ui.text.input.TextFieldValue(token),
-            placeholder = { Text(stringResource(R.string.listenbrainz_token_placeholder)) },
+            placeholder = { Text(stringResource(Res.string.listenbrainz_token_placeholder)) },
             isInputValid = { it.isNotBlank() },
             onDone = {
                 setToken(it.trim())
@@ -135,7 +159,7 @@ fun ListenBrainzScreen(navController: NavController) {
 
 /** the timing sliders, the rule a play must meet before it counts */
 @Composable
-internal fun ScrobbleTimingGroup(
+fun ScrobbleTimingGroup(
     minDuration: Int,
     onMinDuration: (Int) -> Unit,
     delayPercent: Float,
@@ -145,23 +169,23 @@ internal fun ScrobbleTimingGroup(
 ) {
     Column {
         Text(
-            text = stringResource(R.string.scrobble_timing),
+            text = stringResource(Res.string.scrobble_timing),
             style = MaterialTheme.typography.titleSmall,
             color = Color.White.copy(alpha = 0.8f),
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp),
         )
         TimingSlider(
-            label = stringResource(R.string.scrobble_min_duration),
-            description = stringResource(R.string.scrobble_min_duration_subtitle),
-            valueText = stringResource(R.string.scrobble_seconds_value, minDuration),
+            label = stringResource(Res.string.scrobble_min_duration),
+            description = stringResource(Res.string.scrobble_min_duration_subtitle),
+            valueText = stringResource(Res.string.scrobble_seconds_value, minDuration),
             value = minDuration.toFloat(),
             valueRange = 15f..120f,
             steps = 20,
             onValueChange = { onMinDuration(it.roundToInt()) },
         )
         TimingSlider(
-            label = stringResource(R.string.scrobble_delay),
-            description = stringResource(R.string.scrobble_delay_subtitle),
+            label = stringResource(Res.string.scrobble_delay),
+            description = stringResource(Res.string.scrobble_delay_subtitle),
             valueText = "${(delayPercent * 100).roundToInt()}%",
             value = delayPercent,
             valueRange = 0.1f..1.0f,
@@ -169,9 +193,9 @@ internal fun ScrobbleTimingGroup(
             onValueChange = onDelayPercent,
         )
         TimingSlider(
-            label = stringResource(R.string.scrobble_max_delay),
-            description = stringResource(R.string.scrobble_max_delay_subtitle),
-            valueText = stringResource(R.string.scrobble_seconds_value, delaySeconds),
+            label = stringResource(Res.string.scrobble_max_delay),
+            description = stringResource(Res.string.scrobble_max_delay_subtitle),
+            valueText = stringResource(Res.string.scrobble_seconds_value, delaySeconds),
             value = delaySeconds.toFloat(),
             valueRange = 30f..300f,
             steps = 26,
