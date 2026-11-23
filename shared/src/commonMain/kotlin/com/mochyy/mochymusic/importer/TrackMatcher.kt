@@ -2,12 +2,12 @@
 
 package com.mochyy.mochymusic.importer
 
-import com.music.innertube.YouTube
+import com.music.innertube.models.Artist
 import com.music.innertube.models.SongItem
+import com.mochyy.mochymusic.link.PlatformLock
 import com.music.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_ATV
 import com.music.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_UGC
 import kotlinx.coroutines.CancellationException
-import java.text.Normalizer
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -18,6 +18,7 @@ class TrackMatcher(
     private val source: ImportSource = ImportSource.OTHER,
 ) {
     private val cache = HashMap<String, SongItem?>()
+    private val cacheLock = PlatformLock()
 
     /** a search result offered by "choose different version", with how well it fits the track */
     data class Candidate(val song: SongItem, val score: Double)
@@ -28,7 +29,7 @@ class TrackMatcher(
             return SongItem(
                 id = id,
                 title = track.title,
-                artists = splitArtists(track.artist).map { com.music.innertube.models.Artist(name = it, id = null) },
+                artists = splitArtists(track.artist).map { Artist(name = it, id = null) },
                 album = null,
                 duration = track.durationMs?.let { (it / 1000).toInt() }?.takeIf { it > 0 },
                 thumbnail = track.thumbnailUrl ?: "https://i.ytimg.com/vi/$id/hqdefault.jpg",
@@ -37,8 +38,8 @@ class TrackMatcher(
         matches?.pinned(track)?.let { return it.pinnedSong() }
 
         val key = "${normalizeTitle(track.title)}|${normalizeText(track.artist)}|${track.durationMs?.div(5000)}"
-        val (searched, cached) = synchronized(cache) { cache.containsKey(key) to cache[key] }
-        val result = if (searched) cached else findBest(track).also { synchronized(cache) { cache[key] = it } }
+        val (searched, cached) = cacheLock.withLock { cache.containsKey(key) to cache[key] }
+        val result = if (searched) cached else findBest(track).also { found -> cacheLock.withLock { cache[key] = found } }
         if (result != null) matches?.remember(track, source, result)
         return result
     }
@@ -51,7 +52,7 @@ class TrackMatcher(
     /** everything a search turns up for track, songs and videos, best fit first, what choose different version lists */
     suspend fun candidates(track: ImportedTrack): List<Candidate> {
         val query = searchQuery(track)
-        val found = search(query, YouTube.SearchFilter.FILTER_SONG) + search(query, YouTube.SearchFilter.FILTER_VIDEO)
+        val found = search(query, ImporterSearchFilter.SONG) + search(query, ImporterSearchFilter.VIDEO)
         return found.distinctBy { it.id }
             .map { Candidate(it, score(track, it)) }
             .sortedByDescending { it.score }
@@ -60,11 +61,11 @@ class TrackMatcher(
     private suspend fun findBest(track: ImportedTrack): SongItem? {
         val query = searchQuery(track)
 
-        val songs = search(query, YouTube.SearchFilter.FILTER_SONG).map { it to score(track, it) }
+        val songs = search(query, ImporterSearchFilter.SONG).map { it to score(track, it) }
         pick(track, songs, SONG_ACCEPT)?.let { return it }
 
         // some tracks only exist as uploads/videos on youtube
-        val videos = search(query, YouTube.SearchFilter.FILTER_VIDEO).map { it to score(track, it) }
+        val videos = search(query, ImporterSearchFilter.VIDEO).map { it to score(track, it) }
         pick(track, videos, VIDEO_ACCEPT)?.let { return it }
 
         return pick(track, songs, SONG_FALLBACK_ACCEPT)
@@ -87,11 +88,11 @@ class TrackMatcher(
         return "${cleanTitleForSearch(track.title)} $firstArtist".trim()
     }
 
-    private suspend fun search(query: String, filter: YouTube.SearchFilter): List<SongItem> {
+    private suspend fun search(query: String, filter: ImporterSearchFilter): List<SongItem> {
         repeat(2) { attempt ->
             try {
-                val result = YouTube.search(query, filter).getOrThrow()
-                return result.items.filterIsInstance<SongItem>().take(10)
+                val result = ImporterYouTube.search(query, filter).getOrThrow()
+                return result.filterIsInstance<SongItem>().take(10)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -191,8 +192,6 @@ class TrackMatcher(
         )
         private val FEAT_TAIL = Regex("\\s(feat\\.?|ft\\.?|featuring)\\s.*$", RegexOption.IGNORE_CASE)
         private val ARTIST_SPLIT = Regex("\\s*(,|&|;|/|\\sx\\s|\\sand\\s|\\sfeat\\.?\\s|\\sft\\.?\\s|\\sfeaturing\\s|\\swith\\s)\\s*", RegexOption.IGNORE_CASE)
-        private val NON_WORD = Regex("[^\\p{L}\\p{N}]+")
-        private val MARKS = Regex("\\p{M}+")
 
         fun splitArtists(artist: String): List<String> =
             artist.replace('\u00A0', ' ').split(ARTIST_SPLIT).map { it.trim() }.filter { it.isNotEmpty() }
@@ -203,10 +202,8 @@ class TrackMatcher(
 
         fun normalizeTitle(title: String): String = normalizeText(cleanTitleForSearch(title))
 
-        fun normalizeText(text: String): String {
-            val folded = Normalizer.normalize(text.lowercase(), Normalizer.Form.NFKD).replace(MARKS, "")
-            return folded.replace(NON_WORD, " ").trim()
-        }
+        // folding happens per platform (java.text.Normalizer on the jvm, Foundation on iOS)
+        fun normalizeText(text: String): String = normalizeMatchText(text)
 
         /** best of token overlap and character edit distance, so both reordered words and scripts without spaces score fairly */
         fun similarity(a: String, b: String): Double {

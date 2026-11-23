@@ -8,7 +8,8 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
-import java.net.URLEncoder
+import io.ktor.http.encodeURLParameter
+import kotlin.concurrent.Volatile
 
 /** reads a public soundcloud playlist or album through the api its own website uses, with the client id that website hands every visitor */
 internal object SoundCloudLink {
@@ -27,7 +28,7 @@ internal object SoundCloudLink {
         val match = SET_REGEX.find(url) ?: throw LinkImportException("Paste a SoundCloud playlist or album link.")
         val (user, set) = match.destructured
         val page = "https://soundcloud.com/$user/sets/$set"
-        val playlist = api("$API/resolve?url=${URLEncoder.encode(page, "UTF-8")}") as? JsonObject
+        val playlist = api("$API/resolve?url=${page.encodeURLParameter()}") as? JsonObject
             ?: throw LinkImportException("SoundCloud sent something we couldn't read.")
 
         val name = playlist.string("title") ?: "SoundCloud playlist"

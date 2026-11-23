@@ -11,30 +11,35 @@ import kotlinx.serialization.json.longOrNull
 
 // lenient readers for third-party json: a missing or differently-typed field is null, never a crash
 
-internal fun JsonElement.path(vararg keys: String): JsonElement? {
+fun JsonElement.path(vararg keys: String): JsonElement? {
     var current: JsonElement? = this
     for (key in keys) current = (current as? JsonObject)?.get(key) ?: return null
     return current
 }
 
-internal fun JsonObject.string(key: String): String? =
+fun JsonObject.string(key: String): String? =
     (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull?.takeIf { it.isNotBlank() }
 
-internal fun JsonObject.long(key: String): Long? = (this[key] as? JsonPrimitive)?.longOrNull
+fun JsonObject.long(key: String): Long? = (this[key] as? JsonPrimitive)?.longOrNull
 
 /** a number or a numeric string, as ids sometimes come either way */
-internal fun JsonObject.idString(key: String): String? =
+fun JsonObject.idString(key: String): String? =
     (this[key] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() && it != "null" }
 
-internal fun JsonElement?.obj(): JsonObject? = this as? JsonObject
+fun JsonElement?.obj(): JsonObject? = this as? JsonObject
 
-internal fun JsonElement?.array(): List<JsonElement> = (this as? JsonArray).orEmpty()
+fun JsonElement?.array(): List<JsonElement> = (this as? JsonArray).orEmpty()
 
-private val OFFSET_WITHOUT_COLON = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss[.SSS]Z")
+// a compact numeric offset ("+0000", as tidal sends) has no colon, which the ISO reader needs
+private val OFFSET_WITHOUT_COLON = Regex("([+-]\\d{2})(\\d{2})$")
 
 /** a timestamp as services send them (iso with a z, or tidal's +0000 offset), in epoch ms */
-internal fun dateMs(text: String?): Long? {
+@OptIn(kotlin.time.ExperimentalTime::class)
+fun dateMs(text: String?): Long? {
     if (text.isNullOrBlank()) return null
-    return runCatching { java.time.OffsetDateTime.parse(text).toInstant().toEpochMilli() }.getOrNull()
-        ?: runCatching { java.time.OffsetDateTime.parse(text, OFFSET_WITHOUT_COLON).toInstant().toEpochMilli() }.getOrNull()
+    return runCatching { kotlin.time.Instant.parse(text).toEpochMilliseconds() }.getOrNull()
+        ?: runCatching {
+            kotlin.time.Instant.parse(OFFSET_WITHOUT_COLON.replace(text) { "${it.groupValues[1]}:${it.groupValues[2]}" })
+                .toEpochMilliseconds()
+        }.getOrNull()
 }

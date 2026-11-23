@@ -21,7 +21,7 @@ object ImportedVersions {
     /** the track songId was imported as, null if no import brought it in, songs imported before tracks were remembered only have their own title and artist */
     suspend fun trackFor(context: Context, database: MusicDatabase, songId: String): TrackMatch? =
         withContext(Dispatchers.IO) {
-            ImportMatches.get(context).forSong(songId)?.let { return@withContext it }
+            ImportMatches(AndroidImportMatchStore(context)).forSong(songId)?.let { return@withContext it }
             if (songId !in database.importedSongIds()) return@withContext null
             val song = database.getSongById(songId) ?: return@withContext null
             val track = ImportedTrack(
@@ -44,13 +44,13 @@ object ImportedVersions {
 
     /** makes song match's track from now on: saved for later imports, and swapped in now */
     suspend fun choose(context: Context, database: MusicDatabase, match: TrackMatch, song: SongItem) {
-        withContext(Dispatchers.IO) { ImportMatches.get(context).pin(match, song) }
+        withContext(Dispatchers.IO) { ImportMatches(AndroidImportMatchStore(context)).pin(match, song) }
         replace(context, database, match.songId, song)
     }
 
     /** refetch for an imported song: forgets a hand-picked version and searches again, returns the new song or null if nothing changed so the caller can say so */
     suspend fun refetch(context: Context, database: MusicDatabase, match: TrackMatch): SongItem? {
-        val matches = ImportMatches.get(context)
+        val matches = ImportMatches(AndroidImportMatchStore(context))
         withContext(Dispatchers.IO) { matches.unpin(match) }
         val found = withContext(Dispatchers.IO) { TrackMatcher().match(match.track) } ?: return null
         if (found.id == match.songId) return null

@@ -79,11 +79,3 @@ internal class PlaylistSourceRecord(private val database: MusicDatabase) {
     }
 }
 
-/** what re-sync knows a service's song by: exact for youtube songs, else cleaned title and first artist, which match whether read through a link or an account */
-internal fun ImportedTrack.trackKey(): String {
-    (videoId ?: ytItem?.id)?.let { return youTubeKey(it) }
-    val firstArtist = TrackMatcher.splitArtists(artist).firstOrNull().orEmpty()
-    return "${TrackMatcher.normalizeTitle(title)}|${TrackMatcher.normalizeText(firstArtist)}"
-}
-
-private fun youTubeKey(videoId: String) = "yt:$videoId"
