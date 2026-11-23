@@ -409,7 +409,7 @@ fun NavGraphBuilder.navigationBuilder(
         if (com.mochyy.mochymusic.ui.utils.isWideLayout()) {
             com.mochyy.mochymusic.ui.screens.settings.SettingsPanePlaceholder()
         } else {
-            com.mochyy.mochymusic.ui.screens.settings.MochySettingsScreen(navController = navController)
+            com.mochyy.mochymusic.ui.screens.settings.AndroidMochySettingsScreen(navController = navController)
         }
     }
 
@@ -545,7 +545,7 @@ fun NavGraphBuilder.navigationBuilder(
             experimentalSettingsEntry = {
                 com.mochyy.mochymusic.ui.screens.settings.CategoryBubble(
                     title = stringResource(R.string.dev_experimental_settings_bubble),
-                    iconRes = R.drawable.biotech,
+                    icon = painterResource(R.drawable.biotech),
                     onClick = { navController.navigate("experimental_settings") },
                 )
             },
