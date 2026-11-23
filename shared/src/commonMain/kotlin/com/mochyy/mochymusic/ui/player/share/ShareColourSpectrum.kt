@@ -50,7 +50,7 @@ private const val HapticSlices = 12
 private data class Spot(val hue: Float, val shade: Float)
 
 @Composable
-internal fun ColourSpectrum(colour: Color, onPick: (Color) -> Unit, modifier: Modifier = Modifier) {
+fun ColourSpectrum(colour: Color, onPick: (Color) -> Unit, modifier: Modifier = Modifier) {
     val haptic = LocalHapticFeedback.current
     val pick by rememberUpdatedState(onPick)
     var spot by remember { mutableStateOf(spotOf(colour)) }
@@ -128,9 +128,28 @@ private fun colourAt(spot: Spot): Color {
  * are on it exactly; anything greyer lands on the nearest of the two.
  */
 private fun spotOf(colour: Color): Spot {
-    val hsv = FloatArray(3)
-    android.graphics.Color.colorToHSV(colour.toArgb(), hsv)
+    val hsv = rgbToHsv(colour.toArgb())
     val (hue, saturation, value) = Triple(hsv[0] / 360f, hsv[1], hsv[2])
     val shade = if (1f - value < 1f - saturation) saturation / 2f else 1f - value / 2f
     return Spot(hue, shade)
+}
+
+/**
+ * Hue (0 to 360 degrees), saturation and value of an ARGB colour: the same conversion Android's
+ * Color.colorToHSV has always done, written out here so the shared code needs no android.graphics.
+ */
+private fun rgbToHsv(argb: Int): FloatArray {
+    val r = (argb shr 16 and 0xFF) / 255f
+    val g = (argb shr 8 and 0xFF) / 255f
+    val b = (argb and 0xFF) / 255f
+    val max = maxOf(r, g, b)
+    val min = minOf(r, g, b)
+    val delta = max - min
+    val hue = when {
+        delta == 0f -> 0f
+        max == r -> 60f * (((g - b) / delta) % 6f)
+        max == g -> 60f * ((b - r) / delta + 2f)
+        else -> 60f * ((r - g) / delta + 4f)
+    }
+    return floatArrayOf(if (hue < 0f) hue + 360f else hue, if (max == 0f) 0f else delta / max, max)
 }
