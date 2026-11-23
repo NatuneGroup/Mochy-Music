@@ -141,6 +141,8 @@ class CrossmixDirector(
         val item = player.currentMediaItem ?: return cancelPending()
         host.crossmixBlocker()?.let { reason ->
             report(reason)
+            // not mixing: no song needs analysing
+            analyses.keepOnly(emptyList())
             return cancelPending()
         }
         val duration = player.duration
@@ -152,9 +154,12 @@ class CrossmixDirector(
         val nextIndex = host.nextIndex()
         if (nextIndex == C.INDEX_UNSET) {
             report("Nothing queued after this song")
+            analyses.keepOnly(listOf(item))
             return cancelPending()
         }
         val next = player.getMediaItemAt(nextIndex)
+        // songs skipped past or dropped from the queue don't hold up this pair on the analysis thread
+        analyses.keepOnly(listOf(item, next))
         val key = "${item.mediaId}→${next.mediaId}@$nextIndex"
         // decided already (planned, armed, or found it can't be mixed): only a seek or a new song
         // asks again, not every pause or buffering blip
