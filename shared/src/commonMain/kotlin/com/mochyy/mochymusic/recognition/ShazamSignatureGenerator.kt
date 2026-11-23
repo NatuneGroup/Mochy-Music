@@ -2,6 +2,7 @@
 
 package com.mochyy.mochymusic.recognition
 
+import com.mochyy.mochymusic.utils.base64Standard
 import okio.Buffer
 import kotlin.math.PI
 import kotlin.math.cos
@@ -247,7 +248,7 @@ internal object ShazamSignatureGenerator {
             fullBytes[6] = ((crc32Value shr 16) and 0xFF).toByte()
             fullBytes[7] = ((crc32Value shr 24) and 0xFF).toByte()
 
-            val encoded = base64(fullBytes)
+            val encoded = base64Standard(fullBytes)
             return "data:audio/vnd.shazam.sig;base64,$encoded"
         }
     }
@@ -346,37 +347,3 @@ private fun crc32(bytes: ByteArray, offset: Int, length: Int): Int {
 
 private const val CrcPolynomial = -306674912 // 0xEDB88320
 
-/**
- * Standard base64 with `=` padding, the encoding `Base64.NO_WRAP` wrote: the signature is read by
- * the recognition service's own decoder, so it has to stay byte-for-byte the same.
- */
-private fun base64(bytes: ByteArray): String {
-    val out = StringBuilder((bytes.size + 2) / 3 * 4)
-    var i = 0
-    while (i + 2 < bytes.size) {
-        val chunk = ((bytes[i].toInt() and 0xFF) shl 16) or ((bytes[i + 1].toInt() and 0xFF) shl 8) or (bytes[i + 2].toInt() and 0xFF)
-        out.append(Base64Alphabet[chunk ushr 18 and 0x3F])
-        out.append(Base64Alphabet[chunk ushr 12 and 0x3F])
-        out.append(Base64Alphabet[chunk ushr 6 and 0x3F])
-        out.append(Base64Alphabet[chunk and 0x3F])
-        i += 3
-    }
-    when (bytes.size - i) {
-        1 -> {
-            val chunk = (bytes[i].toInt() and 0xFF) shl 16
-            out.append(Base64Alphabet[chunk ushr 18 and 0x3F])
-            out.append(Base64Alphabet[chunk ushr 12 and 0x3F])
-            out.append("==")
-        }
-        2 -> {
-            val chunk = ((bytes[i].toInt() and 0xFF) shl 16) or ((bytes[i + 1].toInt() and 0xFF) shl 8)
-            out.append(Base64Alphabet[chunk ushr 18 and 0x3F])
-            out.append(Base64Alphabet[chunk ushr 12 and 0x3F])
-            out.append(Base64Alphabet[chunk ushr 6 and 0x3F])
-            out.append("=")
-        }
-    }
-    return out.toString()
-}
-
-private const val Base64Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"

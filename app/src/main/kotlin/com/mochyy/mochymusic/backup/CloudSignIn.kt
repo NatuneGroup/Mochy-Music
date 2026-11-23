@@ -4,6 +4,7 @@ package com.mochyy.mochymusic.backup
 
 import android.content.Context
 import android.net.Uri
+import com.mochyy.mochymusic.BuildConfig
 import com.mochyy.mochymusic.utils.Pkce
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -30,6 +31,18 @@ sealed interface CloudLogin {
     data class Failed(val problem: CloudProblem) : CloudLogin
 }
 
+/**
+ * The client ids Dropbox and OneDrive need. They are build-time values (local.properties or CI
+ * secrets), so they stay in the app; the shared OAuthApp takes them as an argument.
+ */
+object CloudAppKeys {
+    fun of(kind: CloudKind): String = when (kind) {
+        CloudKind.Dropbox -> BuildConfig.DROPBOX_APP_KEY
+        CloudKind.OneDrive -> BuildConfig.ONEDRIVE_CLIENT_ID
+        CloudKind.WebDav -> ""
+    }
+}
+
 /** signs in to dropbox or onedrive on their own page in the browser, then the login activity hands the answer back here */
 @Singleton
 class CloudSignIn @Inject constructor(
@@ -42,7 +55,7 @@ class CloudSignIn @Inject constructor(
     private val _login = MutableStateFlow<CloudLogin>(CloudLogin.Idle)
     val login: StateFlow<CloudLogin> = _login.asStateFlow()
 
-    fun isConfigured(kind: CloudKind): Boolean = OAuthApp.of(kind)?.isConfigured == true
+    fun isConfigured(kind: CloudKind): Boolean = CloudAppKeys.of(kind).isNotBlank()
 
     /** the page to send the user to; the check value and verifier go to disk first, since android may close mochy while the browser is in front */
     suspend fun loginUri(kind: CloudKind): Uri {
@@ -53,7 +66,7 @@ class CloudSignIn @Inject constructor(
             pendingFile.writeText(JSONObject().put("kind", kind.name).put("state", state).put("verifier", verifier).toString())
         }
         _login.value = CloudLogin.InBrowser(kind)
-        return app.authorizeUri(state, Pkce.challengeOf(verifier))
+        return Uri.parse(app.authorizeUri(CloudAppKeys.of(kind), state, Pkce.challengeOf(verifier)))
     }
 
     /** for the login activity, which closes straight away while this carries on */
@@ -88,7 +101,7 @@ class CloudSignIn @Inject constructor(
 
         _login.value = CloudLogin.Finishing(app.kind)
         try {
-            val tokens = app.exchange(code, verifier)
+            val tokens = app.exchange(CloudAppKeys.of(app.kind), code, verifier)
             val name = app.accountName(tokens.access)
             // the login being replaced is told to forget its token, so it doesn't linger on dropbox's side
             accounts.current()?.let { old -> OAuthApp.of(old.kind)?.revoke(old.accessToken) }
