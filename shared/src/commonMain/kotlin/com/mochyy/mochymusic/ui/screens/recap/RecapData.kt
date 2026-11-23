@@ -2,23 +2,30 @@
 //
 // Everything the monthly recap and the Stats page show, worked out from the play history alone
 // (the `event` table: one row per play of 30 s or more). Nothing here leaves the device.
+//
+// Days are kotlinx-datetime's; the wall clock is read exactly as before: the event table stores
+// LocalDateTime.now() as if it were UTC, so a play's time is the stored millis read back in UTC,
+// never through the device's zone. "Today" is the device's own calendar day.
 
 package com.mochyy.mochymusic.ui.screens.recap
 
 import androidx.compose.runtime.Immutable
-import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.MochyDatabase
 import com.mochyy.mochymusic.db.RecapEventRow
 import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.db.localDateTimeFromEpochMillisUtc
+import com.mochyy.mochymusic.db.nowLocal
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.time.DayOfWeek
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.Month
-import java.time.ZoneOffset
-import java.time.format.TextStyle
-import java.time.temporal.ChronoUnit
-import java.util.Locale
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.Month
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.isoDayNumber
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import kotlin.math.roundToInt
 
 /** The recap opens once a month has this many different songs in it. */
@@ -31,22 +38,23 @@ internal const val RecapFirstDay = 3
 data class StatsRange(val kind: Kind, val year: Int, val month: Int = 1) {
     enum class Kind { Month, Year }
 
-    val start: LocalDate get() = if (kind == Kind.Month) LocalDate.of(year, month, 1) else LocalDate.of(year, 1, 1)
-    val endExclusive: LocalDate get() = if (kind == Kind.Month) start.plusMonths(1) else start.plusYears(1)
+    val start: LocalDate get() = if (kind == Kind.Month) LocalDate(year, month, 1) else LocalDate(year, 1, 1)
+    val endExclusive: LocalDate get() = if (kind == Kind.Month) start.plus(1, DateTimeUnit.MONTH) else start.plus(1, DateTimeUnit.YEAR)
 
-    val monthName: String get() = Month.of(month).getDisplayName(TextStyle.FULL, Locale.getDefault())
+    /** "October" in the device's language, the same full name java.time gave it. */
+    val monthName: String get() = fullMonthName(month)
 
     /** What the recap calls the period: "October", or "2026" for a whole year. */
     val label: String get() = if (kind == Kind.Month) monthName else "$year"
 
     fun previous(): StatsRange =
-        if (kind == Kind.Month) monthOf(start.minusMonths(1)) else StatsRange(Kind.Year, year - 1)
+        if (kind == Kind.Month) monthOf(start.minus(1, DateTimeUnit.MONTH)) else StatsRange(Kind.Year, year - 1)
 
     /** Days in the month, or 12 for a year: how many buckets [ListeningStats.bucketMs] has. */
-    val bucketCount: Int get() = if (kind == Kind.Month) start.lengthOfMonth() else 12
+    val bucketCount: Int get() = if (kind == Kind.Month) start.daysInMonth() else 12
 
     companion object {
-        fun monthOf(date: LocalDate) = StatsRange(Kind.Month, date.year, date.monthValue)
+        fun monthOf(date: LocalDate) = StatsRange(Kind.Month, date.year, date.month.calendarNumber)
         fun yearOf(date: LocalDate) = StatsRange(Kind.Year, date.year)
     }
 }
@@ -125,6 +133,10 @@ class ListeningStats(
     }
 }
 
+/** One artist's share of the period's listening, for the Stats page's genre card. */
+@Immutable
+data class GenreShare(val name: String, val fraction: Float, val playTimeMs: Long)
+
 /** What the recap card's barcode leads to once it's scanned. */
 sealed interface RecapAvailability {
     data class Ready(val stats: ListeningStats, val monthProgressPercent: Int) : RecapAvailability
@@ -133,20 +145,33 @@ sealed interface RecapAvailability {
     data class NotYet(val comeBack: String) : RecapAvailability
 }
 
-internal object RecapRepository {
+/**
+ * The history queries the recap and Stats page need, and the aggregation over their rows.
+ *
+ * The app still exposes RecapRepository because settings/ProfileScreen and the TV pages hand it
+ * java.time.LocalDate; that adapter converts at the boundary and calls this. Everything past the
+ * boundary is here, so another platform only needs a MochyDatabase.
+ */
+object RecapStats {
 
-    suspend fun load(db: MusicDatabase, range: StatsRange): ListeningStats = withContext(Dispatchers.IO) {
+    suspend fun load(db: MochyDatabase, range: StatsRange): ListeningStats = withContext(recapIoDispatcher) {
         val from = range.start.toStoredMillis()
-        val events = db.recapEvents(from, range.endExclusive.toStoredMillis())
+        val events = db.historyDao.recapEvents(from, range.endExclusive.toStoredMillis())
         val ids = events.mapTo(LinkedHashSet()) { it.songId }.toList()
-        val songs = ids.chunked(500).flatMap { db.getSongsByIds(it) }.associateBy { it.id }
-        val playedBefore = ids.chunked(500).flatMapTo(HashSet()) { db.songsPlayedBefore(it, from) }
-        val today = LocalDate.now()
+        val songs = ids.chunked(500).flatMap { db.songDao.getSongsByIds(it) }.associateBy { it.id }
+        val playedBefore = ids.chunked(500).flatMapTo(HashSet()) { db.historyDao.songsPlayedBefore(it, from) }
+        val today = nowLocal().date
         val previous = range.previous()
         // a period still running is held against the same stretch of the one before, or every month would look like a slump
-        val running = !today.isBefore(range.start) && today.isBefore(range.endExclusive)
-        val previousEnd = if (running) minOf(previous.start.plusDays(ChronoUnit.DAYS.between(range.start, today) + 1), range.start) else range.start
-        val previousTotal = db.listeningTotal(previous.start.toStoredMillis(), previousEnd.toStoredMillis()).takeIf { it > 0 }
+        val running = today >= range.start && today < range.endExclusive
+        val previousEnd =
+            if (running) {
+                previous.start.plus(today.toEpochDays() - range.start.toEpochDays() + 1, DateTimeUnit.DAY)
+                    .coerceAtMost(range.start)
+            } else {
+                range.start
+            }
+        val previousTotal = db.historyDao.listeningTotal(previous.start.toStoredMillis(), previousEnd.toStoredMillis()).takeIf { it > 0 }
         withContext(Dispatchers.Default) {
             aggregate(range, events, songs, playedBefore, previousTotal, running, today)
         }
@@ -156,10 +181,10 @@ internal object RecapRepository {
      * The month the recap is about today, or why there isn't one yet. [force] (Experimental) opens
      * it anyway with whatever has been played: this month, else last month, else this year.
      */
-    suspend fun recapFor(db: MusicDatabase, today: LocalDate, force: Boolean = false): RecapAvailability {
+    suspend fun recapFor(db: MochyDatabase, today: LocalDate, force: Boolean = false): RecapAvailability {
         val normal = recapByTheRules(db, today)
         if (!force || normal is RecapAvailability.Ready) return normal
-        val candidates = listOf(StatsRange.monthOf(today), StatsRange.monthOf(today.minusMonths(1)), StatsRange.yearOf(today))
+        val candidates = listOf(StatsRange.monthOf(today), StatsRange.monthOf(today.minus(1, DateTimeUnit.MONTH)), StatsRange.yearOf(today))
         for (range in candidates) {
             val stats = load(db, range)
             if (stats.songCount > 0) return RecapAvailability.Ready(stats, progressOf(range, today))
@@ -169,27 +194,27 @@ internal object RecapRepository {
 
     private fun progressOf(range: StatsRange, today: LocalDate): Int = when {
         range.kind == StatsRange.Kind.Year && range.year == today.year ->
-            (today.dayOfYear * 100f / today.lengthOfYear()).roundToInt().coerceIn(1, 100)
-        range.kind == StatsRange.Kind.Month && range.year == today.year && range.month == today.monthValue ->
-            (today.dayOfMonth * 100f / today.lengthOfMonth()).roundToInt().coerceIn(1, 100)
+            (today.dayOfYear * 100f / today.daysInYear()).roundToInt().coerceIn(1, 100)
+        range.kind == StatsRange.Kind.Month && range.year == today.year && range.month == today.month.calendarNumber ->
+            (today.day * 100f / today.daysInMonth()).roundToInt().coerceIn(1, 100)
         else -> 100
     }
 
-    private suspend fun recapByTheRules(db: MusicDatabase, today: LocalDate): RecapAvailability {
+    private suspend fun recapByTheRules(db: MochyDatabase, today: LocalDate): RecapAvailability {
         val thisMonth = StatsRange.monthOf(today)
-        if (today.dayOfMonth < RecapFirstDay) {
-            val previous = StatsRange.monthOf(today.minusMonths(1))
+        if (today.day < RecapFirstDay) {
+            val previous = StatsRange.monthOf(today.minus(1, DateTimeUnit.MONTH))
             val stats = load(db, previous)
             if (stats.songCount >= RecapMinSongs) return RecapAvailability.Ready(stats, 100)
-            val unlock = today.withDayOfMonth(RecapFirstDay)
+            val unlock = LocalDate(today.year, today.month, RecapFirstDay)
             return RecapAvailability.NotYet(
-                "on ${unlock.month.getDisplayName(TextStyle.FULL, Locale.getDefault())} $RecapFirstDay, " +
+                "on ${fullMonthName(unlock.month.calendarNumber)} $RecapFirstDay, " +
                     "once you've played $RecapMinSongs songs",
             )
         }
         val stats = load(db, thisMonth)
         if (stats.songCount >= RecapMinSongs) {
-            val percent = (today.dayOfMonth * 100f / today.lengthOfMonth()).roundToInt().coerceIn(1, 100)
+            val percent = (today.day * 100f / today.daysInMonth()).roundToInt().coerceIn(1, 100)
             return RecapAvailability.Ready(stats, percent)
         }
         val missing = RecapMinSongs - stats.songCount
@@ -199,8 +224,8 @@ internal object RecapRepository {
     }
 
     /** First day anything was played, for the Stats timeline and as a fallback join date. */
-    suspend fun firstPlayDate(db: MusicDatabase): LocalDate? = withContext(Dispatchers.IO) {
-        db.firstEventTimestamp()?.let { storedMillisToDateTime(it).toLocalDate() }
+    suspend fun firstPlayDate(db: MochyDatabase): LocalDate? = withContext(recapIoDispatcher) {
+        db.historyDao.firstEventTimestamp()?.let { storedMillisToDateTime(it).date }
     }
 
     private fun aggregate(
@@ -227,9 +252,9 @@ internal object RecapRepository {
                 plays++
             }
             val at = storedMillisToDateTime(e.timestamp)
-            weekday[at.dayOfWeek.value - 1] += ms
+            weekday[at.dayOfWeek.isoDayNumber - 1] += ms
             hour[at.hour] += ms
-            val bucket = if (range.kind == StatsRange.Kind.Month) at.dayOfMonth - 1 else at.monthValue - 1
+            val bucket = if (range.kind == StatsRange.Kind.Month) at.day - 1 else at.month.calendarNumber - 1
             if (bucket in buckets.indices) buckets[bucket] += ms
         }
 
@@ -317,7 +342,7 @@ private fun ListeningStats.withExtras(
     val daySongPlays = HashMap<LocalDate, HashMap<String, Int>>()
     val sorted = events.sortedBy { it.timestamp }
     for (e in sorted) {
-        val day = storedMillisToDateTime(e.timestamp).toLocalDate()
+        val day = storedMillisToDateTime(e.timestamp).date
         dayMs[day] = (dayMs[day] ?: 0L) + e.playTime.coerceAtLeast(0L)
         val counts = daySongPlays.getOrPut(day) { HashMap() }
         counts[e.songId] = (counts[e.songId] ?: 0) + 1
@@ -363,14 +388,14 @@ private fun ListeningStats.withExtras(
 private const val SessionGapMs = 10 * 60_000L
 
 private fun ListeningStats.habitsOf(sorted: List<RecapEventRow>, dayMs: Map<LocalDate, Long>, today: LocalDate): ListeningHabits {
-    val lastDay = minOf(range.endExclusive.minusDays(1), maxOf(today, range.start))
-    val elapsed = (lastDay.toEpochDay() - range.start.toEpochDay() + 1).toInt().coerceAtLeast(1)
+    val lastDay = minOf(range.endExclusive.minus(1, DateTimeUnit.DAY), maxOf(today, range.start))
+    val elapsed = (lastDay.toEpochDays() - range.start.toEpochDays() + 1).toInt().coerceAtLeast(1)
 
     var streak = 0
     var best = 0
     var previous: LocalDate? = null
     for (day in dayMs.keys.sorted()) {
-        streak = if (previous != null && day == previous.plusDays(1)) streak + 1 else 1
+        streak = if (previous != null && day == previous.plus(1, DateTimeUnit.DAY)) streak + 1 else 1
         best = maxOf(best, streak)
         previous = day
     }
@@ -408,31 +433,41 @@ private fun ListeningStats.habitsOf(sorted: List<RecapEventRow>, dayMs: Map<Loca
     )
 }
 
-// The event table stores LocalDateTime.now() as if it were UTC (see Converters), so the wall clock
-// of a play comes back by reading the millis as UTC - never through the device's zone.
-internal fun LocalDate.toStoredMillis(): Long = atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()
+/** Start of [this] day as the millis the event table stores: the wall clock read as if it were UTC. */
+@OptIn(kotlin.time.ExperimentalTime::class)
+fun LocalDate.toStoredMillis(): Long = atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds()
 
-internal fun storedMillisToDateTime(millis: Long): LocalDateTime =
-    LocalDateTime.ofEpochSecond(Math.floorDiv(millis, 1000L), 0, ZoneOffset.UTC)
-
-internal fun DayOfWeek.displayName(): String = getDisplayName(TextStyle.FULL, Locale.getDefault())
+/**
+ * The wall clock of a stored play: the millis read back as UTC, cut to the second the way java.time's
+ * ofEpochSecond(floorDiv(millis, 1000), 0, UTC) did, so every derived day and hour is unchanged.
+ */
+@OptIn(kotlin.time.ExperimentalTime::class)
+fun storedMillisToDateTime(millis: Long): LocalDateTime {
+    val local = localDateTimeFromEpochMillisUtc(millis)
+    return LocalDateTime(local.year, local.month, local.day, local.hour, local.minute, local.second)
+}
 
 /** "12h 05m" style, the way the recap and Stats spell listening time. */
-internal fun formatHoursMinutes(ms: Long): String {
+fun formatHoursMinutes(ms: Long): String {
     val minutes = (ms / 60_000L).coerceAtLeast(0L)
     return "${minutes / 60}h ${(minutes % 60).toString().padStart(2, '0')}m"
 }
 
 /** Hours with one decimal ("3.4"), for the receipt and the Stats rows. */
-internal fun formatHoursDecimal(ms: Long): String {
+fun formatHoursDecimal(ms: Long): String {
     val tenths = (ms / 360_000L).coerceAtLeast(0L)
     return "${tenths / 10}.${tenths % 10}"
 }
 
-/** Morning / afternoon / evening / night, for the hour a peak falls in. */
-internal fun timeOfDayName(hour: Int): String = when (hour) {
-    in 5..11 -> "mornings"
-    in 12..16 -> "afternoons"
-    in 17..21 -> "evenings"
-    else -> "nights"
+// kotlinx-datetime 0.8 has the Month(number) factory but no number on Month; the enum is declared
+// in calendar order, so its ordinal is the number java.time's Month.getValue() gave.
+private val Month.calendarNumber: Int get() = ordinal + 1
+
+// java.time had lengthOfMonth()/lengthOfYear(); these are the same counts for the same day, without
+// the month-end clamping plusMonths would do.
+private fun LocalDate.daysInMonth(): Int {
+    val first = LocalDate(year, month, 1)
+    return (first.plus(1, DateTimeUnit.MONTH).toEpochDays() - first.toEpochDays()).toInt()
 }
+
+private fun LocalDate.daysInYear(): Int = (LocalDate(year + 1, 1, 1).toEpochDays() - LocalDate(year, 1, 1).toEpochDays()).toInt()

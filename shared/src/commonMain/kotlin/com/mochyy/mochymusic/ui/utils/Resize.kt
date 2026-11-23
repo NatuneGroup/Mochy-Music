@@ -1,5 +1,3 @@
-// YouTubeUtils.kt
-
 package com.mochyy.mochymusic.ui.utils
 
 // built once, because resize() runs for every thumbnail on screen and compiling a regex each call is wasted work

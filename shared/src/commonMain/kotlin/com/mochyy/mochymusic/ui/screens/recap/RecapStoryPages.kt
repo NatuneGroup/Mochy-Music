@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.RenderEffect
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -50,8 +51,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -63,13 +62,48 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.mochyy.mochymusic.R
-import com.mochyy.mochymusic.ui.component.BlurEffectCache
+import com.mochyy.mochymusic.db.nowLocal
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.rc_story_again
+import com.mochyy.mochymusic.shared.resources.rc_story_bill
+import com.mochyy.mochymusic.shared.resources.rc_story_favorite_artist
+import com.mochyy.mochymusic.shared.resources.rc_story_favourite_song
+import com.mochyy.mochymusic.shared.resources.rc_story_hear_melody
+import com.mochyy.mochymusic.shared.resources.rc_story_hey
+import com.mochyy.mochymusic.shared.resources.rc_story_hours
+import com.mochyy.mochymusic.shared.resources.rc_story_journey_bye
+import com.mochyy.mochymusic.shared.resources.rc_story_journey_listening
+import com.mochyy.mochymusic.shared.resources.rc_story_journey_started
+import com.mochyy.mochymusic.shared.resources.rc_story_might_recognize
+import com.mochyy.mochymusic.shared.resources.rc_story_minutes
+import com.mochyy.mochymusic.shared.resources.rc_story_month_is
+import com.mochyy.mochymusic.shared.resources.rc_story_more_than_second
+import com.mochyy.mochymusic.shared.resources.rc_story_nothing_close
+import com.mochyy.mochymusic.shared.resources.rc_story_out_of_100
+import com.mochyy.mochymusic.shared.resources.rc_story_plays
+import com.mochyy.mochymusic.shared.resources.rc_story_plays_bang
+import com.mochyy.mochymusic.shared.resources.rc_story_receipt_counts
+import com.mochyy.mochymusic.shared.resources.rc_story_receipt_end
+import com.mochyy.mochymusic.shared.resources.rc_story_receipt_printed
+import com.mochyy.mochymusic.shared.resources.rc_story_receipt_recap
+import com.mochyy.mochymusic.shared.resources.rc_story_receipt_top_artist
+import com.mochyy.mochymusic.shared.resources.rc_story_receipt_top_music
+import com.mochyy.mochymusic.shared.resources.rc_story_receipt_total
+import com.mochyy.mochymusic.shared.resources.rc_story_recognize_artist
+import com.mochyy.mochymusic.shared.resources.rc_story_tap
+import com.mochyy.mochymusic.shared.resources.rc_story_tap_finish
+import com.mochyy.mochymusic.shared.resources.rc_story_thats_your
+import com.mochyy.mochymusic.shared.resources.rc_story_there_you_go
+import com.mochyy.mochymusic.shared.resources.rc_story_this_artist
+import com.mochyy.mochymusic.shared.resources.rc_story_title_by
+import com.mochyy.mochymusic.shared.resources.rc_story_weekday_at_this_time
+import com.mochyy.mochymusic.shared.resources.rc_story_weekday_favourite
+import com.mochyy.mochymusic.shared.resources.rc_story_which_one
+import com.mochyy.mochymusic.shared.resources.rc_story_x_plays
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import com.mochyy.mochymusic.ui.utils.resize
-import java.time.DayOfWeek
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.floor
@@ -95,6 +129,8 @@ internal fun recapBold(
 )
 
 private val MonoHint = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 20.sp, color = Color.White)
+
+private fun floorMod(x: Int, n: Int): Int = ((x % n) + n) % n
 
 private fun Modifier.at(
     x: Float,
@@ -129,7 +165,10 @@ private fun Modifier.slideAway(exit: () -> Float): Modifier =
     }
 
 /** A page group that zooms out, blurs and fades as [exit] rises. */
-private fun Modifier.zoomBlurOut(exit: () -> Float): Modifier =
+private fun Modifier.zoomBlurOut(
+    exit: () -> Float,
+    blur: (Float) -> RenderEffect?,
+): Modifier =
     graphicsLayer {
         val x = exit()
         if (x <= 0f) return@graphicsLayer
@@ -137,7 +176,7 @@ private fun Modifier.zoomBlurOut(exit: () -> Float): Modifier =
         scaleX = 1f - 0.2f * e
         scaleY = 1f - 0.2f * e
         alpha = 1f - e
-        renderEffect = BlurEffectCache.element(e * 70f)
+        renderEffect = blur(e * 70f)
     }
 
 @Composable
@@ -169,10 +208,11 @@ private fun Picture(
 // ---------------------------------------------------------------------------------------------
 
 @Composable
-internal fun StoryPages(
+fun StoryPages(
     s: StoryState,
-    data: RecapStoryData,
-    time: RecapTime,
+    data: RecapStorySource,
+    time: RecapTimeSource,
+    textColorsOf: (RecapPalette) -> List<Color>,
 ) {
     val p = s.pages
     Box(modifier = Modifier.fillMaxSize()) {
@@ -180,7 +220,7 @@ internal fun StoryPages(
         if (visible(p[P_JOURNEY])) JourneyPage(s, data, time)
         if (visible(p[P_MONTH])) MonthPage(s, data, time)
         if (visible(p[P_WEEKDAY])) WeekdayPage(s, data, time)
-        if (data.heroArtist != null && visible(p[P_ARTISTS], p[P_ARTIST])) ArtistSequence(s, data, time)
+        if (data.heroArtist != null && visible(p[P_ARTISTS], p[P_ARTIST])) ArtistSequence(s, data, time, textColorsOf)
         if (visible(p[P_SONGS], p[P_MELODY], p[P_SONG])) SongSequence(s, data, time)
         if (visible(p[P_RECEIPT])) ReceiptPage(s, data)
         if (visible(p[P_END])) EndPage(s, data, time)
@@ -190,13 +230,13 @@ internal fun StoryPages(
 @Composable
 private fun HeyPage(
     s: StoryState,
-    data: RecapStoryData,
+    data: RecapStorySource,
 ) {
     val geo = s.geo
     val anim = s.pages[P_HEY]
     val av = geo.avatar(P_HEY)
     Text(
-        text = stringResource(R.string.rc_story_hey, data.name),
+        text = stringResource(Res.string.rc_story_hey, data.name),
         style = recapBold(26f),
         textAlign = TextAlign.Center,
         maxLines = 2,
@@ -217,8 +257,8 @@ private fun HeyPage(
 @Composable
 private fun JourneyPage(
     s: StoryState,
-    data: RecapStoryData,
-    time: RecapTime,
+    data: RecapStorySource,
+    time: RecapTimeSource,
 ) {
     val geo = s.geo
     val anim = s.pages[P_JOURNEY]
@@ -233,20 +273,20 @@ private fun JourneyPage(
                 .padding(horizontal = 36.dp),
     ) {
         Text(
-            stringResource(R.string.rc_story_journey_started, data.name),
+            stringResource(Res.string.rc_story_journey_started, data.name),
             style = recapBold(22f),
             modifier = Modifier.lineMotion(anim, 0, n, drag = drag),
         )
         Spacer(Modifier.height(4.dp))
         OdometerText(
-            text = DateLong.format(data.joinedDate),
+            text = data.joinedDateText,
             style = recapBold(44f),
             progress = { stagger(anim.enter.value, 1, n) },
             modifier = Modifier.lineMotion(anim, 1, n, drag = drag),
         )
         Spacer(Modifier.height(20.dp))
         Text(
-            stringResource(R.string.rc_story_journey_listening),
+            stringResource(Res.string.rc_story_journey_listening),
             style = recapBold(22f),
             modifier = Modifier.lineMotion(anim, 2, n, drag = drag),
         )
@@ -258,11 +298,11 @@ private fun JourneyPage(
             modifier = Modifier.lineMotion(anim, 3, n, drag = drag),
         )
         Spacer(Modifier.height(22.dp))
-        Text(stringResource(R.string.rc_story_journey_bye), style = recapBold(22f), modifier = Modifier.lineMotion(anim, 4, n, drag = drag))
+        Text(stringResource(Res.string.rc_story_journey_bye), style = recapBold(22f), modifier = Modifier.lineMotion(anim, 4, n, drag = drag))
     }
     val hintY = geo.height - geo.dp(144f)
     Text(
-        stringResource(R.string.rc_story_tap),
+        stringResource(Res.string.rc_story_tap),
         style = MonoHint,
         modifier =
             Modifier
@@ -277,8 +317,8 @@ private fun JourneyPage(
 @Composable
 private fun MonthPage(
     s: StoryState,
-    data: RecapStoryData,
-    time: RecapTime,
+    data: RecapStorySource,
+    time: RecapTimeSource,
 ) {
     val geo = s.geo
     val anim = s.pages[P_MONTH]
@@ -294,7 +334,7 @@ private fun MonthPage(
     ) {
         Column(modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth()) {
             Text(
-                stringResource(R.string.rc_story_month_is, data.monthName),
+                stringResource(Res.string.rc_story_month_is, data.monthName),
                 style = recapBold(44f),
                 textAlign = TextAlign.End,
                 modifier = Modifier.fillMaxWidth().padding(end = 6.dp).lineMotion(anim, 0, n, enterFromDp = 70f, drag = drag),
@@ -308,7 +348,7 @@ private fun MonthPage(
                 )
             }
             Text(
-                stringResource(R.string.rc_story_out_of_100),
+                stringResource(Res.string.rc_story_out_of_100),
                 style = recapBold(15f),
                 modifier = Modifier.padding(start = 6.dp).lineMotion(anim, 2, n, drag = drag),
             )
@@ -328,7 +368,7 @@ private fun MonthPage(
 private fun MonthBar(
     fraction: Float,
     progress: () -> Float,
-    time: RecapTime,
+    time: RecapTimeSource,
     modifier: Modifier,
 ) {
     Spacer(
@@ -380,15 +420,15 @@ private fun MonthBar(
 @Composable
 private fun WeekdayPage(
     s: StoryState,
-    data: RecapStoryData,
-    time: RecapTime,
+    data: RecapStorySource,
+    time: RecapTimeSource,
 ) {
     val geo = s.geo
     val anim = s.pages[P_WEEKDAY]
     val av = geo.avatar(P_WEEKDAY)
     val drag = { s.dragX }
     val n = 5
-    val day = DayOfWeek.of(data.favouriteDay + 1).displayName()
+    val day = fullDayName(data.favouriteDay + 1)
     Column(
         modifier =
             Modifier
@@ -397,7 +437,7 @@ private fun WeekdayPage(
                 .padding(horizontal = 36.dp),
     ) {
         Text(
-            stringResource(R.string.rc_story_weekday_at_this_time),
+            stringResource(Res.string.rc_story_weekday_at_this_time),
             style = recapBold(34f),
             modifier = Modifier.lineMotion(anim, 0, n, drag = drag),
         )
@@ -409,7 +449,7 @@ private fun WeekdayPage(
             modifier = Modifier.fillMaxWidth().lineMotion(anim, 1, n, drag = drag),
         )
         Text(
-            stringResource(R.string.rc_story_weekday_favourite),
+            stringResource(Res.string.rc_story_weekday_favourite),
             style = recapBold(22f),
             modifier = Modifier.lineMotion(anim, 2, n, drag = drag),
         )
@@ -421,11 +461,11 @@ private fun WeekdayPage(
     val unitStr =
         if (isHours) {
             pluralStringResource(
-                R.plurals.rc_story_hours,
+                Res.plurals.rc_story_hours,
                 timeCount,
             )
         } else {
-            pluralStringResource(R.plurals.rc_story_minutes, timeCount)
+            pluralStringResource(Res.plurals.rc_story_minutes, timeCount)
         }
     val unit = " $unitStr"
     val more = if (data.runnerUpMs > 0L) ((data.favouriteDayMs - data.runnerUpMs) * 100f / data.runnerUpMs).roundToInt() else -1
@@ -446,7 +486,7 @@ private fun WeekdayPage(
             }
         }
         Text(
-            if (more >= 0) stringResource(R.string.rc_story_more_than_second) else stringResource(R.string.rc_story_nothing_close),
+            if (more >= 0) stringResource(Res.string.rc_story_more_than_second) else stringResource(Res.string.rc_story_nothing_close),
             style = big,
             modifier = Modifier.lineMotion(anim, 4, n, drag = drag),
         )
@@ -459,8 +499,9 @@ private fun WeekdayPage(
 @Composable
 private fun ArtistSequence(
     s: StoryState,
-    data: RecapStoryData,
-    time: RecapTime,
+    data: RecapStorySource,
+    time: RecapTimeSource,
+    textColorsOf: (RecapPalette) -> List<Color>,
 ) {
     val geo = s.geo
     val spinAnim = s.pages[P_ARTISTS]
@@ -488,12 +529,12 @@ private fun ArtistSequence(
     Box(modifier = Modifier.fillMaxSize().slideAway { reveal.exit.value }) {
         if (visible(spinAnim)) {
             Text(
-                stringResource(R.string.rc_story_again),
+                stringResource(Res.string.rc_story_again),
                 style = recapBold(48f, lineHeight = 46f),
                 modifier = Modifier.at(geo.inset, geo.top + geo.dp(118f)).lineMotion(spinAnim, 0, 2, exitToDp = -140f),
             )
             Text(
-                stringResource(R.string.rc_story_this_artist),
+                stringResource(Res.string.rc_story_this_artist),
                 style = recapBold(62f, lineHeight = 58f),
                 modifier = Modifier.at(geo.inset, geo.fy(578f)).lineMotion(spinAnim, 1, 2, exitToDp = -140f),
             )
@@ -502,7 +543,7 @@ private fun ArtistSequence(
             for (j in first..first + 6) {
                 if (j == heroIndex) continue
                 key(j) {
-                    val artist = artists[Math.floorMod(j, n)]
+                    val artist = artists[floorMod(j, n)]
                     Picture(
                         url = artist.thumbnailUrl,
                         size = 544,
@@ -546,7 +587,7 @@ private fun ArtistSequence(
                     },
         )
 
-        if (visible(reveal)) ArtistReveal(s, hero, reveal, heroEndCx, heroEndCy, heroEndD, time)
+        if (visible(reveal)) ArtistReveal(s, hero, reveal, heroEndCx, heroEndCy, heroEndD, time, textColorsOf)
 
         // the hero itself
         Picture(
@@ -579,7 +620,8 @@ private fun ArtistReveal(
     cx: Float,
     cy: Float,
     d: Float,
-    time: RecapTime,
+    time: RecapTimeSource,
+    textColorsOf: (RecapPalette) -> List<Color>,
 ) {
     val geo = s.geo
     val drag = { s.dragX }
@@ -589,12 +631,12 @@ private fun ArtistReveal(
 
     Column(modifier = Modifier.at(geo.inset, geo.top + geo.dp(92f)).padding(end = 36.dp)) {
         Text(
-            stringResource(R.string.rc_story_recognize_artist),
+            stringResource(Res.string.rc_story_recognize_artist),
             style = recapBold(34f, lineHeight = 37f),
             modifier = Modifier.lineMotion(anim, 0, n, enterFromDp = 90f, drag = drag),
         )
         Text(
-            stringResource(R.string.rc_story_favorite_artist),
+            stringResource(Res.string.rc_story_favorite_artist),
             style = recapBold(26f, lineHeight = 28f).copy(color = Color.White.copy(alpha = 0.72f)),
             modifier = Modifier.padding(top = 4.dp).lineMotion(anim, 1, n, enterFromDp = 90f, drag = drag),
         )
@@ -627,7 +669,7 @@ private fun ArtistReveal(
         )
         // the label sits off the cover's right edge, turned with it: the cover's own corner,
         // rotated the same way, is where it starts
-        val turn = Math.toRadians(CoverTilt.toDouble())
+        val turn = CoverTilt / 180.0 * PI
         val ax = coverD / 2f + geo.dp(10f)
         val ay = -coverD / 2f + geo.dp(2f)
         val labelX = endCx + ax * cos(turn).toFloat() - ay * sin(turn).toFloat()
@@ -648,11 +690,11 @@ private fun ArtistReveal(
                     },
         ) {
             Text(song.title, style = recapBold(12f), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(120.dp))
-            Text(pluralStringResource(R.plurals.rc_story_plays, song.plays, song.plays), style = recapBold(12f))
+            Text(pluralStringResource(Res.plurals.rc_story_plays, song.plays, song.plays), style = recapBold(12f))
         }
     }
 
-    val palette = remember(s.paletteTo) { s.paletteTo.textColors() }
+    val palette = remember(s.paletteTo) { textColorsOf(s.paletteTo) }
     Column(modifier = Modifier.at(geo.inset, cy + d / 2f + geo.dp(10f)).padding(end = 36.dp)) {
         BasicText(
             text = hero.name,
@@ -671,7 +713,7 @@ private fun ArtistReveal(
         )
         Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.lineMotion(anim, 5, n, enterFromDp = 90f, drag = drag)) {
             OdometerText("${hero.plays}", recapBold(26f), progress = { stagger(anim.enter.value, 5, n) })
-            Text(" " + stringResource(R.string.rc_story_x_plays), style = recapBold(26f))
+            Text(" " + stringResource(Res.string.rc_story_x_plays), style = recapBold(26f))
         }
     }
 }
@@ -689,8 +731,8 @@ private const val GridRows = 4
 @Composable
 private fun SongSequence(
     s: StoryState,
-    data: RecapStoryData,
-    time: RecapTime,
+    data: RecapStorySource,
+    time: RecapTimeSource,
 ) {
     val geo = s.geo
     val grid = s.pages[P_SONGS]
@@ -707,7 +749,7 @@ private fun SongSequence(
     val driftPx = geo.dp(150f)
     val cx = geo.width / 2f
     val cy = geo.height / 2f
-    val rad = Math.toRadians(GridTilt.toDouble())
+    val rad = GridTilt / 180.0 * PI
     val cosT = cos(rad).toFloat()
     val sinT = sin(rad).toFloat()
 
@@ -727,13 +769,13 @@ private fun SongSequence(
     val melodyCy = geo.fy(229f) + melodySize / 2f
     val songCy = geo.fy(151f) + melodySize / 2f
 
-    Box(modifier = Modifier.fillMaxSize().zoomBlurOut { songPage.exit.value }) {
+    Box(modifier = Modifier.fillMaxSize().zoomBlurOut({ songPage.exit.value }, s.elementBlur)) {
         if (visible(grid)) {
             for (c in -GridCols..GridCols) {
                 for (r in -GridRows..GridRows) {
                     if (c == 0 && r == 0) continue
                     val slot = (c + GridCols) * (2 * GridRows + 1) + (r + GridRows)
-                    val song = songs[Math.floorMod(slot - (GridCols * (2 * GridRows + 1) + GridRows), n)]
+                    val song = songs[floorMod(slot - (GridCols * (2 * GridRows + 1) + GridRows), n)]
                     key(c, r) {
                         Picture(
                             url = song.thumbnailUrl,
@@ -763,13 +805,13 @@ private fun SongSequence(
             }
             Column(modifier = Modifier.at(geo.inset, geo.fy(628f)).padding(end = 36.dp)) {
                 Text(
-                    stringResource(R.string.rc_story_might_recognize),
+                    stringResource(Res.string.rc_story_might_recognize),
                     style = recapBold(40f, lineHeight = 42f),
                     modifier = Modifier.lineMotion(grid, 0, 2, enterFromDp = 120f),
                 )
                 Spacer(Modifier.height(14.dp))
                 Text(
-                    stringResource(R.string.rc_story_which_one),
+                    stringResource(Res.string.rc_story_which_one),
                     style = recapBold(24f),
                     modifier = Modifier.lineMotion(grid, 1, 2, enterFromDp = 120f),
                 )
@@ -778,7 +820,7 @@ private fun SongSequence(
 
         if (visible(melody)) {
             Text(
-                stringResource(R.string.rc_story_hear_melody),
+                stringResource(Res.string.rc_story_hear_melody),
                 style = recapBold(34f, lineHeight = 37f),
                 textAlign = TextAlign.End,
                 modifier =
@@ -789,7 +831,7 @@ private fun SongSequence(
                         .lineMotion(melody, 0, 2, enterFromDp = 90f, exitToDp = 60f),
             )
             Text(
-                stringResource(R.string.rc_story_title_by, hero.title, hero.artistName),
+                stringResource(Res.string.rc_story_title_by, hero.title, hero.artistName),
                 style = recapBold(30f, lineHeight = 34f),
                 textAlign = TextAlign.End,
                 maxLines = 4,
@@ -843,7 +885,7 @@ private fun SongReveal(
     coverCx: Float,
     coverCy: Float,
     coverSize: Float,
-    time: RecapTime,
+    time: RecapTimeSource,
 ) {
     val geo = s.geo
     val density = LocalDensity.current
@@ -872,7 +914,7 @@ private fun SongReveal(
                 },
     )
     Text(
-        stringResource(R.string.rc_story_title_by, hero.title, hero.artistName),
+        stringResource(Res.string.rc_story_title_by, hero.title, hero.artistName),
         style = recapBold(22f, lineHeight = 26f),
         textAlign = TextAlign.End,
         maxLines = 3,
@@ -887,10 +929,10 @@ private fun SongReveal(
     Column(modifier = Modifier.at(geo.dp(33f), geo.fy(456f)).padding(end = 36.dp)) {
         Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.lineMotion(anim, 2, n, drag = drag)) {
             OdometerText("${hero.plays}", recapBold(46f), progress = { stagger(anim.enter.value, 2, n) })
-            Text(" " + stringResource(R.string.rc_story_plays_bang), style = recapBold(46f))
+            Text(" " + stringResource(Res.string.rc_story_plays_bang), style = recapBold(46f))
         }
         Text(
-            stringResource(R.string.rc_story_favourite_song),
+            stringResource(Res.string.rc_story_favourite_song),
             style = recapBold(26f, lineHeight = 28f).copy(color = Color.White.copy(alpha = 0.72f)),
             modifier = Modifier.padding(top = 2.dp).lineMotion(anim, 3, n, drag = drag),
         )
@@ -937,13 +979,13 @@ private object ZigzagShape : Shape {
 @Composable
 private fun ReceiptPage(
     s: StoryState,
-    data: RecapStoryData,
+    data: RecapStorySource,
 ) {
     val geo = s.geo
     val anim = s.pages[P_RECEIPT]
     val density = LocalDensity.current
     Text(
-        stringResource(R.string.rc_story_bill),
+        stringResource(Res.string.rc_story_bill),
         style = recapBold(30f),
         modifier = Modifier.at(geo.inset, geo.top + geo.dp(82f)).lineMotion(anim, 0, 2, riseDp = 20f, exitToDp = 0f),
     )
@@ -966,10 +1008,10 @@ private fun ReceiptPage(
 
 @Composable
 private fun Receipt(
-    data: RecapStoryData,
+    data: RecapStorySource,
     modifier: Modifier,
 ) {
-    val now = remember { LocalDateTime.now() }
+    val now = remember { nowLocal() }
     val dashes = "-".repeat(64)
     Column(
         modifier =
@@ -980,37 +1022,37 @@ private fun Receipt(
     ) {
         ReceiptLine(dashes)
         ReceiptLine("MOCHY")
-        ReceiptLine(stringResource(R.string.rc_story_receipt_recap, data.monthName))
+        ReceiptLine(stringResource(Res.string.rc_story_receipt_recap, data.monthName))
         ReceiptLine(
             stringResource(
-                R.string.rc_story_receipt_printed,
-                now.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
-                now.format(DateTimeFormatter.ofPattern("HH:mm")),
+                Res.string.rc_story_receipt_printed,
+                receiptDateStamp(now),
+                receiptTimeStamp(now),
             ),
         )
         ReceiptLine(dashes)
         Spacer(Modifier.height(18.dp))
-        ReceiptHeading(stringResource(R.string.rc_story_receipt_top_artist))
+        ReceiptHeading(stringResource(Res.string.rc_story_receipt_top_artist))
         data.artists.forEachIndexed { i, a ->
             ReceiptItem(a.thumbnailUrl, CircleShape, "${i + 1}x ${a.name}", "${formatHoursDecimal(a.playTimeMs)}h")
         }
         Spacer(Modifier.height(18.dp))
-        ReceiptHeading(stringResource(R.string.rc_story_receipt_top_music))
+        ReceiptHeading(stringResource(Res.string.rc_story_receipt_top_music))
         data.songs.take(10).forEachIndexed { i, song ->
             ReceiptItem(song.thumbnailUrl, RoundedCornerShape(5.dp), "${i + 1}x ${song.title}", "${formatHoursDecimal(song.playTimeMs)}h")
         }
         Spacer(Modifier.height(36.dp))
         Text(
-            stringResource(R.string.rc_story_receipt_total, formatHoursMinutes(data.stats.totalMs)),
+            stringResource(Res.string.rc_story_receipt_total, formatHoursMinutes(data.stats.totalMs)),
             style = ReceiptMono.copy(textAlign = TextAlign.Start),
         )
         Text(
-            stringResource(R.string.rc_story_receipt_counts, data.stats.plays, data.stats.songCount, data.stats.artistCount),
+            stringResource(Res.string.rc_story_receipt_counts, data.stats.plays, data.stats.songCount, data.stats.artistCount),
             style = ReceiptMono.copy(textAlign = TextAlign.Start, color = Ink.copy(alpha = 0.6f)),
         )
         Spacer(Modifier.height(10.dp))
         ReceiptLine(dashes)
-        ReceiptLine(stringResource(R.string.rc_story_receipt_end))
+        ReceiptLine(stringResource(Res.string.rc_story_receipt_end))
         ReceiptLine(dashes)
     }
 }
@@ -1061,24 +1103,24 @@ private fun ReceiptItem(
 @Composable
 private fun EndPage(
     s: StoryState,
-    data: RecapStoryData,
-    time: RecapTime,
+    data: RecapStorySource,
+    time: RecapTimeSource,
 ) {
     val geo = s.geo
     val anim = s.pages[P_END]
-    val cardBottom = geo.top + geo.dp(175f) + (geo.width - 2 * geo.inset) / com.mochyy.mochymusic.ui.screens.setup.onboarding.IdCardAspect
+    val cardBottom = geo.top + geo.dp(175f) + (geo.width - 2 * geo.inset) / s.cardAspect
     Text(
-        stringResource(R.string.rc_story_there_you_go),
+        stringResource(Res.string.rc_story_there_you_go),
         style = recapBold(34f).copy(color = Color.White.copy(alpha = 0.72f)),
         modifier = Modifier.at(geo.inset, geo.top + geo.dp(112f)).lineMotion(anim, 0, 4, exitToDp = 0f),
     )
     Text(
-        stringResource(R.string.rc_story_thats_your, data.monthName),
+        stringResource(Res.string.rc_story_thats_your, data.monthName),
         style = recapBold(44f, lineHeight = 46f),
         modifier = Modifier.at(geo.inset, cardBottom + geo.dp(34f)).padding(end = 36.dp).lineMotion(anim, 1, 4, exitToDp = 0f),
     )
     Text(
-        stringResource(R.string.rc_story_tap_finish),
+        stringResource(Res.string.rc_story_tap_finish),
         style = MonoHint,
         textAlign = TextAlign.Center,
         modifier =
