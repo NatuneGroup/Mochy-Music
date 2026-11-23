@@ -202,8 +202,10 @@ object ResourceBridge {
             // Android also reads "24.0dip"; Compose resources only read dp or px and throw at runtime on
             // anything else (a crash the first time a shared screen draws that icon), so sizes are rewritten
             // here, and a vector still sized some other way is left out: asking for it fails the build instead
-            val vectorText = if (file.extension == "xml") file.readText().let { text ->
-                val plain = "<vector" in text && "?attr" !in text && "@color/" !in text && "@android:" !in text && "@drawable/" !in text
+            // the two framework colours icons use become the values Android gives them, so Compose can read them
+            val vectorText = if (file.extension == "xml") withFrameworkColors(file.readText()).let { text ->
+                val plain = "<vector" in text && "<animated-vector" !in text && "?attr" !in text &&
+                    "@color/" !in text && "@android:" !in text && "@drawable/" !in text
                 if (plain) text.replace(DipSize) { "${it.groupValues[1]}${it.groupValues[2]}dp\"" } else null
             }?.takeIf { text -> VectorSize.findAll(text).all { it.groupValues[2] == "dp" || it.groupValues[2] == "px" } } else null
             val raster = file.extension in setOf("png", "webp", "jpg")
@@ -214,6 +216,12 @@ object ResourceBridge {
             }
         }
     }
+
+    // "@android:color/white" → "#FFFFFFFF": the framework's own values for the only two it's used for
+    private val FrameworkColorValues = mapOf("white" to "#FFFFFFFF", "transparent" to "#00000000")
+    private val FrameworkColor = Regex(""""@android:color/(white|transparent)"""")
+    private fun withFrameworkColors(text: String): String =
+        FrameworkColor.replace(text) { "\"${FrameworkColorValues.getValue(it.groupValues[1])}\"" }
 
     // android:width="24.0dip" → android:width="24.0dp"
     private val DipSize = Regex("""(android:(?:width|height)=")([0-9.]+)dip"""")

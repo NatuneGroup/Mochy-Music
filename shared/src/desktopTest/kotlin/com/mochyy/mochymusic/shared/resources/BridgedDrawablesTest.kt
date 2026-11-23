@@ -1,5 +1,6 @@
 package com.mochyy.mochymusic.shared.resources
 
+import org.jetbrains.compose.resources.decodeToImageVector
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertTrue
@@ -25,6 +26,25 @@ class BridgedDrawablesTest {
                 .map { "${file.name}: $it" }
         }
         assertTrue(bad.isEmpty(), "icons Compose resources can't read: $bad")
+    }
+
+    // the strongest check: Compose's own vector reader, the one that threw at runtime, reads every bridged icon
+    @OptIn(org.jetbrains.compose.resources.ExperimentalResourceApi::class)
+    @Test
+    fun composeReadsEveryBridgedIcon() {
+        val density = androidx.compose.ui.unit.Density(1f)
+        val failed = drawables.listFiles().orEmpty().filter { it.extension == "xml" }.mapNotNull { file ->
+            runCatching { file.readBytes().decodeToImageVector(density) }
+                .exceptionOrNull()?.let { "${file.name}: ${it.message}" }
+        }
+        assertTrue(failed.isEmpty(), "icons Compose can't read: $failed")
+    }
+
+    @Test
+    fun androidsWhiteIsBridgedAsItsValue() {
+        // arrow_back is written with @android:color/white, which Compose can't resolve; the bridge writes its value
+        val text = File(drawables, "arrow_back.xml").readText()
+        assertTrue("#FFFFFFFF" in text && "@android:" !in text, text)
     }
 
     @Test
