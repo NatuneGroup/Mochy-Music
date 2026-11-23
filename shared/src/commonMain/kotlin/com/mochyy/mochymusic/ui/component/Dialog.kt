@@ -37,8 +37,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
@@ -46,9 +44,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.mochyy.mochymusic.R
-
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.info
+import com.mochyy.mochymusic.shared.resources.reset
 import kotlinx.coroutines.delay
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun DefaultDialog(
@@ -154,7 +155,7 @@ fun ActionPromptDialog(
                     TextButton(
                         onClick = { onReset() },
                     ) {
-                        Text(stringResource(R.string.reset))
+                        Text(stringResource(Res.string.reset))
                     }
                 }
             }
@@ -163,14 +164,14 @@ fun ActionPromptDialog(
                 TextButton(
                     onClick = { onCancel() }
                 ) {
-                    Text(stringResource(android.R.string.cancel))
+                    Text(platformCancelLabel())
                 }
             }
 
             TextButton(
                 onClick = { onConfirm() }
             ) {
-                Text(stringResource(android.R.string.ok))
+                Text(platformOkLabel())
             }
         }
     ) {
@@ -214,7 +215,7 @@ fun InfoLabel(
     modifier = Modifier.padding(horizontal = 8.dp)
 ) {
     Icon(
-        painter = painterResource(id = R.drawable.info),
+        painter = painterResource(Res.drawable.info),
         contentDescription = null,
         tint = MaterialTheme.colorScheme.secondary,
         modifier = Modifier.padding(4.dp)
@@ -266,7 +267,7 @@ fun TextFieldDialog(
         title = title,
         buttons = {
             TextButton(onClick = onDismiss) {
-                Text(text = stringResource(android.R.string.cancel))
+                Text(text = platformCancelLabel())
             }
 
             val isValid = textFields?.all { isInputValid(it.second.text) }
@@ -283,7 +284,7 @@ fun TextFieldDialog(
                     }
                 }
             ) {
-                Text(text = stringResource(android.R.string.ok))
+                Text(text = platformOkLabel())
             }
         }
     ) {

@@ -1,6 +1,5 @@
 package com.mochyy.mochymusic.ui.component
 
-import androidx.annotation.StringRes
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -24,7 +23,13 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.pc_seek_m3_expressive_1
+import com.mochyy.mochymusic.shared.resources.pc_seek_m3_expressive_2
+import com.mochyy.mochymusic.shared.resources.pc_seek_plain
+import com.mochyy.mochymusic.shared.resources.pc_style_default
+import org.jetbrains.compose.resources.StringResource
+import kotlin.math.PI
 import kotlin.math.sin
 
 /**
@@ -34,11 +39,11 @@ import kotlin.math.sin
  * they animate identically on every supported Android version.
  */
 /** [displayName] is the plain English name; the UI shows [labelRes], which follows the app language. */
-enum class SeekBarStyle(val displayName: String, @StringRes val labelRes: Int) {
-    DEFAULT("Default", R.string.pc_style_default),
-    M3_EXPRESSIVE("Material 3 Expressive 1", R.string.pc_seek_m3_expressive_1),
-    M3_EXPRESSIVE_LINE("Material 3 Expressive slider 2", R.string.pc_seek_m3_expressive_2),
-    PLAIN("plain", R.string.pc_seek_plain),
+enum class SeekBarStyle(val displayName: String, val labelRes: StringResource) {
+    DEFAULT("Default", Res.string.pc_style_default),
+    M3_EXPRESSIVE("Material 3 Expressive 1", Res.string.pc_seek_m3_expressive_1),
+    M3_EXPRESSIVE_LINE("Material 3 Expressive slider 2", Res.string.pc_seek_m3_expressive_2),
+    PLAIN("plain", Res.string.pc_seek_plain),
 }
 
 private const val WaveSpeedMillis = 1400
@@ -137,7 +142,7 @@ fun SeekBarTrack(
     LaunchedEffect(needsClock, clockRunning) {
         if (!needsClock || !clockRunning) return@LaunchedEffect
         // the clock is absolute time, so catch up now instead of showing the old phase for a frame
-        clockMs.longValue = System.nanoTime() / 1_000_000L
+        clockMs.longValue = monotonicMillis()
         while (true) {
             withFrameMillis { clockMs.longValue = it }
         }
@@ -318,10 +323,10 @@ private fun DrawScope.drawWavyTrack(
             val step = 2.dp.toPx()
             while (px < x) {
                 val t = px / wavelength + phase * 2f
-                lineTo(px, y + sin(t * 2f * Math.PI.toFloat()) * amplitude)
+                lineTo(px, y + sin(t * 2f * PI.toFloat()) * amplitude)
                 px += step
             }
-            lineTo(x, y + sin((x / wavelength + phase * 2f) * 2f * Math.PI.toFloat()) * amplitude)
+            lineTo(x, y + sin((x / wavelength + phase * 2f) * 2f * PI.toFloat()) * amplitude)
         }
         drawPath(path = path, color = activeColor, style = Stroke(width = stroke, cap = StrokeCap.Round))
     }
