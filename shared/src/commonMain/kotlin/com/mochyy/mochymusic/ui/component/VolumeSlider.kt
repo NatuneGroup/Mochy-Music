@@ -18,11 +18,15 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.volume_down
+import com.mochyy.mochymusic.shared.resources.volume_mute
+import com.mochyy.mochymusic.shared.resources.volume_off
+import com.mochyy.mochymusic.shared.resources.volume_up
+import org.jetbrains.compose.resources.painterResource
 
 private object VolumeSliderDefaults {
     val TrackHeight: Dp = 40.dp
@@ -47,10 +51,10 @@ fun VolumeSlider(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
 
-    val volumeOffIcon = painterResource(R.drawable.volume_off)
-    val volumeMuteIcon = painterResource(R.drawable.volume_mute)
-    val volumeDownIcon = painterResource(R.drawable.volume_down)
-    val volumeUpIcon = painterResource(R.drawable.volume_up)
+    val volumeOffIcon = painterResource(Res.drawable.volume_off)
+    val volumeMuteIcon = painterResource(Res.drawable.volume_mute)
+    val volumeDownIcon = painterResource(Res.drawable.volume_down)
+    val volumeUpIcon = painterResource(Res.drawable.volume_up)
 
     val currentIcon = when {
         value <= 0f -> volumeOffIcon

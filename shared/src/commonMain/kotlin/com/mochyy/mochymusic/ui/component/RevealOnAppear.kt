@@ -2,7 +2,6 @@
 
 package com.mochyy.mochymusic.ui.component
 
-import android.os.SystemClock
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.Animatable
@@ -73,7 +72,9 @@ class RevealSeenState(initial: Collection<String> = emptyList()) {
 
     /** how long this reveal waits for the ones that started with it */
     internal fun nextBurstDelay(): Int {
-        val now = SystemClock.uptimeMillis()
+        // monotonicMillis is the platform's monotonic clock (PlatformLabels.kt); this only compares
+        // the gaps between reveals inside a 120 ms window, so the clock's time base doesn't matter
+        val now = monotonicMillis()
         if (now - burstStartedAt > BurstWindowMs) {
             burstStartedAt = now
             burstCount = 0
