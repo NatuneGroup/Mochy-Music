@@ -67,27 +67,27 @@ data class StageSettings(
 
     /** the float array the native room reads */
     fun toParams(speaker: Boolean): StageParams {
-        val values = FloatArray(StageNative.ParamCount)
+        val values = FloatArray(StageLayout.ParamCount)
         val box = box
         val wet = playsOn(speaker)
-        values[StageNative.Enabled] = if (wet) 1f else 0f
-        values[StageNative.Mode] = if (speaker && onSpeakers == StageSpeakers.Stereo) StageNative.ModeSpeakers else StageNative.ModeHeadphones
-        values[StageNative.RoomWidth] = box.width
-        values[StageNative.RoomDepth] = box.depth
-        values[StageNative.RoomHeight] = box.height
-        values[StageNative.Absorption] = walls.absorption
-        values[StageNative.Damping] = walls.damping
-        values[StageNative.RoomAmount] = roomAmount
-        values[StageNative.ListenerX] = listener.x * box.width / 2
-        values[StageNative.ListenerY] = listener.y * box.height
-        values[StageNative.ListenerZ] = listener.z * box.depth / 2
-        values[StageNative.ListenerYaw] = listener.yaw
-        values[StageNative.Master] = dbToGain(levelDb)
+        values[StageLayout.Enabled] = if (wet) 1f else 0f
+        values[StageLayout.Mode] = if (speaker && onSpeakers == StageSpeakers.Stereo) StageLayout.ModeSpeakers else StageLayout.ModeHeadphones
+        values[StageLayout.RoomWidth] = box.width
+        values[StageLayout.RoomDepth] = box.depth
+        values[StageLayout.RoomHeight] = box.height
+        values[StageLayout.Absorption] = walls.absorption
+        values[StageLayout.Damping] = walls.damping
+        values[StageLayout.RoomAmount] = roomAmount
+        values[StageLayout.ListenerX] = listener.x * box.width / 2
+        values[StageLayout.ListenerY] = listener.y * box.height
+        values[StageLayout.ListenerZ] = listener.z * box.depth / 2
+        values[StageLayout.ListenerYaw] = listener.yaw
+        values[StageLayout.Master] = dbToGain(levelDb)
 
         val soloing = objects.any { it.solo && !it.muted }
         fun gainOf(o: StageObject) = if (o.muted || (soloing && !o.solo)) 0f else dbToGain(o.levelDb)
         fun put(slot: Int, o: StageObject, gain: Float) {
-            val at = StageNative.Objects + slot * StageNative.ObjectStride
+            val at = StageLayout.Objects + slot * StageLayout.ObjectStride
             values[at] = o.x * box.width / 2
             values[at + 1] = o.y * box.height
             values[at + 2] = o.z * box.depth / 2
@@ -96,8 +96,8 @@ data class StageSettings(
         }
         // every copy of a part plays the same sound, so together they stay as loud as one
         StageSource.entries.forEach { source ->
-            val copies = objects.filter { it.source == source }.take(StageNative.Copies)
-            copies.forEachIndexed { i, o -> put(source.ordinal * StageNative.Copies + i, o, gainOf(o) / copies.size) }
+            val copies = objects.filter { it.source == source }.take(StageLayout.Copies)
+            copies.forEachIndexed { i, o -> put(source.ordinal * StageLayout.Copies + i, o, gainOf(o) / copies.size) }
         }
         return StageParams(wet, values)
     }
@@ -106,7 +106,7 @@ data class StageSettings(
 /** what the playback thread reads; replaced, never mutated, so the processor notices a change by identity */
 class StageParams(val enabled: Boolean, val values: FloatArray) {
     companion object {
-        val Off = StageParams(false, FloatArray(StageNative.ParamCount))
+        val Off = StageParams(false, FloatArray(StageLayout.ParamCount))
     }
 }
 

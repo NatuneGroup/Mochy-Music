@@ -104,7 +104,7 @@ private fun PresetsCard(viewModel: AudioLabViewModel, stage: State<StageSettings
     LabCard(padding = 14.dp) {
         LabSectionLabel(stringResource(R.string.stage_presets), Modifier.padding(horizontal = 6.dp))
         LabChips(
-            chips = StagePresets.All.map { LabChip(it.id, stringResource(it.name)) },
+            chips = StagePresets.All.map { LabChip(it.id, org.jetbrains.compose.resources.stringResource(it.name)) },
             selectedKey = presetId,
             onSelect = viewModel::applyStagePreset,
         )

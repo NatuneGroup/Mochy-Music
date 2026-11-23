@@ -1,20 +1,9 @@
 package com.mochyy.mochymusic.eq.data
 
-import java.io.File
+import kotlin.math.abs
+import kotlin.math.round
 
 object ParametricEQParser {
-
-    fun parseFile(file: File): ParametricEQ {
-        if (!file.exists()) {
-            throw IllegalArgumentException("File does not exist: ${file.absolutePath}")
-        }
-
-        return parseText(file.readText())
-    }
-
-    fun parseFile(filePath: String): ParametricEQ {
-        return parseFile(File(filePath))
-    }
 
     fun parseText(content: String): ParametricEQ {
         val lines = content.lines()
@@ -127,10 +116,20 @@ object ParametricEQParser {
                 "Filter ${index + 1}: ON ${band.filterType} " +
                         "Fc ${band.frequency.toInt()} Hz " +
                         "Gain ${band.gain} dB " +
-                        "Q ${String.format("%.2f", band.q)}"
+                        "Q ${twoDecimals(band.q)}"
             )
         }
         return sb.toString()
+    }
+
+    /** "%.2f" without java.lang.String.format: two places after the point, halves away from zero */
+    private fun twoDecimals(value: Double): String {
+        if (value.isNaN()) return "NaN"
+        if (value.isInfinite()) return if (value < 0) "-Infinity" else "Infinity"
+        val scaled = round(abs(value) * 100.0).toLong()
+        val sign = if (value < 0 && scaled != 0L) "-" else ""
+        val fraction = (scaled % 100).toString().padStart(2, '0')
+        return "$sign${scaled / 100}.$fraction"
     }
 
     fun validate(eq: ParametricEQ): List<String> {

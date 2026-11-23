@@ -4,7 +4,6 @@ import com.mochyy.mochymusic.eq.audio.Biquad
 import com.mochyy.mochymusic.eq.data.FilterType
 import com.mochyy.mochymusic.eq.data.ParametricEQ
 import com.mochyy.mochymusic.eq.data.ParametricEQBand
-import kotlinx.serialization.Serializable
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -14,24 +13,6 @@ import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.round
 import kotlin.math.sqrt
-
-/** how a correction is fitted: autoeq's own 10-band fit unless something here is changed */
-@Serializable
-data class AutoEqTuning(
-    val bands: Int = 10,
-    val maxHz: Int = 16_000,
-    /** a low shelf at 105 hz added to the target */
-    val bassDb: Double = 0.0,
-    /** db per octave around 1 khz, positive brighter */
-    val tiltDbPerOctave: Double = 0.0,
-) {
-    val isDefault: Boolean get() = bands == 10 && maxHz == 16_000 && bassDb == 0.0 && tiltDbPerOctave == 0.0
-
-    companion object {
-        val BandChoices = listOf(5, 8, 10, 15)
-        val MaxHzChoices = listOf(10_000, 16_000, 20_000)
-    }
-}
 
 /** fits parametric filters that bend a headphone's measured response onto its target the way autoeq does: shelves for the broad tilt, peaks for the rest, then all tuned together */
 object AutoEqFitter {

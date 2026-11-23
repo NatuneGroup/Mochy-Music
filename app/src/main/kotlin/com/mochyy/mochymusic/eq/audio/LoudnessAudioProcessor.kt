@@ -14,13 +14,6 @@ import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.tanh
 
-/** loudness: boostDb of gain, compression 0..1 of lifting the quiet parts */
-data class LoudnessParams(
-    val enabled: Boolean = false,
-    val boostDb: Float = 4f,
-    val compression: Float = 0.3f,
-)
-
 /** louder without breaking up: a stereo-linked compressor lifts quiet parts, then the boost, then a peak limiter under -0.5 dbfs with a soft knee; last in audio fx so it also catches the reverb's peaks */
 @UnstableApi
 @Suppress("DEPRECATION")
