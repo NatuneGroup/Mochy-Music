@@ -2,7 +2,6 @@
 
 package com.mochyy.mochymusic.lyrics
 
-import java.nio.ShortBuffer
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.exp
@@ -17,7 +16,7 @@ import kotlin.math.tan
  * Where a song is being sung, every [FrameMs] ms, read from its audio. What lyrics auto offset
  * lines the lyrics up against.
  */
-internal class VocalActivity(
+class VocalActivity(
     /** 0..1 per frame: how much a voice is singing there. */
     val presence: FloatArray,
     /** 0..1 per frame: how sharply a word or a note starts there. */
@@ -41,7 +40,7 @@ internal class VocalActivity(
  * same in both channels - the middle's power minus the sides' - and how tonal that part is. A
  * mono song has no sides, and then it's simply the band.
  */
-internal class VocalActivityAnalyzer {
+class VocalActivityAnalyzer {
     // the last FrameSize samples of the middle (L+R) and the sides (L-R), written round and round
     private val midRing = FloatArray(FrameSize)
     private val sideRing = FloatArray(FrameSize)
@@ -62,7 +61,7 @@ internal class VocalActivityAnalyzer {
     private var originUs: Long? = null
 
     /** [pcm] is interleaved 16-bit audio starting [presentationUs] into the song. */
-    fun feed(pcm: ShortBuffer, channels: Int, inputRate: Int, presentationUs: Long) {
+    fun feed(pcm: ShortArray, channels: Int, inputRate: Int, presentationUs: Long) {
         if (originUs == null) originUs = presentationUs
         val current = resampler?.takeIf { it.inputRate == inputRate }
             ?: StereoResampler(inputRate).also { resampler = it }
@@ -246,13 +245,14 @@ internal class StereoResampler(
     internal var previousLeft = 0f
     internal var previousRight = 0f
 
-    inline fun push(pcm: ShortBuffer, channels: Int, emit: (mid: Float, side: Float) -> Unit) {
-        val frames = pcm.remaining() / channels
+    inline fun push(pcm: ShortArray, channels: Int, emit: (mid: Float, side: Float) -> Unit) {
+        val frames = pcm.size / channels
+        var at = 0
         for (frame in 0 until frames) {
-            var l = pcm.get() / 32_768f
-            var r = if (channels >= 2) pcm.get() / 32_768f else l
+            var l = pcm[at++] / 32_768f
+            var r = if (channels >= 2) pcm[at++] / 32_768f else l
             // a surround stream's other channels aren't part of the stereo picture
-            for (c in 2 until channels) pcm.get()
+            for (c in 2 until channels) at++
             if (filtering) {
                 l = left[1].process(left[0].process(l))
                 r = right[1].process(right[0].process(r))

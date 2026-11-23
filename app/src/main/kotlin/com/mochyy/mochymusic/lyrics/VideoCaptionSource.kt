@@ -49,7 +49,8 @@ internal object VideoCaptionSource {
         var best: Aligned? = null
         for (track in listOfNotNull(auto) + uploaded) {
             val trackCues = cues(captions, track) ?: continue
-            val alignment = withContext(Dispatchers.Default) { CaptionAligner.align(lines, trackCues) } ?: continue
+            val cues = trackCues.map { LyricsCaptionCue(it.startMs, it.endMs, it.text) }
+            val alignment = withContext(Dispatchers.Default) { CaptionAligner.align(lines, cues) } ?: continue
             if (track === auto) return Aligned(track, alignment)
             if (best == null || alignment.matchedLines > best.alignment.matchedLines) best = Aligned(track, alignment)
         }

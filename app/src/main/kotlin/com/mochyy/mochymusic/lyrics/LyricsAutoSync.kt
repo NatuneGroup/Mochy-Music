@@ -146,7 +146,9 @@ class LyricsAutoSync(
         val analyzer = VocalActivityAnalyzer()
         var shown = 0f
         StreamPcmDecoder.decode(dataSourceFactory(), uri, cacheKey, MaxSongUs) { pcm, channels, sampleRate, presentationUs ->
-            analyzer.feed(pcm, channels, sampleRate, presentationUs)
+            // the shared analyzer reads a plain array; the decoder hands out a short buffer
+            val samples = ShortArray(pcm.remaining()).also { pcm.get(it) }
+            analyzer.feed(samples, channels, sampleRate, presentationUs)
             if (durationMs > 0) {
                 val progress = (presentationUs / 1_000f / durationMs).coerceIn(0f, 1f)
                 // a step at a time: the sheet doesn't need to redraw for every decoded block

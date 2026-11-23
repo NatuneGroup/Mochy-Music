@@ -70,7 +70,9 @@ class VideoAudioSync(
             val printer = AudioPrinter()
             withTimeoutOrNull(ListenTimeoutMs) {
                 StreamPcmDecoder.decode(dataSourceFactory(), source.uri, source.key, MaxRecordingUs) { pcm, channels, sampleRate, presentationUs ->
-                    printer.feed(pcm, channels, sampleRate, presentationUs)
+                    // the shared printer reads a plain array; the decoder hands out a short buffer
+                    val samples = ShortArray(pcm.remaining()).also { pcm.get(it) }
+                    printer.feed(samples, channels, sampleRate, presentationUs)
                 }
             } ?: return null
             printer.finish()?.also { prints.put(source.key, it) }

@@ -2,13 +2,14 @@
 
 package com.mochyy.mochymusic.lyrics
 
-import com.music.innertube.CaptionCue
-import java.text.Normalizer
 import kotlin.math.abs
 import kotlin.math.min
 
+/** One caption piece timed on the video: a whole line for uploaded tracks, a word or two for auto-generated ones. */
+data class LyricsCaptionCue(val startMs: Long, val endMs: Long, val text: String)
+
 // finds where on a video each lyric line is sung by reading its captions, and how far the video runs from the lyrics
-internal object CaptionAligner {
+object CaptionAligner {
 
     // one lyric line found in the captions
     class Anchor(val lyricMs: Long, val videoMs: Long, val score: Float) {
@@ -18,7 +19,7 @@ internal object CaptionAligner {
     class Alignment(val anchors: List<Anchor>, val map: SongVideoMap, val matchedLines: Int, val usableLines: Int)
 
     // null when too few lines could be found in the captions to trust any timing from them
-    fun align(lines: List<LyricsEntry>, cues: List<CaptionCue>): Alignment? {
+    fun align(lines: List<LyricsEntry>, cues: List<LyricsCaptionCue>): Alignment? {
         val stream = CaptionStream.of(cues) ?: return null
         val gram = if (stream.isMostlyCjk) 2 else 3
         val index = stream.gramIndex(gram)
@@ -42,7 +43,7 @@ internal object CaptionAligner {
     }
 
     // each lyric line's share of a translation track: a cue goes to the line it overlaps most on the video
-    fun assignCues(lines: List<LyricsEntry>, map: SongVideoMap, cues: List<CaptionCue>): List<String?> {
+    fun assignCues(lines: List<LyricsEntry>, map: SongVideoMap, cues: List<LyricsCaptionCue>): List<String?> {
         val windows = lines.indices.map { i ->
             val line = lines[i]
             if (line.isBackground || line.text.isBlank()) return@map null
@@ -75,7 +76,7 @@ internal object CaptionAligner {
 
     // lowercase letters and digits only, with katakana folded into hiragana so either spelling of a word matches
     fun normalize(text: String): String {
-        val folded = Normalizer.normalize(text, Normalizer.Form.NFKC).lowercase()
+        val folded = normalizeNfkc(text).lowercase()
         val out = StringBuilder(folded.length)
         for (ch in folded) {
             if (!ch.isLetterOrDigit()) continue
@@ -103,7 +104,7 @@ internal object CaptionAligner {
         }
 
         companion object {
-            fun of(cues: List<CaptionCue>): CaptionStream? {
+            fun of(cues: List<LyricsCaptionCue>): CaptionStream? {
                 val text = StringBuilder()
                 val times = ArrayList<Long>()
                 for (cue in cues) {
@@ -136,7 +137,7 @@ internal object CaptionAligner {
             seen.clear()
             for (position in positions) {
                 val start = position - k
-                val center = Math.floorDiv(start, bucket)
+                val center = start.floorDiv(bucket)
                 // counted in the neighbouring buckets too: captions and lyrics rarely spell a line the same length
                 for (b in center - 1..center + 1) {
                     if (seen.add(b)) votes[b] = (votes[b] ?: 0) + 1
