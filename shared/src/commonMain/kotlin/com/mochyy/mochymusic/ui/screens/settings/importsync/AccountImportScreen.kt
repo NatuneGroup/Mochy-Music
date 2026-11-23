@@ -1,9 +1,5 @@
 package com.mochyy.mochymusic.ui.screens.settings.importsync
 
-import android.net.Uri
-import android.webkit.CookieManager
-import android.webkit.WebView
-import android.widget.Toast
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,30 +22,66 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.rememberAsyncImagePainter
-import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.YtmSyncKey
 import com.mochyy.mochymusic.importer.ResyncStart
 import com.mochyy.mochymusic.importer.account.AccountImportState
 import com.mochyy.mochymusic.importer.account.AccountService
-import com.mochyy.mochymusic.importer.account.WEB_PLAYER_QUERY_HEADER
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.account
+import com.mochyy.mochymusic.shared.resources.account_import_btn_multiple
+import com.mochyy.mochymusic.shared.resources.account_import_btn_single
+import com.mochyy.mochymusic.shared.resources.account_import_choose_what
+import com.mochyy.mochymusic.shared.resources.account_import_in_library_count
+import com.mochyy.mochymusic.shared.resources.account_import_manage_on_sync
+import com.mochyy.mochymusic.shared.resources.account_import_next_add_yt
+import com.mochyy.mochymusic.shared.resources.account_import_no_playlists
+import com.mochyy.mochymusic.shared.resources.account_import_not_in_account
+import com.mochyy.mochymusic.shared.resources.account_import_paste_link_instead
+import com.mochyy.mochymusic.shared.resources.account_import_pick_resync_prompt
+import com.mochyy.mochymusic.shared.resources.account_import_reading_count
+import com.mochyy.mochymusic.shared.resources.account_import_resync_subtitle
+import com.mochyy.mochymusic.shared.resources.account_import_select_all
+import com.mochyy.mochymusic.shared.resources.account_import_select_none
+import com.mochyy.mochymusic.shared.resources.account_import_signed_in_service
+import com.mochyy.mochymusic.shared.resources.account_import_signin_again
+import com.mochyy.mochymusic.shared.resources.account_import_signin_subtitle
+import com.mochyy.mochymusic.shared.resources.account_import_signin_title
+import com.mochyy.mochymusic.shared.resources.account_import_song_single
+import com.mochyy.mochymusic.shared.resources.account_import_songs_multiple
+import com.mochyy.mochymusic.shared.resources.account_import_stop
+import com.mochyy.mochymusic.shared.resources.account_import_tick_below
+import com.mochyy.mochymusic.shared.resources.account_import_try_again
+import com.mochyy.mochymusic.shared.resources.account_import_use_different
+import com.mochyy.mochymusic.shared.resources.account_import_ytm_needs_signin
+import com.mochyy.mochymusic.shared.resources.account_import_ytm_sync_on_notice
+import com.mochyy.mochymusic.shared.resources.account_resync_looking
+import com.mochyy.mochymusic.shared.resources.account_resync_missing
+import com.mochyy.mochymusic.shared.resources.check
+import com.mochyy.mochymusic.shared.resources.close
+import com.mochyy.mochymusic.shared.resources.favorite
+import com.mochyy.mochymusic.shared.resources.import_sync_btn_ok
+import com.mochyy.mochymusic.shared.resources.link
+import com.mochyy.mochymusic.shared.resources.login
+import com.mochyy.mochymusic.shared.resources.playlist_add
+import com.mochyy.mochymusic.shared.resources.playlist_play
+import com.mochyy.mochymusic.shared.resources.refresh
+import com.mochyy.mochymusic.shared.resources.yt_login_signed_in_as
+import com.mochyy.mochymusic.shared.resources.yt_sync_sign_in_title
 import com.mochyy.mochymusic.ui.component.DefaultDialog
 import com.mochyy.mochymusic.ui.component.SettingsGroup
 import com.mochyy.mochymusic.ui.component.SettingsGroupStyle
 import com.mochyy.mochymusic.ui.component.SettingsItem
 import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
-import com.mochyy.mochymusic.ui.menu.ResyncLinkDialog
 import com.mochyy.mochymusic.utils.rememberPreference
 import com.mochyy.mochymusic.viewmodels.AccountImportViewModel
 import com.mochyy.mochymusic.viewmodels.ImportSyncViewModel
-import timber.log.Timber
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.viewmodel.koinViewModel
 
 const val AccountImportRoutePattern = "account_import/{service}?resync={resync}&then={then}"
 
@@ -68,120 +100,21 @@ const val ResyncAllArg = "all"
 fun accountResyncAllRoute(services: List<AccountService>) =
     "account_import/${services.first().route}?resync=$ResyncAllArg&then=${services.drop(1).joinToString(",") { it.route }}"
 
-/** reads musickit's own tokens once the user has signed in on music.apple.com */
-internal const val ApplePageProbeJs = """
-(function() {
-  try {
-    if (!window.MusicKit || !MusicKit.getInstance) return null;
-    var m = MusicKit.getInstance();
-    if (!m) return null;
-    return { dev: m.developerToken || null, user: m.musicUserToken || null };
-  } catch (e) { return null; }
-})();
-"""
-
-/** music.apple.com opens signed out, so press its sign in button once per page to bring the form up straight away */
-internal const val AppleAutoSignInJs = """
-(function() {
-  try {
-    if (window.__mochySignInPressed) return 'pressed';
-    var m = window.MusicKit && MusicKit.getInstance && MusicKit.getInstance();
-    if (m && m.isAuthorized) return 'authorized';
-    var button = document.querySelector('[data-testid="sign-in-button"]');
-    if (!button) return 'waiting';
-    window.__mochySignInPressed = true;
-    button.click();
-    return 'pressed';
-  } catch (e) { return 'error'; }
-})();
-"""
-
-private const val SpotifyPlayerOrigin = "https://open.spotify.com"
-private const val SpotifyLibraryUrl = "https://open.spotify.com/collection/tracks"
-
-/** spotify's sign-in cookie, set on .spotify.com once the account is signed in */
-private const val SpotifySignedInCookie = "sp_dc"
-
-/** reads the library query names and hashes out of the web player's own script, see docs/notes/settings.md */
-private val SpotifyFindQueriesJs = """
-(function() {
-  try {
-    if (window.__mochyQueriesFound) return 'done';
-    if (window.__mochyFinding) return 'finding';
-    var scanned = window.__mochyScanned = window.__mochyScanned || {};
-    var sources = [];
-    [].forEach.call(document.scripts, function(s) { if (s.src) sources.push(s.src); });
-    (performance.getEntriesByType('resource') || []).forEach(function(e) { sources.push(e.name); });
-    sources = sources.filter(function(src, i) {
-      return /spotifycdn\.com\/cdn\/build\/web-player\/.*\.js/.test(src) && !scanned[src] && sources.indexOf(src) === i;
-    });
-    if (!sources.length) return 'waiting';
-    window.__mochyFinding = true;
-    var found = {};
-    Promise.all(sources.map(function(src) {
-      scanned[src] = true;
-      return fetch(src).then(function(r) { return r.text(); }).then(function(text) {
-        var wanted = /"(libraryV\d+|fetchLibraryTracks|fetchPlaylistContents|fetchPlaylist)","query","([0-9a-f]{64})"/g;
-        var m;
-        while ((m = wanted.exec(text))) found[m[1]] = m[2];
-      }).catch(function() {});
-    })).then(function() {
-      Object.keys(found).forEach(function(name) {
-        var query = { name: name, hash: found[name], url: 'https://api-partner.spotify.com/pathfinder/v2/query', post: true, guessed: true };
-        window.$BRIDGE_NAME.onHeader('$WEB_PLAYER_QUERY_HEADER', JSON.stringify(query), location.href);
-      });
-      if (found.fetchLibraryTracks) window.__mochyQueriesFound = true;
-      window.__mochyFinding = false;
-    });
-    return 'finding';
-  } catch (e) { return 'error'; }
-})();
-"""
-
-/** the phone site has no library, so once signed in the view switches to the desktop site, see docs/notes/settings.md */
-private fun openSpotifyLibraryWhenSignedIn(view: WebView) {
-    if (view.isDesktopSite()) {
-        if (view.url?.startsWith(SpotifyPlayerOrigin) == true) view.evaluateJavascript(SpotifyFindQueriesJs, null)
-        return
-    }
-    val host = view.url?.let(Uri::parse)?.host ?: return
-    // still on the login, captcha or another site's sign-in page: let it finish first
-    if (!host.endsWith("spotify.com") || host == "accounts.spotify.com" || host == "challenge.spotify.com") return
-    val cookies = CookieManager.getInstance().getCookie(SpotifyPlayerOrigin).orEmpty()
-    if (cookies.split(';').none { it.substringBefore('=').trim() == SpotifySignedInCookie }) return
-    Timber.tag("SignInWeb").d("Spotify signed in, opening the desktop library")
-    view.useDesktopSite()
-    view.loadUrl(SpotifyLibraryUrl)
-}
-
-/** everything a sign-in page's periodic tick does for this service */
-internal fun AccountService.onSignInTick(
-    view: WebView,
-    onApplePageProbe: (String?) -> Unit,
-    onCookies: (String?) -> Unit,
-) {
-    when (this) {
-        AccountService.SPOTIFY -> {
-            openSpotifyLibraryWhenSignedIn(view)
-        }
-
-        AccountService.APPLE_MUSIC -> {
-            view.evaluateJavascript(AppleAutoSignInJs, null)
-            view.evaluateJavascript(ApplePageProbeJs, onApplePageProbe)
-            onCookies(CookieManager.getInstance().getCookie("https://music.apple.com"))
-        }
-
-        AccountService.TIDAL, AccountService.YOUTUBE_MUSIC -> {
-            Unit
-        }
-    }
-}
-
+/**
+ * The account import page. The sign-in web view itself is the platform's: [signInSurface] draws it
+ * and reports what the page sends, so Android keeps its WebView capture while desktop and iOS can
+ * bring their own later. A platform that passes none never opens this page.
+ */
 @Composable
 fun AccountImportScreen(
     navController: NavController,
-    viewModel: AccountImportViewModel = hiltViewModel(),
-    importViewModel: ImportSyncViewModel = hiltViewModel(),
+    viewModel: AccountImportViewModel = koinViewModel(),
+    importViewModel: ImportSyncViewModel = koinViewModel(),
+    signInSurface: AccountSignInSurface? = null,
+    onClearWebSession: ((AccountService) -> Unit)? = null,
+    resyncLinkDialog: (@Composable (sourceLabel: String, onDismiss: () -> Unit, onDone: (String) -> Unit) -> Unit)? = null,
+    notify: (String) -> Unit = {},
+    notifyShort: (String) -> Unit = notify,
 ) {
     val service = viewModel.service
     val state by viewModel.state.collectAsState()
@@ -189,17 +122,18 @@ fun AccountImportScreen(
     val notice by viewModel.notice.collectAsState()
     val resyncStart by viewModel.resyncStart.collectAsState()
     val signedInToYouTube = rememberYouTubeSignedIn()
-    val context = LocalContext.current
     var askingForLink by remember { mutableStateOf(false) }
+
+    val resyncStartedPrefix = stringResource(Res.string.account_resync_looking, service.label)
+    val missingNow = viewModel.missingFromAccount
+    val resyncStarted =
+        resyncStartedPrefix +
+            if (missingNow.isEmpty()) "" else stringResource(Res.string.account_resync_missing, missingNow.joinToString(", "))
 
     // a re-sync carries on in the background once its songs are read, the toast at the end says how it went
     LaunchedEffect(resyncStart) {
         if (resyncStart != ResyncStart.Started) return@LaunchedEffect
-        val missing = viewModel.missingFromAccount
-        val started =
-            context.getString(R.string.account_resync_looking, service.label) +
-                if (missing.isEmpty()) "" else context.getString(R.string.account_resync_missing, missing.joinToString(", "))
-        Toast.makeText(context, started, Toast.LENGTH_LONG).show()
+        notify(resyncStarted)
         navController.navigateUp()
         // re-sync all: on to the next service that needs signing in
         if (viewModel.nextServices.isNotEmpty()) navController.navigate(accountResyncAllRoute(viewModel.nextServices))
@@ -220,27 +154,30 @@ fun AccountImportScreen(
     }
 
     fun signInAgain() {
-        clearWebSession(service.webOrigins)
+        onClearWebSession?.invoke(service)
         viewModel.signInAgain()
     }
 
     when (val current = state) {
         AccountImportState.SigningIn -> {
-            CaptureWebView(
-                title = stringResource(R.string.account_import_signin_title, service.label),
-                subtitle =
-                    if (viewModel.isResync) {
-                        stringResource(R.string.account_import_resync_subtitle, service.label)
-                    } else {
-                        stringResource(R.string.account_import_signin_subtitle, service.label)
-                    },
-                startUrl = service.loginUrl.orEmpty(),
-                playerOrigins = service.playerOrigins,
-                desktopSite = service.desktopSite,
-                onHeader = viewModel::onHeader,
-                onTick = { view -> service.onSignInTick(view, viewModel::onApplePageProbe, viewModel::onCookies) },
-                onExit = { navController.navigateUp() },
-            )
+            if (signInSurface != null) {
+                signInSurface.Content(
+                    AccountSignInPage(
+                        service = service,
+                        title = stringResource(Res.string.account_import_signin_title, service.label),
+                        subtitle =
+                            if (viewModel.isResync) {
+                                stringResource(Res.string.account_import_resync_subtitle, service.label)
+                            } else {
+                                stringResource(Res.string.account_import_signin_subtitle, service.label)
+                            },
+                        onHeader = viewModel::onHeader,
+                        onApplePageProbe = viewModel::onApplePageProbe,
+                        onCookies = viewModel::onCookies,
+                        onExit = { navController.navigateUp() },
+                    )
+                )
+            }
         }
 
         else -> {
@@ -256,7 +193,7 @@ fun AccountImportScreen(
                     AccountImportState.NeedsYouTubeSignIn -> {
                         ImportInfoCard {
                             Text(
-                                stringResource(R.string.account_import_ytm_needs_signin),
+                                stringResource(Res.string.account_import_ytm_needs_signin),
                                 style = MaterialTheme.typography.bodyLarge,
                             )
                         }
@@ -266,8 +203,8 @@ fun AccountImportScreen(
                             items =
                                 listOf(
                                     SettingsItem(
-                                        title = { Text(stringResource(R.string.yt_sync_sign_in_title)) },
-                                        icon = painterResource(R.drawable.login),
+                                        title = { Text(stringResource(Res.string.yt_sync_sign_in_title)) },
+                                        icon = painterResource(Res.drawable.login),
                                         iconShape = CircleShape,
                                         onClick = { navController.navigate(YouTubeLoginRoute) },
                                     ),
@@ -284,7 +221,7 @@ fun AccountImportScreen(
                             label =
                                 "${current.label} " +
                                     stringResource(
-                                        R.string.account_import_reading_count,
+                                        Res.string.account_import_reading_count,
                                         current.done + 1,
                                         current.total,
                                     ),
@@ -296,8 +233,8 @@ fun AccountImportScreen(
                             items =
                                 listOf(
                                     SettingsItem(
-                                        title = { Text(stringResource(R.string.account_import_stop)) },
-                                        icon = painterResource(R.drawable.close),
+                                        title = { Text(stringResource(Res.string.account_import_stop)) },
+                                        icon = painterResource(Res.drawable.close),
                                         iconShape = CircleShape,
                                         onClick = viewModel::cancelReading,
                                     ),
@@ -313,32 +250,30 @@ fun AccountImportScreen(
                         SettingsGroup(
                             style = SettingsGroupStyle.Grouped,
                             items =
-                                buildList {
+                                listOfNotNull(
                                     if (!current.signedOut) {
-                                        add(
-                                            SettingsItem(
-                                                title = { Text(stringResource(R.string.account_import_try_again)) },
-                                                icon = painterResource(R.drawable.refresh),
-                                                iconShape = CircleShape,
-                                                onClick = viewModel::retry,
-                                            ),
-                                        )
-                                    }
-                                    add(
                                         SettingsItem(
-                                            title = { Text(stringResource(R.string.account_import_signin_again)) },
-                                            icon = painterResource(R.drawable.login),
+                                            title = { Text(stringResource(Res.string.account_import_try_again)) },
+                                            icon = painterResource(Res.drawable.refresh),
                                             iconShape = CircleShape,
-                                            onClick = {
-                                                if (service == AccountService.YOUTUBE_MUSIC) {
-                                                    navController.navigate(YouTubeLoginRoute)
-                                                } else {
-                                                    signInAgain()
-                                                }
-                                            },
-                                        ),
-                                    )
-                                },
+                                            onClick = viewModel::retry,
+                                        )
+                                    } else {
+                                        null
+                                    },
+                                    SettingsItem(
+                                        title = { Text(stringResource(Res.string.account_import_signin_again)) },
+                                        icon = painterResource(Res.drawable.login),
+                                        iconShape = CircleShape,
+                                        onClick = {
+                                            if (service == AccountService.YOUTUBE_MUSIC) {
+                                                navController.navigate(YouTubeLoginRoute)
+                                            } else {
+                                                signInAgain()
+                                            }
+                                        },
+                                    ),
+                                ),
                         )
                     }
 
@@ -375,7 +310,7 @@ fun AccountImportScreen(
     notice?.let { message ->
         DefaultDialog(
             onDismiss = viewModel::clearNotice,
-            buttons = { TextButton(onClick = viewModel::clearNotice) { Text(stringResource(R.string.import_sync_btn_ok)) } },
+            buttons = { TextButton(onClick = viewModel::clearNotice) { Text(stringResource(Res.string.import_sync_btn_ok)) } },
         ) {
             Text(message, style = MaterialTheme.typography.bodyLarge)
         }
@@ -384,21 +319,21 @@ fun AccountImportScreen(
     (resyncStart as? ResyncStart.Failed)?.let { failed ->
         DefaultDialog(
             onDismiss = viewModel::clearResyncStart,
-            buttons = { TextButton(onClick = viewModel::clearResyncStart) { Text(stringResource(R.string.import_sync_btn_ok)) } },
+            buttons = { TextButton(onClick = viewModel::clearResyncStart) { Text(stringResource(Res.string.import_sync_btn_ok)) } },
         ) {
             Text(failed.message, style = MaterialTheme.typography.bodyLarge)
         }
     }
 
-    if (askingForLink) {
-        ResyncLinkDialog(
-            sourceLabel = service.label,
-            onDismiss = { askingForLink = false },
-            onDone = viewModel::resyncFromLink,
+    if (askingForLink && resyncLinkDialog != null) {
+        resyncLinkDialog(
+            service.label,
+            { askingForLink = false },
+            viewModel::resyncFromLink,
         )
     }
 
-    PendingImportHost(viewModel = importViewModel, navController = navController)
+    PendingImportHost(viewModel = importViewModel, navController = navController, notify = notify, notifyAlreadyRunning = notifyShort)
 }
 
 /** a re-sync that couldn't find its playlist by name, the user says which one in the account it is */
@@ -412,7 +347,7 @@ private fun PickForResyncContent(
 ) {
     ImportInfoCard {
         Text(
-            stringResource(R.string.account_import_pick_resync_prompt, name, service.label),
+            stringResource(Res.string.account_import_pick_resync_prompt, name, service.label),
             style = MaterialTheme.typography.bodyLarge,
         )
     }
@@ -422,9 +357,9 @@ private fun PickForResyncContent(
         items =
             listOf(
                 SettingsItem(
-                    title = { Text(stringResource(R.string.account_import_not_in_account)) },
-                    descriptionText = stringResource(R.string.account_import_paste_link_instead),
-                    icon = painterResource(R.drawable.link),
+                    title = { Text(stringResource(Res.string.account_import_not_in_account)) },
+                    descriptionText = stringResource(Res.string.account_import_paste_link_instead),
+                    icon = painterResource(Res.drawable.link),
                     iconShape = CircleShape,
                     onClick = onPasteLink,
                 ),
@@ -433,7 +368,7 @@ private fun PickForResyncContent(
     if (state.playlists.isEmpty()) return
     Spacer(Modifier.height(16.dp))
     SettingsGroup(
-        title = stringResource(R.string.account_import_in_library_count, state.playlists.size),
+        title = stringResource(Res.string.account_import_in_library_count, state.playlists.size),
         style = SettingsGroupStyle.Grouped,
         items =
             state.playlists.map { playlist ->
@@ -445,14 +380,14 @@ private fun PickForResyncContent(
                                 if (it ==
                                     1
                                 ) {
-                                    stringResource(R.string.account_import_song_single)
+                                    stringResource(Res.string.account_import_song_single)
                                 } else {
-                                    stringResource(R.string.account_import_songs_multiple, it)
+                                    stringResource(Res.string.account_import_songs_multiple, it)
                                 }
                             },
                             playlist.subtitle,
                         ).joinToString(" · ").ifEmpty { null },
-                    icon = playlist.coverUrl?.let { rememberAsyncImagePainter(it) } ?: painterResource(R.drawable.playlist_play),
+                    icon = playlist.coverUrl?.let { rememberAsyncImagePainter(it) } ?: painterResource(Res.drawable.playlist_play),
                     tintIcon = playlist.coverUrl == null,
                     iconShape = CircleShape,
                     onClick = { onPick(playlist.id) },
@@ -500,19 +435,19 @@ private fun ChoosingContent(
                 SettingsItem(
                     title = {
                         Text(
-                            state.accountName?.let { stringResource(R.string.yt_login_signed_in_as, it) }
-                                ?: stringResource(R.string.account_import_signed_in_service, service.label),
+                            state.accountName?.let { stringResource(Res.string.yt_login_signed_in_as, it) }
+                                ?: stringResource(Res.string.account_import_signed_in_service, service.label),
                         )
                     },
                     descriptionText =
                         if (service ==
                             AccountService.YOUTUBE_MUSIC
                         ) {
-                            stringResource(R.string.account_import_manage_on_sync)
+                            stringResource(Res.string.account_import_manage_on_sync)
                         } else {
-                            stringResource(R.string.account_import_use_different)
+                            stringResource(Res.string.account_import_use_different)
                         },
-                    icon = painterResource(R.drawable.account),
+                    icon = painterResource(Res.drawable.account),
                     iconShape = CircleShape,
                     onClick = onSwitchAccount,
                 ),
@@ -520,9 +455,9 @@ private fun ChoosingContent(
                     title = {
                         Text(
                             when (selectedCount) {
-                                0 -> stringResource(R.string.account_import_choose_what)
-                                1 -> stringResource(R.string.account_import_btn_single)
-                                else -> stringResource(R.string.account_import_btn_multiple, selectedCount)
+                                0 -> stringResource(Res.string.account_import_choose_what)
+                                1 -> stringResource(Res.string.account_import_btn_single)
+                                else -> stringResource(Res.string.account_import_btn_multiple, selectedCount)
                             },
                         )
                     },
@@ -530,11 +465,11 @@ private fun ChoosingContent(
                         if (selectedCount ==
                             0
                         ) {
-                            stringResource(R.string.account_import_tick_below)
+                            stringResource(Res.string.account_import_tick_below)
                         } else {
-                            stringResource(R.string.account_import_next_add_yt)
+                            stringResource(Res.string.account_import_next_add_yt)
                         },
-                    icon = painterResource(R.drawable.playlist_add),
+                    icon = painterResource(Res.drawable.playlist_add),
                     iconShape = CircleShape,
                     enabled = selectedCount > 0,
                     onClick = onImport,
@@ -544,14 +479,14 @@ private fun ChoosingContent(
                         Text(
                             if (allSelected) {
                                 stringResource(
-                                    R.string.account_import_select_none,
+                                    Res.string.account_import_select_none,
                                 )
                             } else {
-                                stringResource(R.string.account_import_select_all)
+                                stringResource(Res.string.account_import_select_all)
                             },
                         )
                     },
-                    icon = painterResource(R.drawable.check),
+                    icon = painterResource(Res.drawable.check),
                     iconShape = CircleShape,
                     onClick = if (allSelected) onSelectNone else onSelectAll,
                 ),
@@ -561,7 +496,7 @@ private fun ChoosingContent(
     if (service == AccountService.YOUTUBE_MUSIC && autoSync) {
         Spacer(Modifier.height(12.dp))
         Text(
-            stringResource(R.string.account_import_ytm_sync_on_notice),
+            stringResource(Res.string.account_import_ytm_sync_on_notice),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -571,13 +506,13 @@ private fun ChoosingContent(
 
     if (state.playlists.isEmpty()) {
         ImportInfoCard {
-            Text(stringResource(R.string.account_import_no_playlists), style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(Res.string.account_import_no_playlists), style = MaterialTheme.typography.bodyLarge)
         }
         return
     }
 
     SettingsGroup(
-        title = stringResource(R.string.account_import_in_library_count, state.playlists.size),
+        title = stringResource(Res.string.account_import_in_library_count, state.playlists.size),
         style = SettingsGroupStyle.Grouped,
         items =
             state.playlists.map { playlist ->
@@ -590,9 +525,9 @@ private fun ChoosingContent(
                                 if (it ==
                                     1
                                 ) {
-                                    stringResource(R.string.account_import_song_single)
+                                    stringResource(Res.string.account_import_song_single)
                                 } else {
-                                    stringResource(R.string.account_import_songs_multiple, it)
+                                    stringResource(Res.string.account_import_songs_multiple, it)
                                 }
                             },
                             playlist.subtitle,
@@ -600,7 +535,7 @@ private fun ChoosingContent(
                     // the playlist's own cover from the service, when it has one
                     icon =
                         playlist.coverUrl?.let { rememberAsyncImagePainter(it) }
-                            ?: painterResource(if (playlist.isLiked) R.drawable.favorite else R.drawable.playlist_play),
+                            ?: painterResource(if (playlist.isLiked) Res.drawable.favorite else Res.drawable.playlist_play),
                     tintIcon = playlist.coverUrl == null,
                     iconShape = CircleShape,
                     onClick = { onToggle(playlist.id) },

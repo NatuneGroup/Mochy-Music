@@ -1,6 +1,23 @@
 package com.mochyy.mochymusic.ui.screens.settings.importsync
 
-import android.widget.Toast
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.import_component_already_running
+import com.mochyy.mochymusic.shared.resources.import_component_and_more
+import com.mochyy.mochymusic.shared.resources.import_component_continue
+import com.mochyy.mochymusic.shared.resources.import_component_failed_title
+import com.mochyy.mochymusic.shared.resources.import_component_from_source
+import com.mochyy.mochymusic.shared.resources.import_component_liked_songs_count
+import com.mochyy.mochymusic.shared.resources.import_component_link_prompt
+import com.mochyy.mochymusic.shared.resources.import_component_mirror_yt_desc
+import com.mochyy.mochymusic.shared.resources.import_component_mirror_yt_sync_likes
+import com.mochyy.mochymusic.shared.resources.import_component_mirror_yt_title
+import com.mochyy.mochymusic.shared.resources.import_component_paste
+import com.mochyy.mochymusic.shared.resources.import_component_playlists_summary_multiple
+import com.mochyy.mochymusic.shared.resources.import_component_playlists_summary_single
+import com.mochyy.mochymusic.shared.resources.import_component_search_notice
+import com.mochyy.mochymusic.shared.resources.import_sync_btn_ok
+import com.mochyy.mochymusic.shared.resources.import_sync_import_title
+import com.mochyy.mochymusic.shared.resources.yt_sync_cancel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -34,14 +51,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.InnerTubeCookieKey
 import com.mochyy.mochymusic.importer.LinkSource
 import com.mochyy.mochymusic.importer.ParsedImport
@@ -95,7 +110,7 @@ fun LinkInputDialog(
     DefaultDialog(
         onDismiss = onDismiss,
         horizontalAlignment = Alignment.Start,
-        title = { Text(stringResource(R.string.import_component_from_source, source.label)) },
+        title = { Text(stringResource(Res.string.import_component_from_source, source.label)) },
         buttons = {
             TextButton(onClick = {
                 clipboard
@@ -104,16 +119,16 @@ fun LinkInputDialog(
                     ?.trim()
                     ?.takeIf { it.isNotEmpty() }
                     ?.let { link = it }
-            }) { Text(stringResource(R.string.import_component_paste)) }
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.yt_sync_cancel)) }
+            }) { Text(stringResource(Res.string.import_component_paste)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.yt_sync_cancel)) }
             TextButton(
                 enabled = link.isNotBlank(),
                 onClick = { onSubmit(link.trim()) },
-            ) { Text(stringResource(R.string.import_component_continue)) }
+            ) { Text(stringResource(Res.string.import_component_continue)) }
         },
     ) {
         Text(
-            text = stringResource(R.string.import_component_link_prompt, source.label),
+            text = stringResource(Res.string.import_component_link_prompt, source.label),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -138,10 +153,12 @@ fun LinkInputDialog(
 fun PendingImportHost(
     viewModel: ImportSyncViewModel,
     navController: NavController,
+    notify: (String) -> Unit = {},
+    notifyAlreadyRunning: (String) -> Unit = notify,
 ) {
     val pending by viewModel.pending.collectAsState()
-    val context = LocalContext.current
     val signedIn = rememberYouTubeSignedIn()
+    val alreadyRunning = stringResource(Res.string.import_component_already_running)
 
     when (val state = pending) {
         PendingImport.Idle -> {
@@ -151,7 +168,7 @@ fun PendingImportHost(
         is PendingImport.Loading -> {
             DefaultDialog(
                 onDismiss = viewModel::dismissPending,
-                buttons = { TextButton(onClick = viewModel::dismissPending) { Text(stringResource(R.string.yt_sync_cancel)) } },
+                buttons = { TextButton(onClick = viewModel::dismissPending) { Text(stringResource(Res.string.yt_sync_cancel)) } },
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp)
@@ -165,8 +182,8 @@ fun PendingImportHost(
             DefaultDialog(
                 onDismiss = viewModel::dismissPending,
                 horizontalAlignment = Alignment.Start,
-                title = { Text(stringResource(R.string.import_component_failed_title)) },
-                buttons = { TextButton(onClick = viewModel::dismissPending) { Text(stringResource(R.string.import_sync_btn_ok)) } },
+                title = { Text(stringResource(Res.string.import_component_failed_title)) },
+                buttons = { TextButton(onClick = viewModel::dismissPending) { Text(stringResource(Res.string.import_sync_btn_ok)) } },
             ) {
                 Text(state.message, style = MaterialTheme.typography.bodyMedium)
             }
@@ -180,7 +197,7 @@ fun PendingImportHost(
                 onDismiss = viewModel::dismissPending,
                 onImport = { mirror ->
                     if (!viewModel.startImport(state.parsed, mirror)) {
-                        Toast.makeText(context, context.getString(R.string.import_component_already_running), Toast.LENGTH_SHORT).show()
+                        notifyAlreadyRunning(alreadyRunning)
                         viewModel.dismissPending()
                     }
                     navController.navigate(ImportProgressRoute) { launchSingleTop = true }
@@ -208,20 +225,20 @@ private fun ImportReviewDialog(
             Text(
                 text =
                     names.singleOrNull()?.takeIf { parsed.likedSongs.isEmpty() }
-                        ?: stringResource(R.string.import_component_from_source, sourceLabel),
+                        ?: stringResource(Res.string.import_component_from_source, sourceLabel),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
         },
         buttons = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.yt_sync_cancel)) }
-            TextButton(onClick = { onImport(mirror && signedIn) }) { Text(stringResource(R.string.import_sync_import_title)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.yt_sync_cancel)) }
+            TextButton(onClick = { onImport(mirror && signedIn) }) { Text(stringResource(Res.string.import_sync_import_title)) }
         },
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             if (parsed.likedSongs.isNotEmpty()) {
                 Text(
-                    stringResource(R.string.import_component_liked_songs_count, parsed.likedSongs.size),
+                    stringResource(Res.string.import_component_liked_songs_count, parsed.likedSongs.size),
                     style = MaterialTheme.typography.bodyLarge,
                 )
             }
@@ -230,9 +247,9 @@ private fun ImportReviewDialog(
                 Text(
                     text =
                         if (names.size == 1) {
-                            stringResource(R.string.import_component_playlists_summary_single, songCount)
+                            stringResource(Res.string.import_component_playlists_summary_single, songCount)
                         } else {
-                            stringResource(R.string.import_component_playlists_summary_multiple, names.size, songCount)
+                            stringResource(Res.string.import_component_playlists_summary_multiple, names.size, songCount)
                         },
                     style = MaterialTheme.typography.bodyLarge,
                 )
@@ -240,7 +257,7 @@ private fun ImportReviewDialog(
                     Text(
                         text =
                             names.take(6).joinToString(", ") +
-                                if (names.size > 6) stringResource(R.string.import_component_and_more, names.size - 6) else "",
+                                if (names.size > 6) stringResource(Res.string.import_component_and_more, names.size - 6) else "",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 4,
@@ -252,7 +269,7 @@ private fun ImportReviewDialog(
                 parsed.likedSongs.any { it.videoId == null } || parsed.playlists.values.any { list -> list.any { it.videoId == null } }
             if (needsSearch) {
                 Text(
-                    stringResource(R.string.import_component_search_notice),
+                    stringResource(Res.string.import_component_search_notice),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -265,9 +282,9 @@ private fun ImportReviewDialog(
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(stringResource(R.string.import_component_mirror_yt_title), style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(Res.string.import_component_mirror_yt_title), style = MaterialTheme.typography.titleMedium)
                         Text(
-                            stringResource(R.string.import_component_mirror_yt_desc),
+                            stringResource(Res.string.import_component_mirror_yt_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -277,7 +294,7 @@ private fun ImportReviewDialog(
                 }
                 if (!mirror && parsed.likedSongs.isNotEmpty()) {
                     Text(
-                        stringResource(R.string.import_component_mirror_yt_sync_likes),
+                        stringResource(Res.string.import_component_mirror_yt_sync_likes),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

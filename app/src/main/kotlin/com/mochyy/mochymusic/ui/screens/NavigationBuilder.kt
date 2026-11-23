@@ -561,19 +561,19 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.importsync.ImportSyncRoute) {
-        com.mochyy.mochymusic.ui.screens.settings.importsync.ImportSyncScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.importsync.AndroidImportSyncScreen(navController = navController)
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.importsync.ImportProvidersRoute) {
-        com.mochyy.mochymusic.ui.screens.settings.importsync.ImportProvidersScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.importsync.AndroidImportProvidersScreen(navController = navController)
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.importsync.ImportTuneMyMusicRoute) {
-        com.mochyy.mochymusic.ui.screens.settings.importsync.TuneMyMusicImportScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.importsync.AndroidTuneMyMusicImportScreen(navController = navController)
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.importsync.ImportProgressRoute) {
-        com.mochyy.mochymusic.ui.screens.settings.importsync.ImportProgressScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.importsync.AndroidImportProgressScreen(navController = navController)
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.importsync.YouTubeSyncRoute) {
@@ -597,7 +597,7 @@ fun NavGraphBuilder.navigationBuilder(
             },
         ),
     ) {
-        com.mochyy.mochymusic.ui.screens.settings.importsync.AccountImportScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.importsync.AndroidAccountImportScreen(navController = navController)
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.importsync.YouTubeLoginRoute) {

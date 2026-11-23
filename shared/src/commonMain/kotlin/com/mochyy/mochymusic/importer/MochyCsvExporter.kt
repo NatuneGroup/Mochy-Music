@@ -2,10 +2,10 @@
 
 package com.mochyy.mochymusic.importer
 
-import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.MochyDatabase
 import com.mochyy.mochymusic.db.entities.PlaylistEntity
 import com.mochyy.mochymusic.db.entities.Song
-import kotlinx.coroutines.Dispatchers
+import com.mochyy.mochymusic.utils.ioDispatcher
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
@@ -14,14 +14,14 @@ object MochyCsvExporter {
 
     data class Summary(val likedSongs: Int, val playlists: Int, val playlistSongs: Int)
 
-    suspend fun build(database: MusicDatabase): Pair<String, Summary> = withContext(Dispatchers.IO) {
+    suspend fun build(database: MochyDatabase): Pair<String, Summary> = withContext(ioDispatcher) {
         val rows = mutableListOf<CsvExportRow>()
 
         // newest first, which is the order an import re-creates
-        val liked = database.likedSongsByCreateDateAsc().first().asReversed()
+        val liked = database.songDao.likedSongsByCreateDateAsc().first().asReversed()
         liked.forEach { rows += it.toRow(playlistName = null) }
 
-        val playlists = database.playlistsByNameAsc().first()
+        val playlists = database.playlistDao.playlistsByNameAsc().first()
             .filterNot { it.playlist.id == PlaylistEntity.LIKED_PLAYLIST_ID || it.playlist.id == PlaylistEntity.DOWNLOADED_PLAYLIST_ID }
         val usedNames = HashSet<String>()
         var playlistSongs = 0
@@ -31,7 +31,7 @@ object MochyCsvExporter {
             var suffix = 2
             while (!usedNames.add(name)) name = "${playlist.playlist.name} ($suffix)".also { suffix++ }
 
-            val songs = database.playlistSongs(playlist.playlist.id).first().sortedBy { it.map.position }
+            val songs = database.playlistDao.playlistSongs(playlist.playlist.id).first().sortedBy { it.map.position }
             if (songs.isEmpty()) {
                 rows += CsvExportRow(name, null, null, null, null, null, null)
             } else {

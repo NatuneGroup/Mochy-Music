@@ -42,13 +42,6 @@ import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
-data class YtSyncState(
-    val running: Boolean = false,
-    val label: String = "",
-    val message: String? = null,
-    val canUndo: Boolean = false,
-)
-
 /** the manual youtube actions on the sync page; automatic library sync stays in SyncUtils */
 @Singleton
 class YouTubeSyncManager @Inject constructor(

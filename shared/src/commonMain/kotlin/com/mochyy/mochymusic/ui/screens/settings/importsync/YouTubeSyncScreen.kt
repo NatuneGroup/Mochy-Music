@@ -1,5 +1,67 @@
 package com.mochyy.mochymusic.ui.screens.settings.importsync
 
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.account
+import com.mochyy.mochymusic.shared.resources.cloud
+import com.mochyy.mochymusic.shared.resources.group
+import com.mochyy.mochymusic.shared.resources.history
+import com.mochyy.mochymusic.shared.resources.import_sync_btn_ok
+import com.mochyy.mochymusic.shared.resources.import_sync_sync_title
+import com.mochyy.mochymusic.shared.resources.login
+import com.mochyy.mochymusic.shared.resources.playlist_add
+import com.mochyy.mochymusic.shared.resources.refresh
+import com.mochyy.mochymusic.shared.resources.restore
+import com.mochyy.mochymusic.shared.resources.sync
+import com.mochyy.mochymusic.shared.resources.undo
+import com.mochyy.mochymusic.shared.resources.yt_sync_account_header
+import com.mochyy.mochymusic.shared.resources.yt_sync_auto_sync_desc
+import com.mochyy.mochymusic.shared.resources.yt_sync_auto_sync_title
+import com.mochyy.mochymusic.shared.resources.yt_sync_cancel
+import com.mochyy.mochymusic.shared.resources.yt_sync_dialog_sign_out_body
+import com.mochyy.mochymusic.shared.resources.yt_sync_dialog_sign_out_title
+import com.mochyy.mochymusic.shared.resources.yt_sync_dialog_upload_body
+import com.mochyy.mochymusic.shared.resources.yt_sync_dialog_upload_create
+import com.mochyy.mochymusic.shared.resources.yt_sync_dialog_upload_title
+import com.mochyy.mochymusic.shared.resources.yt_sync_exclude_desc
+import com.mochyy.mochymusic.shared.resources.yt_sync_exclude_title
+import com.mochyy.mochymusic.shared.resources.yt_sync_keep_in_sync_header
+import com.mochyy.mochymusic.shared.resources.yt_sync_lost_likes_confirm
+import com.mochyy.mochymusic.shared.resources.yt_sync_lost_likes_desc
+import com.mochyy.mochymusic.shared.resources.yt_sync_lost_likes_dialog_body
+import com.mochyy.mochymusic.shared.resources.yt_sync_lost_likes_dialog_title
+import com.mochyy.mochymusic.shared.resources.yt_sync_lost_likes_none_body
+import com.mochyy.mochymusic.shared.resources.yt_sync_lost_likes_none_title
+import com.mochyy.mochymusic.shared.resources.yt_sync_lost_likes_title
+import com.mochyy.mochymusic.shared.resources.yt_sync_new_playlists_desc
+import com.mochyy.mochymusic.shared.resources.yt_sync_new_playlists_title
+import com.mochyy.mochymusic.shared.resources.yt_sync_no_account_hint
+import com.mochyy.mochymusic.shared.resources.yt_sync_now_desc_history
+import com.mochyy.mochymusic.shared.resources.yt_sync_now_desc_no_history
+import com.mochyy.mochymusic.shared.resources.yt_sync_now_header
+import com.mochyy.mochymusic.shared.resources.yt_sync_now_title
+import com.mochyy.mochymusic.shared.resources.yt_sync_other_apps_header
+import com.mochyy.mochymusic.shared.resources.yt_sync_pull_history_desc
+import com.mochyy.mochymusic.shared.resources.yt_sync_pull_history_now_desc
+import com.mochyy.mochymusic.shared.resources.yt_sync_pull_history_now_title
+import com.mochyy.mochymusic.shared.resources.yt_sync_pull_history_title
+import com.mochyy.mochymusic.shared.resources.yt_sync_report_plays_desc
+import com.mochyy.mochymusic.shared.resources.yt_sync_report_plays_title
+import com.mochyy.mochymusic.shared.resources.yt_sync_sign_in_desc
+import com.mochyy.mochymusic.shared.resources.yt_sync_sign_in_title
+import com.mochyy.mochymusic.shared.resources.yt_sync_sign_out
+import com.mochyy.mochymusic.shared.resources.yt_sync_signed_in
+import com.mochyy.mochymusic.shared.resources.yt_sync_switch_accounts_desc
+import com.mochyy.mochymusic.shared.resources.yt_sync_switch_accounts_title
+import com.mochyy.mochymusic.shared.resources.yt_sync_undo_both
+import com.mochyy.mochymusic.shared.resources.yt_sync_undo_both_hint
+import com.mochyy.mochymusic.shared.resources.yt_sync_undo_desc
+import com.mochyy.mochymusic.shared.resources.yt_sync_undo_dialog_body
+import com.mochyy.mochymusic.shared.resources.yt_sync_undo_dialog_title
+import com.mochyy.mochymusic.shared.resources.yt_sync_undo_phone
+import com.mochyy.mochymusic.shared.resources.yt_sync_undo_title
+import com.mochyy.mochymusic.shared.resources.yt_sync_upload_playlists_desc
+import com.mochyy.mochymusic.shared.resources.yt_sync_upload_playlists_detail
+import com.mochyy.mochymusic.shared.resources.yt_sync_upload_playlists_title
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -19,13 +81,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.AccountEmailKey
 import com.mochyy.mochymusic.constants.AccountNameKey
 import com.mochyy.mochymusic.constants.YtExcludeImportsKey
@@ -42,11 +103,12 @@ import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
 import com.mochyy.mochymusic.utils.rememberPreference
 import com.mochyy.mochymusic.viewmodels.ImportSyncViewModel
 import kotlinx.coroutines.launch
+import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun YouTubeSyncScreen(
     navController: NavController,
-    viewModel: ImportSyncViewModel = hiltViewModel(),
+    viewModel: ImportSyncViewModel = koinViewModel(),
 ) {
     val signedIn = rememberYouTubeSignedIn()
     val accountName by rememberPreference(AccountNameKey, "")
@@ -66,37 +128,37 @@ fun YouTubeSyncScreen(
     val scope = rememberCoroutineScope()
 
     SubSettingsScaffold(
-        title = stringResource(R.string.import_sync_sync_title),
+        title = stringResource(Res.string.import_sync_sync_title),
         onBack = { navController.navigateUp() },
     ) {
         SettingsGroup(
-            title = stringResource(R.string.yt_sync_account_header),
+            title = stringResource(Res.string.yt_sync_account_header),
             style = SettingsGroupStyle.Grouped,
             items =
                 listOf(
                     if (signedIn) {
                         SettingsItem(
-                            title = { Text(accountName.ifBlank { stringResource(R.string.yt_sync_signed_in) }) },
+                            title = { Text(accountName.ifBlank { stringResource(Res.string.yt_sync_signed_in) }) },
                             descriptionText = accountEmail.ifBlank { "YouTube Music" },
-                            icon = painterResource(R.drawable.account),
+                            icon = painterResource(Res.drawable.account),
                             iconShape = CircleShape,
                             trailingContent = {
-                                TextButton(onClick = { confirmSignOut = true }) { Text(stringResource(R.string.yt_sync_sign_out)) }
+                                TextButton(onClick = { confirmSignOut = true }) { Text(stringResource(Res.string.yt_sync_sign_out)) }
                             },
                         )
                     } else {
                         SettingsItem(
-                            title = { Text(stringResource(R.string.yt_sync_sign_in_title)) },
-                            descriptionText = stringResource(R.string.yt_sync_sign_in_desc),
-                            icon = painterResource(R.drawable.login),
+                            title = { Text(stringResource(Res.string.yt_sync_sign_in_title)) },
+                            descriptionText = stringResource(Res.string.yt_sync_sign_in_desc),
+                            icon = painterResource(Res.drawable.login),
                             iconShape = CircleShape,
                             onClick = { navController.navigate(YouTubeLoginRoute) },
                         )
                     },
                     SettingsItem(
-                        title = { Text(stringResource(R.string.yt_sync_switch_accounts_title)) },
-                        descriptionText = stringResource(R.string.yt_sync_switch_accounts_desc),
-                        icon = painterResource(R.drawable.group),
+                        title = { Text(stringResource(Res.string.yt_sync_switch_accounts_title)) },
+                        descriptionText = stringResource(Res.string.yt_sync_switch_accounts_desc),
+                        icon = painterResource(Res.drawable.group),
                         iconShape = CircleShape,
                         onClick = { navController.navigate(AccountSwitcherRoute) },
                     ),
@@ -106,38 +168,38 @@ fun YouTubeSyncScreen(
         Spacer(Modifier.height(16.dp))
 
         SettingsGroup(
-            title = stringResource(R.string.yt_sync_keep_in_sync_header),
+            title = stringResource(Res.string.yt_sync_keep_in_sync_header),
             style = SettingsGroupStyle.Grouped,
             items =
                 listOf(
                     toggleItem(
-                        title = stringResource(R.string.yt_sync_auto_sync_title),
-                        description = stringResource(R.string.yt_sync_auto_sync_desc),
-                        icon = R.drawable.sync,
+                        title = stringResource(Res.string.yt_sync_auto_sync_title),
+                        description = stringResource(Res.string.yt_sync_auto_sync_desc),
+                        icon = Res.drawable.sync,
                         checked = autoSync,
                         enabled = signedIn,
                         onChange = onAutoSyncChange,
                     ),
                     toggleItem(
-                        title = stringResource(R.string.yt_sync_new_playlists_title),
-                        description = stringResource(R.string.yt_sync_new_playlists_desc),
-                        icon = R.drawable.playlist_add,
+                        title = stringResource(Res.string.yt_sync_new_playlists_title),
+                        description = stringResource(Res.string.yt_sync_new_playlists_desc),
+                        icon = Res.drawable.playlist_add,
                         checked = syncNewPlaylists,
                         enabled = signedIn,
                         onChange = onSyncNewPlaylistsChange,
                     ),
                     toggleItem(
-                        title = stringResource(R.string.yt_sync_report_plays_title),
-                        description = stringResource(R.string.yt_sync_report_plays_desc),
-                        icon = R.drawable.history,
+                        title = stringResource(Res.string.yt_sync_report_plays_title),
+                        description = stringResource(Res.string.yt_sync_report_plays_desc),
+                        icon = Res.drawable.history,
                         checked = reportPlays,
                         enabled = signedIn,
                         onChange = onReportPlaysChange,
                     ),
                     toggleItem(
-                        title = stringResource(R.string.yt_sync_pull_history_title),
-                        description = stringResource(R.string.yt_sync_pull_history_desc),
-                        icon = R.drawable.history,
+                        title = stringResource(Res.string.yt_sync_pull_history_title),
+                        description = stringResource(Res.string.yt_sync_pull_history_desc),
+                        icon = Res.drawable.history,
                         checked = pullHistory,
                         enabled = signedIn,
                         onChange = onPullHistoryChange,
@@ -148,14 +210,14 @@ fun YouTubeSyncScreen(
         Spacer(Modifier.height(16.dp))
 
         SettingsGroup(
-            title = stringResource(R.string.yt_sync_other_apps_header),
+            title = stringResource(Res.string.yt_sync_other_apps_header),
             style = SettingsGroupStyle.Grouped,
             items =
                 listOf(
                     toggleItem(
-                        title = stringResource(R.string.yt_sync_exclude_title),
-                        description = stringResource(R.string.yt_sync_exclude_desc),
-                        icon = R.drawable.cloud,
+                        title = stringResource(Res.string.yt_sync_exclude_title),
+                        description = stringResource(Res.string.yt_sync_exclude_desc),
+                        icon = Res.drawable.cloud,
                         checked = excludeImports,
                         enabled = true,
                         onChange = onExcludeImportsChange,
@@ -166,54 +228,54 @@ fun YouTubeSyncScreen(
         Spacer(Modifier.height(16.dp))
 
         SettingsGroup(
-            title = stringResource(R.string.yt_sync_now_header),
+            title = stringResource(Res.string.yt_sync_now_header),
             style = SettingsGroupStyle.Grouped,
             items =
                 listOf(
                     SettingsItem(
-                        title = { Text(stringResource(R.string.yt_sync_now_title)) },
+                        title = { Text(stringResource(Res.string.yt_sync_now_title)) },
                         descriptionText =
                             if (pullHistory) {
                                 stringResource(
-                                    R.string.yt_sync_now_desc_history,
+                                    Res.string.yt_sync_now_desc_history,
                                 )
                             } else {
-                                stringResource(R.string.yt_sync_now_desc_no_history)
+                                stringResource(Res.string.yt_sync_now_desc_no_history)
                             },
-                        icon = painterResource(R.drawable.refresh),
+                        icon = painterResource(Res.drawable.refresh),
                         iconShape = CircleShape,
                         enabled = signedIn && !state.running,
                         onClick = viewModel::syncNow,
                     ),
                     SettingsItem(
-                        title = { Text(stringResource(R.string.yt_sync_pull_history_now_title)) },
-                        descriptionText = stringResource(R.string.yt_sync_pull_history_now_desc),
-                        icon = painterResource(R.drawable.history),
+                        title = { Text(stringResource(Res.string.yt_sync_pull_history_now_title)) },
+                        descriptionText = stringResource(Res.string.yt_sync_pull_history_now_desc),
+                        icon = painterResource(Res.drawable.history),
                         iconShape = CircleShape,
                         enabled = signedIn && !state.running,
                         onClick = viewModel::pullHistoryNow,
                     ),
                     SettingsItem(
-                        title = { Text(stringResource(R.string.yt_sync_undo_title)) },
-                        descriptionText = stringResource(R.string.yt_sync_undo_desc),
-                        icon = painterResource(R.drawable.undo),
+                        title = { Text(stringResource(Res.string.yt_sync_undo_title)) },
+                        descriptionText = stringResource(Res.string.yt_sync_undo_desc),
+                        icon = painterResource(Res.drawable.undo),
                         iconShape = CircleShape,
                         enabled = signedIn && state.canUndo && !state.running,
                         onClick = { confirmUndo = true },
                     ),
                     SettingsItem(
-                        title = { Text(stringResource(R.string.yt_sync_lost_likes_title)) },
-                        descriptionText = stringResource(R.string.yt_sync_lost_likes_desc),
-                        icon = painterResource(R.drawable.restore),
+                        title = { Text(stringResource(Res.string.yt_sync_lost_likes_title)) },
+                        descriptionText = stringResource(Res.string.yt_sync_lost_likes_desc),
+                        icon = painterResource(Res.drawable.restore),
                         iconShape = CircleShape,
                         enabled = !state.running,
                         onClick = { scope.launch { lostLikes = viewModel.lostLikesCount() } },
                     ),
                     SettingsItem(
-                        title = { Text(stringResource(R.string.yt_sync_upload_playlists_title)) },
-                        descriptionText = stringResource(R.string.yt_sync_upload_playlists_desc),
-                        detail = stringResource(R.string.yt_sync_upload_playlists_detail),
-                        icon = painterResource(R.drawable.cloud),
+                        title = { Text(stringResource(Res.string.yt_sync_upload_playlists_title)) },
+                        descriptionText = stringResource(Res.string.yt_sync_upload_playlists_desc),
+                        detail = stringResource(Res.string.yt_sync_upload_playlists_detail),
+                        icon = painterResource(Res.drawable.cloud),
                         iconShape = CircleShape,
                         enabled = signedIn && !state.running,
                         onClick = { confirmUpload = true },
@@ -232,7 +294,7 @@ fun YouTubeSyncScreen(
                     }
                 } else {
                     Text(state.message.orEmpty(), style = MaterialTheme.typography.bodyLarge)
-                    TextButton(onClick = viewModel::clearYouTubeMessage) { Text(stringResource(R.string.import_sync_btn_ok)) }
+                    TextButton(onClick = viewModel::clearYouTubeMessage) { Text(stringResource(Res.string.import_sync_btn_ok)) }
                 }
             }
         }
@@ -240,7 +302,7 @@ fun YouTubeSyncScreen(
         if (!signedIn) {
             Spacer(Modifier.height(16.dp))
             Text(
-                stringResource(R.string.yt_sync_no_account_hint),
+                stringResource(Res.string.yt_sync_no_account_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -251,17 +313,17 @@ fun YouTubeSyncScreen(
         DefaultDialog(
             onDismiss = { confirmSignOut = false },
             horizontalAlignment = Alignment.Start,
-            title = { Text(stringResource(R.string.yt_sync_dialog_sign_out_title)) },
+            title = { Text(stringResource(Res.string.yt_sync_dialog_sign_out_title)) },
             buttons = {
-                TextButton(onClick = { confirmSignOut = false }) { Text(stringResource(R.string.yt_sync_cancel)) }
+                TextButton(onClick = { confirmSignOut = false }) { Text(stringResource(Res.string.yt_sync_cancel)) }
                 TextButton(onClick = {
                     confirmSignOut = false
                     viewModel.signOut()
-                }) { Text(stringResource(R.string.yt_sync_sign_out)) }
+                }) { Text(stringResource(Res.string.yt_sync_sign_out)) }
             },
         ) {
             Text(
-                stringResource(R.string.yt_sync_dialog_sign_out_body),
+                stringResource(Res.string.yt_sync_dialog_sign_out_body),
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
@@ -271,29 +333,29 @@ fun YouTubeSyncScreen(
         DefaultDialog(
             onDismiss = { confirmUndo = false },
             horizontalAlignment = Alignment.Start,
-            title = { Text(stringResource(R.string.yt_sync_undo_dialog_title)) },
+            title = { Text(stringResource(Res.string.yt_sync_undo_dialog_title)) },
             buttons = {
-                TextButton(onClick = { confirmUndo = false }) { Text(stringResource(R.string.yt_sync_cancel)) }
+                TextButton(onClick = { confirmUndo = false }) { Text(stringResource(Res.string.yt_sync_cancel)) }
                 TextButton(onClick = {
                     confirmUndo = false
                     viewModel.undoLastSync(withYouTube = false)
-                }) { Text(stringResource(R.string.yt_sync_undo_phone)) }
+                }) { Text(stringResource(Res.string.yt_sync_undo_phone)) }
                 TextButton(
                     enabled = signedIn,
                     onClick = {
                         confirmUndo = false
                         viewModel.undoLastSync(withYouTube = true)
                     },
-                ) { Text(stringResource(R.string.yt_sync_undo_both)) }
+                ) { Text(stringResource(Res.string.yt_sync_undo_both)) }
             },
         ) {
             Text(
-                stringResource(R.string.yt_sync_undo_dialog_body),
+                stringResource(Res.string.yt_sync_undo_dialog_body),
                 style = MaterialTheme.typography.bodyMedium,
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                stringResource(R.string.yt_sync_undo_both_hint),
+                stringResource(Res.string.yt_sync_undo_both_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -315,17 +377,17 @@ fun YouTubeSyncScreen(
         DefaultDialog(
             onDismiss = { confirmUpload = false },
             horizontalAlignment = Alignment.Start,
-            title = { Text(stringResource(R.string.yt_sync_dialog_upload_title)) },
+            title = { Text(stringResource(Res.string.yt_sync_dialog_upload_title)) },
             buttons = {
-                TextButton(onClick = { confirmUpload = false }) { Text(stringResource(R.string.yt_sync_cancel)) }
+                TextButton(onClick = { confirmUpload = false }) { Text(stringResource(Res.string.yt_sync_cancel)) }
                 TextButton(onClick = {
                     confirmUpload = false
                     viewModel.uploadLocalPlaylists()
-                }) { Text(stringResource(R.string.yt_sync_dialog_upload_create)) }
+                }) { Text(stringResource(Res.string.yt_sync_dialog_upload_create)) }
             },
         ) {
             Text(
-                stringResource(R.string.yt_sync_dialog_upload_body),
+                stringResource(Res.string.yt_sync_dialog_upload_body),
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
@@ -336,7 +398,7 @@ fun YouTubeSyncScreen(
 private fun toggleItem(
     title: String,
     description: String,
-    icon: Int,
+    icon: DrawableResource,
     checked: Boolean,
     enabled: Boolean,
     onChange: (Boolean) -> Unit,
@@ -362,21 +424,21 @@ private fun LostLikesDialog(
         horizontalAlignment = Alignment.Start,
         title = {
             Text(
-                if (count == 0) stringResource(R.string.yt_sync_lost_likes_none_title)
-                else pluralStringResource(R.plurals.yt_sync_lost_likes_dialog_title, count, count),
+                if (count == 0) stringResource(Res.string.yt_sync_lost_likes_none_title)
+                else pluralStringResource(Res.plurals.yt_sync_lost_likes_dialog_title, count, count),
             )
         },
         buttons = {
             if (count == 0) {
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.import_sync_btn_ok)) }
+                TextButton(onClick = onDismiss) { Text(stringResource(Res.string.import_sync_btn_ok)) }
             } else {
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.yt_sync_cancel)) }
-                TextButton(onClick = onConfirm) { Text(stringResource(R.string.yt_sync_lost_likes_confirm)) }
+                TextButton(onClick = onDismiss) { Text(stringResource(Res.string.yt_sync_cancel)) }
+                TextButton(onClick = onConfirm) { Text(stringResource(Res.string.yt_sync_lost_likes_confirm)) }
             }
         },
     ) {
         Text(
-            stringResource(if (count == 0) R.string.yt_sync_lost_likes_none_body else R.string.yt_sync_lost_likes_dialog_body),
+            stringResource(if (count == 0) Res.string.yt_sync_lost_likes_none_body else Res.string.yt_sync_lost_likes_dialog_body),
             style = MaterialTheme.typography.bodyMedium,
         )
     }
