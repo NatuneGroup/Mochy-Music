@@ -141,6 +141,38 @@ dependencies {
     add("kspIosSimulatorArm64", libs.room.compiler)
 }
 
+// Compose compiler tuning, the same rules as the app's block (app/build.gradle.kts): a composable
+// that moved here is compiled by this module, so without this it loses the app's stability list and
+// keeps source information in release builds, recomposing more than it did while it lived in :app.
+//
+// includeSourceInformation turns the source-position metadata and the live-literal hooks into
+// per-composition work. It is needed for the layout inspector, so debug keeps it; release and
+// profileable must strip it because profileable exists to measure release performance.
+composeCompiler {
+    // A KMP library has no build-type object to ask "is this a release build", so the decision comes
+    // from the requested task names, exactly as the app does it. Reading gradle.startParameter at
+    // configuration time keeps the configuration cache valid; its entry is keyed by task names, so it
+    // re-evaluates when the requested tasks change.
+    val buildingReleaseLike = gradle.startParameter.taskNames.any { name ->
+        name.contains("Release", ignoreCase = true) ||
+            name.contains("Profileable", ignoreCase = true) ||
+            name.contains("Fast", ignoreCase = true)
+    }
+    includeSourceInformation.set(!buildingReleaseLike)
+
+    if (project.hasProperty("composeMetrics")) {
+        metricsDestination.set(layout.buildDirectory.dir("compose-metrics"))
+        reportsDestination.set(layout.buildDirectory.dir("compose-reports"))
+    }
+
+    // Treat these as @Immutable/@Stable without annotating them at every declaration site. The file
+    // sits at the repository root so this module and :app read the same list; it must be resolved
+    // from the root, not from this project's directory.
+    stabilityConfigurationFiles.add(
+        rootProject.layout.projectDirectory.file("compose_compiler_config.conf")
+    )
+}
+
 // The desktop/iOS InternalDatabase exports its schema here, never to app/schemas: Fast checks diffs it
 // against app/schemas so the two entity lists can't drift, and app/schemas stays Android's own export.
 val roomSchemas = layout.buildDirectory.dir("schemas")
