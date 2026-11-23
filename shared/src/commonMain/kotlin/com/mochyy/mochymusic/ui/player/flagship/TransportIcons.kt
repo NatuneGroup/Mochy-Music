@@ -28,16 +28,16 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.VectorGroup
 import androidx.compose.ui.graphics.vector.VectorPath
 import androidx.compose.ui.graphics.vector.toPath
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.Dp
-import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
+import org.jetbrains.compose.resources.vectorResource
 
 // how small play and pause get before they swap and spring back
 private const val SquashLow = 0.5f
 
 // the shapes of one button row from the design, as paths in its own units, built once from the vector drawables
 @Immutable
-internal class TransportShapes(
+class TransportShapes(
     val play: Path,
     val playSize: Size,
     val skip: Path,
@@ -51,9 +51,9 @@ internal class TransportShapes(
 
 // the three button row's shapes (big, nothing round them), or the ten second row's smaller ones
 @Composable
-internal fun rememberTransportShapes(small: Boolean = false): TransportShapes {
-    val play = ImageVector.vectorResource(if (small) R.drawable.transport_play_small else R.drawable.transport_play)
-    val skip = ImageVector.vectorResource(if (small) R.drawable.transport_skip_small else R.drawable.transport_skip)
+fun rememberTransportShapes(small: Boolean = false): TransportShapes {
+    val play = vectorResource(if (small) Res.drawable.transport_play_small else Res.drawable.transport_play)
+    val skip = vectorResource(if (small) Res.drawable.transport_skip_small else Res.drawable.transport_skip)
     return remember(play, skip, small) {
         TransportShapes(
             play = play.toFlatPath(),
@@ -84,7 +84,7 @@ private fun ImageVector.toFlatPath(): Path {
 
 // play and pause swapping: the glyph squeezes small, swaps while it's tiny, then bounces back past full size
 @Stable
-internal class PlayGlyphState(playing: Boolean) {
+class PlayGlyphState(playing: Boolean) {
     val squash = Animatable(1f)
     var showsPause by mutableStateOf(playing)
         private set
@@ -98,14 +98,14 @@ internal class PlayGlyphState(playing: Boolean) {
 }
 
 @Composable
-internal fun rememberPlayGlyph(playing: Boolean): PlayGlyphState {
+fun rememberPlayGlyph(playing: Boolean): PlayGlyphState {
     val state = remember { PlayGlyphState(playing) }
     LaunchedEffect(playing) { state.swapTo(playing) }
     return state
 }
 
 // play or pause centred on the slot's centre, one frame unit being unit px, squashed about that centre
-internal fun DrawScope.drawPlayGlyph(
+fun DrawScope.drawPlayGlyph(
     shapes: TransportShapes,
     glyph: PlayGlyphState,
     unit: Float,
@@ -142,7 +142,7 @@ private fun DrawScope.drawPause(cx: Float, cy: Float, playHeight: Float, color: 
 
 // a skip button's cycle: each press moves it one step on, a spring carrying it so quick presses run together
 @Stable
-internal class SkipCycleState {
+class SkipCycleState {
     val position = Animatable(0f)
     var target by mutableIntStateOf(0)
         private set
@@ -160,7 +160,7 @@ internal class SkipCycleState {
 }
 
 // the two triangles at phase f: the front one runs off and shrinks away, the back one takes its place, a new one grows in behind
-internal fun DrawScope.drawSkipGlyph(
+fun DrawScope.drawSkipGlyph(
     shapes: TransportShapes,
     phase: Float,
     unit: Float,
@@ -209,7 +209,7 @@ private fun DrawScope.skipTriangle(
 
 // the flagship's play and pause on its own, for any style's button: the triangle is height tall and squashes as it swaps
 @Composable
-internal fun AnimatedPlayGlyph(playing: Boolean, color: Color, height: Dp, modifier: Modifier = Modifier) {
+fun AnimatedPlayGlyph(playing: Boolean, color: Color, height: Dp, modifier: Modifier = Modifier) {
     val shapes = rememberTransportShapes()
     val glyph = rememberPlayGlyph(playing)
     Spacer(
@@ -221,7 +221,7 @@ internal fun AnimatedPlayGlyph(playing: Boolean, color: Color, height: Dp, modif
 
 // the flagship's two skip triangles on their own, width across, running a step each time cycle steps
 @Composable
-internal fun AnimatedSkipGlyph(cycle: SkipCycleState, backwards: Boolean, color: Color, width: Dp, modifier: Modifier = Modifier) {
+fun AnimatedSkipGlyph(cycle: SkipCycleState, backwards: Boolean, color: Color, width: Dp, modifier: Modifier = Modifier) {
     val shapes = rememberTransportShapes()
     Spacer(
         modifier = modifier
