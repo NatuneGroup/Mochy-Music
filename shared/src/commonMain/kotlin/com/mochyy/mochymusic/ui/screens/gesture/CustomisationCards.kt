@@ -61,10 +61,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.PlayerStyle
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
+import com.mochyy.mochymusic.shared.resources.Res
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import com.mochyy.mochymusic.ui.component.pressBounce
 import com.mochyy.mochymusic.ui.screens.audiolab.LabColors
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
@@ -73,19 +73,19 @@ import kotlin.math.roundToInt
 import com.mochyy.mochymusic.ui.component.RemoteFocus
 
 // how far the customize page's cards sit in from the screen's sides, the same as every other settings page
-internal val CustomisePageMargin = 20.dp
+val CustomisePageMargin = 20.dp
 
 // the slider runs from a square corner to this many px
 internal const val MaxCoverRadius = 45f
 
 // how round covers are until someone changes it, and where the reset puts them back
-internal const val DefaultCoverRadius = 25f
+const val DefaultCoverRadius = 25f
 
-internal val CardShape = RoundedCornerShape(22.dp)
+val CardShape = RoundedCornerShape(22.dp)
 internal val SliderCardShape = RoundedCornerShape(20.dp)
 private val RoundingCardHeight = 186.dp
-internal val StyleCardHeight = 187.dp
-internal val CardTextInset = 22.dp
+val StyleCardHeight = 187.dp
+val CardTextInset = 22.dp
 
 // the cover corner in the rounding card: flush with its top right, this big
 private val SwatchWidth = 146.dp
@@ -99,7 +99,7 @@ private val ArcTail = 12.dp
 // the outline round the style that's in use
 private val HighlightColor = Color.White.copy(alpha = 0.9f)
 
-internal val CardLabelStyle = TextStyle(
+val CardLabelStyle = TextStyle(
     fontFamily = InterFontFamily,
     fontWeight = FontWeight.SemiBold,
     fontSize = 15.sp,
@@ -107,7 +107,7 @@ internal val CardLabelStyle = TextStyle(
     letterSpacing = (-0.03).em,
 )
 
-internal val CardValueStyle = TextStyle(
+val CardValueStyle = TextStyle(
     fontFamily = InterFontFamily,
     fontWeight = FontWeight.Bold,
     fontSize = 32.sp,
@@ -123,7 +123,7 @@ internal val SmallLabelStyle = TextStyle(
     letterSpacing = (-0.01).em,
 )
 
-internal val CaptionStyle = TextStyle(
+val CaptionStyle = TextStyle(
     fontFamily = InterFontFamily,
     fontWeight = FontWeight.Medium,
     fontSize = 10.sp,
@@ -150,7 +150,7 @@ fun CoverRoundingSection(
         ) {
             RoundingSwatch(radiusPx = radiusPx, modifier = Modifier.matchParentSize())
             CardTitle(
-                title = stringResource(R.string.customise_cover_rounding),
+                title = stringResource(Res.string.customise_cover_rounding),
                 canReset = kotlin.math.abs(radiusPx - DefaultCoverRadius) >= 0.5f,
                 onReset = { onRadiusChange(DefaultCoverRadius) },
             )
@@ -166,9 +166,9 @@ fun CoverRoundingSection(
         Spacer(Modifier.height(11.dp))
 
         CustomiseSliderCard(
-            title = stringResource(R.string.customise_customize_it),
-            startLabel = stringResource(R.string.customise_square),
-            endLabel = stringResource(R.string.customise_more_rounded),
+            title = stringResource(Res.string.customise_customize_it),
+            startLabel = stringResource(Res.string.customise_square),
+            endLabel = stringResource(Res.string.customise_more_rounded),
             fraction = radiusPx / MaxCoverRadius,
             onFractionChange = { f ->
                 val next = f * MaxCoverRadius
@@ -186,14 +186,14 @@ fun CoverRoundingSection(
 
 // a big card's title in its top left, with a small reset after it; the reset fades and stops while everything is at its default
 @Composable
-internal fun CardTitle(title: String, canReset: Boolean, onReset: (() -> Unit)?) {
+fun CardTitle(title: String, canReset: Boolean, onReset: (() -> Unit)?) {
     val haptic = LocalHapticFeedback.current
     Row(modifier = Modifier.padding(start = CardTextInset, top = CardTextInset)) {
         Text(text = title, style = CardLabelStyle, color = Color.White.copy(alpha = 0.9f))
         if (onReset != null) {
             Icon(
-                painter = painterResource(R.drawable.refresh),
-                contentDescription = stringResource(R.string.customise_reset),
+                painter = painterResource(Res.drawable.refresh),
+                contentDescription = stringResource(Res.string.customise_reset),
                 tint = Color.White.copy(alpha = if (canReset) 0.8f else 0.25f),
                 modifier = Modifier
                     // lifted so the icon sits on the title's first line, not below it
@@ -212,7 +212,7 @@ internal fun CardTitle(title: String, canReset: Boolean, onReset: (() -> Unit)?)
 
 // the slim card under a big one: a title (and its value), a bare slider line, and what each end means
 @Composable
-internal fun CustomiseSliderCard(
+fun CustomiseSliderCard(
     title: String,
     startLabel: String,
     endLabel: String,
@@ -366,7 +366,7 @@ fun <T> StylePagerSection(
                 },
             ) { preview(style) }
         }
-        StyleCaption(stringResource(R.string.customise_swipe_caption), Modifier.padding(start = CustomisePageMargin))
+        StyleCaption(stringResource(Res.string.customise_swipe_caption), Modifier.padding(start = CustomisePageMargin))
     }
 }
 
@@ -379,12 +379,12 @@ fun PlayerStyleCard(
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         StyleCard(
-            category = stringResource(R.string.customise_player_styles),
+            category = stringResource(Res.string.customise_player_styles),
             title = selected.displayName,
             highlighted = false,
             onClick = onOpenEditor,
         ) { PlayerStylePreview(style = selected) }
-        StyleCaption(stringResource(R.string.customise_player_caption))
+        StyleCaption(stringResource(Res.string.customise_player_caption))
     }
 }
 
