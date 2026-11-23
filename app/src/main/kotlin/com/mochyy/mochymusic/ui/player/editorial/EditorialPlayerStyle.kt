@@ -362,8 +362,13 @@ private fun EditorialArtwork(
     }
     val scale by animateFloatAsState(if (playing) 1f else 0.94f, tween(400), label = "editorialPauseScale")
     val path = remember(from, target, progress.value) {
-        if (progress.value >= 0.999f || from === target) target.toPath()
-        else Morph(from, target).asCubics(progress.value).toPath()
+        if (progress.value >= 0.999f || from === target) {
+            target.toPath()
+        } else {
+            // a pair of shapes with different curve counts can't be morphed; the artwork then
+            // simply takes the next shape, rather than the player crashing on the track change
+            runCatching { Morph(from, target).asCubics(progress.value).toPath() }.getOrElse { target.toPath() }
+        }
     }
     Box(
         modifier
