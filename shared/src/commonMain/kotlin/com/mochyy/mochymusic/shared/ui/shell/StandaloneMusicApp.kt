@@ -246,7 +246,7 @@ internal fun StandaloneMusicApp(
 }
 
 @Composable
-private fun LibrarySongs(
+internal fun LibrarySongs(
     title: String,
     emptyMessage: String,
     songs: List<SongItem>,
@@ -339,7 +339,7 @@ private fun LibrarySongs(
 }
 
 @Composable
-private fun LyricsPanel(
+internal fun LyricsPanel(
     song: SongItem,
     positionMs: Long,
     providers: List<LyricsProvider>,
