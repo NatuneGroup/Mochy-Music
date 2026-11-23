@@ -2,8 +2,6 @@
 
 package com.mochyy.mochymusic.ui.component
 
-import android.graphics.Shader
-import android.os.Build
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,7 +32,7 @@ private const val CoverDim = 0.22f
 private const val CoverSoftRadius = 30f
 
 /** 0 up to [from], 1 from [to] on, an s-curve in between */
-internal fun smoothstep(from: Float, to: Float, x: Float): Float {
+fun smoothstep(from: Float, to: Float, x: Float): Float {
     val t = ((x - from) / (to - from)).coerceIn(0f, 1f)
     return t * t * (3f - 2f * t)
 }
@@ -43,14 +41,14 @@ internal fun smoothstep(from: Float, to: Float, x: Float): Float {
 @Composable
 fun rememberCoverBlurAvailable(): Boolean {
     val (disableBlur) = rememberPreference(DisableBlurKey, defaultValue = false)
-    return !disableBlur && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    return !disableBlur && glassBlurSupported
 }
 
 // whether a thing can blur itself (the cover zooming away, a ring fading out): android 12 and up, with element blur on
 @Composable
 fun rememberElementBlurAvailable(): Boolean {
     val (elementBlur) = rememberPreference(ElementBlurKey, defaultValue = true)
-    return elementBlur && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    return elementBlur && glassBlurSupported
 }
 
 /** what a big cover does as the list scrolls it away: rides up, zooms, blurs, dims, dissolves from the bottom and fades; the Home hero and the playlist backdrop share it */
@@ -131,7 +129,7 @@ fun ScrollAwayCover(
             // high quality: the same recording blurred more as it scrolls; fading a fixed blur over the sharp frame made its text bloom
             DownscaledBlur(
                 radius = { CoverSoftRadius * smoothstep(softFrom, CoverSoftBy, progress()) },
-                tileMode = Shader.TileMode.CLAMP,
+                tileMode = GlassTileMode.Clamp,
                 mask = null,
                 modifier = Modifier
                     .matchParentSize()
@@ -149,7 +147,7 @@ fun ScrollAwayCover(
                         val soft = smoothstep(softFrom, CoverSoftBy, progress())
                         alpha = soft
                         // a blur layer re-blurs on every frame change even at alpha 0, so it's only switched on while it shows
-                        renderEffect = if (soft > 0f) BlurEffectCache.get(CoverSoftRadius, Shader.TileMode.CLAMP) else null
+                        renderEffect = if (soft > 0f) BlurEffectCache.get(CoverSoftRadius, GlassTileMode.Clamp) else null
                         clip = true
                     }
                     .drawBehind { drawLayer(frame) },

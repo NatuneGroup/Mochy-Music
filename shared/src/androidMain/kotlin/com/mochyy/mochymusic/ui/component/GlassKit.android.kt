@@ -3,62 +3,48 @@ package com.mochyy.mochymusic.ui.component
 import android.graphics.RenderNode
 import android.os.Build
 import androidx.annotation.RequiresApi
-import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.drawscope.translate
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInWindow
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.drawscope.scale
-import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.layout.layout
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Canvas
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.RenderEffect
+import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.unit.Constraints
+import com.mochyy.mochymusic.constants.BlurQuality
 import com.mochyy.mochymusic.constants.DisableBlurKey
 import com.mochyy.mochymusic.utils.rememberPreference
-
-@Stable
-class GlassState {
-    /**
-     * The backdrop render node, deliberately typed [Any].
-     *
-     * `android.graphics.RenderNode` is API 29. Naming it in a property type puts it into this
-     * class's accessor signatures, so ART has to resolve it as soon as an accessor is reached -
-     * on Android 8 and 9 that is a `NoClassDefFoundError`, even though every real *use* of the
-     * node is already version-guarded. Since the glass system backs the nav pill, the player and
-     * most screens, that turns into crashes all over the app on older devices.
-     *
-     * Every touch goes through the guarded helpers below, which cast internally.
-     */
-    var renderNode by mutableStateOf<Any?>(null)
-    var rootPosition by mutableStateOf(Offset.Zero)
-
-    // drops the recorded screen display list when the window hides so gpu textures can be reclaimed
-    fun discard() {
-        val node = renderNode ?: return
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) glassNodeDiscard(node)
-    }
-}
-
-@RequiresApi(Build.VERSION_CODES.Q)
-private fun glassNodeDiscard(node: Any) {
-    (node as RenderNode).discardDisplayList()
-}
 
 /*
  * RenderNode helpers. Each is annotated so it is only ever entered above the API level that
@@ -70,7 +56,7 @@ internal fun glassNodeFor(existing: Any?, width: Int, height: Int): Any =
     (existing as? RenderNode ?: RenderNode("GlassRoot")).apply { setPosition(0, 0, width, height) }
 
 @RequiresApi(Build.VERSION_CODES.S)
-internal fun glassNodeHasContent(node: Any): Boolean = (node as RenderNode).hasDisplayList()
+fun glassNodeHasContent(node: Any): Boolean = (node as RenderNode).hasDisplayList()
 
 @RequiresApi(Build.VERSION_CODES.S)
 internal fun glassNodeBeginRecording(node: Any): android.graphics.Canvas = (node as RenderNode).beginRecording()
@@ -81,13 +67,13 @@ internal fun glassNodeEndRecording(node: Any) {
 }
 
 @RequiresApi(Build.VERSION_CODES.S)
-internal fun glassNodeWidth(node: Any): Int = (node as RenderNode).width
+fun glassNodeWidth(node: Any): Int = (node as RenderNode).width
 
 @RequiresApi(Build.VERSION_CODES.S)
-internal fun glassNodeHeight(node: Any): Int = (node as RenderNode).height
+fun glassNodeHeight(node: Any): Int = (node as RenderNode).height
 
 @RequiresApi(Build.VERSION_CODES.S)
-internal fun android.graphics.Canvas.drawGlassNode(node: Any) {
+fun android.graphics.Canvas.drawGlassNode(node: Any) {
     drawRenderNode(node as RenderNode)
 }
 
@@ -114,19 +100,7 @@ private fun android.graphics.Canvas.drawDamageNode(node: Any) {
     drawRenderNode(node as RenderNode)
 }
 
-/**
- * Keeps whatever animates inside this from counting as a change to the rest of the screen.
- *
- * To the renderer, a change inside a Compose layer is a change to everything (Compose's layers clip
- * by outline, and the renderer only bounds a change by a node's size when it clips to bounds).
- * So a few bouncing equaliser bars, the hero's video or a marquee repainted the whole window on
- * every one of their frames, and made every glass surface that samples the app (the nav bar, the
- * mini player) render and blur its backdrop again although nothing under it had moved. Recorded
- * into a node that clips to its own bounds, a change in here only dirties this rectangle.
- *
- * Content is clipped to the bounds, so only use it where nothing draws outside them.
- */
-fun Modifier.damageBoundary(): Modifier =
+actual fun Modifier.damageBoundary(): Modifier =
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
         this
     } else {
@@ -154,7 +128,7 @@ fun Modifier.damageBoundary(): Modifier =
             .graphicsLayer()
     }
 
-fun Modifier.glassRoot(state: GlassState, isActive: () -> Boolean = { true }): Modifier = this
+actual fun Modifier.glassRoot(state: GlassState, isActive: () -> Boolean): Modifier = this
     .onGloballyPositioned { state.rootPosition = it.positionInWindow() }
     .drawWithCache {
         val width = size.width.toInt()
@@ -188,68 +162,16 @@ fun Modifier.glassRoot(state: GlassState, isActive: () -> Boolean = { true }): M
         }
     }
 
-/**
- * Backdrop colour for the floating glass chrome - the navigation pill and the mini player.
- *
- * Deliberately a fixed dark tone rather than `MaterialTheme.colorScheme.surfaceContainer`: the
- * Material You colour follows the wallpaper accent and washes these surfaces out. They are drawn
- * with white icons over a white hairline border, so they are meant to read as dark glass. The
- * shade is the Figma's.
- */
-val GlassChromeColor = Color(0xFF131313)
-
-/** Backdrop blur for that chrome, heavier than the 24f default so it reads as properly frosted. */
-const val GlassChromeBlurRadius = 48f
-
-/** how strongly a coloured page's accent washes over the chrome glass, over its usual dark tint */
-private const val ChromeAccentWash = 0.55f
-
-/**
- * the open page's accent (a coloured playlist or artist) as a wash for the nav pill and the mini
- * player. it eases in and out by itself, and it's only read while drawing: a page change repaints
- * the chrome, never recomposes it
- */
-@Composable
-fun rememberChromeAccentWash(): () -> Color {
-    val accent = com.mochyy.mochymusic.LocalDetailAccentColor.current
-    val wash = remember { androidx.compose.animation.Animatable(Color.Transparent) }
-    LaunchedEffect(accent) {
-        // fading out keeps the page's hue instead of greying through transparent black
-        var hue = Color.Black
-        androidx.compose.runtime.snapshotFlow { accent.value }.collect { color ->
-            if (color != null) hue = color
-            if (wash.value.alpha == 0f) wash.snapTo(hue.copy(alpha = 0f))
-            wash.animateTo(
-                hue.copy(alpha = if (color != null) ChromeAccentWash else 0f),
-                androidx.compose.animation.core.tween(500),
-            )
-        }
-    }
-    return remember(wash) { { wash.value } }
+internal actual fun discardGlassBackdrop(node: Any?) {
+    if (node != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) glassNodeDiscard(node)
 }
 
-/**
- * How far below full resolution a glass surface draws what's under it before blurring.
- *
- * A blur this wide removes everything a full-resolution picture of the backdrop adds - Skia
- * itself shrinks the picture by halves before blurring a large radius - so drawing the backdrop
- * at half (or quarter) size and blurring it by a half (or quarter) radius gives the same glass.
- * What it saves is drawing all of the backdrop that sits under the glass at full resolution, plus
- * the first passes of the blur, every frame the glass or what's under it moves. Small radii keep
- * full resolution: there the detail still shows.
- */
-internal fun glassDownscale(effectiveRadius: Float, low: Boolean = false): Int = when {
-    effectiveRadius >= 64f -> 4
-    // low quality drops a step sooner: a little softer, a quarter of the pixels to draw and blur
-    low && effectiveRadius >= 32f -> 4
-    effectiveRadius >= 16f -> 2
-    // the faint first steps of a low progressive bar are its biggest, and drawn at full size they cost the most for a blur you can hardly see
-    low && effectiveRadius >= 2f -> 2
-    else -> 1
+@RequiresApi(Build.VERSION_CODES.Q)
+private fun glassNodeDiscard(node: Any) {
+    (node as RenderNode).discardDisplayList()
 }
 
-/** The blur quality chosen in Appearance, for every glass surface under it. */
-val LocalBlurQuality = androidx.compose.runtime.staticCompositionLocalOf { DefaultBlurQuality }
+internal actual val glassBlurSupported: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
 // flagship chips that don't always declare a performance class; anything else waits for one
 private val StrongGlassChips = listOf(
@@ -257,32 +179,37 @@ private val StrongGlassChips = listOf(
     "mt6983", "mt6985", "mt6989", "mt6991", // dimensity 9000 up to 9400
 )
 
-/** the quality a phone starts on until someone picks one in Customisation */
-val DefaultBlurQuality: com.mochyy.mochymusic.constants.BlurQuality by lazy {
+actual val DefaultBlurQuality: BlurQuality by lazy {
     val soc = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) Build.SOC_MODEL.lowercase(java.util.Locale.ROOT) else ""
     // high's glass took 11 to 15 ms of gpu per scroll frame on a mid-range 120 hz phone, more than a frame has
     val strong = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
         (Build.VERSION.MEDIA_PERFORMANCE_CLASS >= Build.VERSION_CODES.S || StrongGlassChips.any { soc.startsWith(it) })
-    if (strong) com.mochyy.mochymusic.constants.BlurQuality.HIGH else com.mochyy.mochymusic.constants.BlurQuality.LOW
+    if (strong) BlurQuality.HIGH else BlurQuality.LOW
 }
 
-/** Lays its content out [margin] px bigger on every side, centred over the space it takes. */
-internal fun Modifier.bleed(margin: () -> Int): Modifier = layout { measurable, constraints ->
-    val m = margin().coerceAtLeast(0)
-    val width = if (constraints.hasBoundedWidth) constraints.maxWidth else constraints.minWidth
-    val height = if (constraints.hasBoundedHeight) constraints.maxHeight else constraints.minHeight
-    val placeable = measurable.measure(Constraints.fixed(width + m * 2, height + m * 2))
-    layout(width, height) { placeable.place(-m, -m) }
+/**
+ * A [GlassTileMode] or an `android.graphics.Shader.TileMode` (what the app's older call sites pass),
+ * as the platform enum. Only called above API 31, which is where the blur exists.
+ */
+@RequiresApi(Build.VERSION_CODES.S)
+internal fun Any?.asAndroidTileMode(default: android.graphics.Shader.TileMode): android.graphics.Shader.TileMode = when (this) {
+    null -> default
+    is android.graphics.Shader.TileMode -> this
+    GlassTileMode.Clamp -> android.graphics.Shader.TileMode.CLAMP
+    GlassTileMode.Decal -> android.graphics.Shader.TileMode.DECAL
+    GlassTileMode.Mirror -> android.graphics.Shader.TileMode.MIRROR
+    GlassTileMode.Repeat -> android.graphics.Shader.TileMode.REPEAT
+    else -> default
 }
 
 /** The size a downscaled layout was given, before it was divided down. */
-private class FullSize {
+internal class FullSize {
     var width = 0
     var height = 0
 }
 
 /** Lays its content out at 1/[downscale] of the space it takes, from the top left. */
-private fun Modifier.downscaledLayout(downscale: () -> Int, full: FullSize): Modifier = layout { measurable, constraints ->
+internal fun Modifier.downscaledLayout(downscale: () -> Int, full: FullSize): Modifier = layout { measurable, constraints ->
     val k = downscale().coerceAtLeast(1)
     val fullWidth = if (constraints.hasBoundedWidth) constraints.maxWidth else 0
     val fullHeight = if (constraints.hasBoundedHeight) constraints.maxHeight else 0
@@ -323,27 +250,16 @@ private fun maskedBlurEffect(radius: Float, tileMode: android.graphics.Shader.Ti
     ).asComposeRenderEffect()
 }
 
-/**
- * Whatever [draw] draws, blurred by [radius] (the radius actually applied - see
- * [BlurEffectCache.effectiveRadius]) and optionally faded by [mask] (DstIn).
- *
- * Drawn at the resolution [glassDownscale] picks for the radius: into a layer 1/k the size, blurred
- * by radius/k and scaled back up - see [glassDownscale] for why that's the same picture for less
- * work. [draw] works in full-size coordinates and gets the full size; the scaling is done here.
- */
 @Composable
-internal fun DownscaledBlur(
+internal actual fun PlatformDownscaledBlur(
     radius: () -> Float,
-    tileMode: android.graphics.Shader.TileMode?,
+    tileMode: Any?,
     mask: Brush?,
-    modifier: Modifier = Modifier,
-    /** Draw into a buffer of its own even without a blur, for a [draw] that erases with blend modes. */
-    offscreen: (() -> Boolean)? = null,
-    // set to grow the blur from sharp to radius across the height (true: strongest at the bottom), android 13+ only
-    growDown: Boolean? = null,
-    // grows across the width instead (growDown true: strongest at the right), full strength ramp of the way along
-    growAcross: Boolean = false,
-    growRamp: Float = 1f,
+    modifier: Modifier,
+    offscreen: (() -> Boolean)?,
+    growDown: Boolean?,
+    growAcross: Boolean,
+    growRamp: Float,
     draw: DrawScope.(fullSize: Size) -> Unit,
 ) {
     if (growDown != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -353,7 +269,7 @@ internal fun DownscaledBlur(
     val currentRadius by rememberUpdatedState(radius)
     val currentOffscreen by rememberUpdatedState(offscreen)
     // A radius that animates only re-lays this out when it crosses into another resolution step.
-    val low = LocalBlurQuality.current == com.mochyy.mochymusic.constants.BlurQuality.LOW
+    val low = LocalBlurQuality.current == BlurQuality.LOW
     val downscale by remember(low) { derivedStateOf { glassDownscale(currentRadius(), low) } }
     val maskCache = remember { MaskedEffectCache() }
     val full = remember { FullSize() }
@@ -383,7 +299,7 @@ internal fun DownscaledBlur(
                     transformOrigin = TransformOrigin(0f, 0f)
                     val r = currentRadius() / k
                     renderEffect = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        val mode = tileMode ?: android.graphics.Shader.TileMode.DECAL
+                        val mode = tileMode.asAndroidTileMode(android.graphics.Shader.TileMode.DECAL)
                         if (mask is ShaderBrush) {
                             val quantized = if (r > 0.5f) BlurEffectCache.quantize(r) else 0f
                             val cache = maskCache
@@ -420,41 +336,19 @@ internal fun DownscaledBlur(
 }
 
 @Composable
-fun GlassPillBackground(
+actual fun GlassPillBackground(
     state: GlassState,
-    blurRadius: () -> Float = { 24f },
-    tint: Color = Color.Transparent,
-    foundationColor: Color? = null,
-    shape: Shape? = null,
-
-    /**
-     * Null means DECAL, resolved inside the API 31 guard below.
-     *
-     * `Shader.TileMode.DECAL` is API 31, and naming it as a default argument makes every caller
-     * that omits the parameter evaluate it - throwing NoSuchFieldError on Android 8 through 11.
-     * The value is only ever *used* above API 31, so it is resolved there instead.
-     */
-    tileMode: android.graphics.Shader.TileMode? = null,
-    /**
-     * Fades the finished glass (backdrop, foundation and tint alike) by this brush's alpha, as a
-     * DstIn would. On API 31+ the mask runs inside the blur's own effect; it used to need an
-     * offscreen layer of its own around the glass.
-     */
-    mask: Brush? = null,
-    /** a colour laid over [tint], read only while drawing so it can animate without recomposing */
-    accentWash: (() -> Color)? = null,
-    /**
-     * Also blur a margin of the backdrop as wide as the blur around the surface, so the edges are
-     * blurred from what's really past them. Without it the blur has to make that part up, and a
-     * clamped edge row smears anything bright touching it across the surface. The extra is drawn
-     * outside the bounds, so the parent has to clip.
-     */
-    bleed: Boolean = false,
-    // grows the blur from sharp at the start to blurRadius at the far end, in one pass (android 13+)
-    progressive: BlurDirection? = null,
-    // how far along the progressive blur reaches its full radius (1 is the far end), holding it from there on
-    progressiveRamp: Float = 1f,
-    modifier: Modifier = Modifier
+    blurRadius: () -> Float,
+    tint: Color,
+    foundationColor: Color?,
+    shape: Shape?,
+    tileMode: Any?,
+    mask: Brush?,
+    accentWash: (() -> Color)?,
+    bleed: Boolean,
+    progressive: BlurDirection?,
+    progressiveRamp: Float,
+    modifier: Modifier,
 ) {
     var position by remember { mutableStateOf(Offset.Zero) }
 
@@ -469,7 +363,7 @@ fun GlassPillBackground(
         else BlurEffectCache.effectiveRadius(currentBlurRadius() * (blurStrengthPx / 25f))
     }
 
-    DownscaledBlur(
+    PlatformDownscaledBlur(
         radius = radius,
         tileMode = tileMode,
         mask = mask,
@@ -481,7 +375,7 @@ fun GlassPillBackground(
                 // no blur below Android 12, so nothing to read past the edges; and low quality
                 // keeps to what's right under the glass, a much smaller area to blur
                 if (bleed && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                    LocalBlurQuality.current == com.mochyy.mochymusic.constants.BlurQuality.HIGH
+                    LocalBlurQuality.current == BlurQuality.HIGH
                 ) {
                     Modifier.bleed { kotlin.math.ceil(radius()).toInt() }
                 } else Modifier
@@ -511,21 +405,15 @@ fun GlassPillBackground(
     }
 }
 
-// BlurDirection, FlatBarScrimAlpha and rememberProgressiveBlur live in :shared (ui/component/GlassStyle.kt), same package
-
-// the hairline where a flat bar's blur stops, when progressive blur is off
-private val FlatBarEdgeColor = Color.White.copy(alpha = 0.16f)
-private val FlatBarEdgeWidth = 1.dp
-
 @Composable
-fun ProgressiveGlassBackground(
+actual fun ProgressiveGlassBackground(
     state: GlassState,
-    maxBlurRadius: () -> Float = { 24f },
-    tint: Color = Color.Transparent,
-    foundationColor: Color? = null,
-    direction: BlurDirection = BlurDirection.TopToBottom,
-    modifier: Modifier = Modifier,
-    steps: Int = 5
+    maxBlurRadius: () -> Float,
+    tint: Color,
+    foundationColor: Color?,
+    direction: BlurDirection,
+    modifier: Modifier,
+    steps: Int,
 ) {
     // off, the bar is one even blur that stops at a hard edge with a hairline, a classic frosted bar instead of a fade
     if (!rememberProgressiveBlur()) {
@@ -544,7 +432,7 @@ fun ProgressiveGlassBackground(
                 blurRadius = maxBlurRadius,
                 tint = tint,
                 foundationColor = foundationColor,
-                tileMode = android.graphics.Shader.TileMode.CLAMP,
+                tileMode = GlassTileMode.Clamp,
                 // blurred from what's really past the edge, so the hard edge doesn't smear into a glow
                 bleed = true,
                 modifier = Modifier.fillMaxSize(),
@@ -616,7 +504,7 @@ fun ProgressiveGlassBackground(
                     modifier = Modifier
                         .fillMaxWidth()
                         .fillMaxHeight(heightFraction)
-                        .align(if (direction == BlurDirection.TopToBottom) androidx.compose.ui.Alignment.BottomCenter else androidx.compose.ui.Alignment.TopCenter)
+                        .align(if (direction == BlurDirection.TopToBottom) Alignment.BottomCenter else Alignment.TopCenter)
                 )
             }
         }
