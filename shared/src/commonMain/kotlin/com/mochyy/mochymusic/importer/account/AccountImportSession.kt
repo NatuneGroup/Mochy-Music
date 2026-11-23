@@ -2,9 +2,8 @@
 
 package com.mochyy.mochymusic.importer.account
 
-import android.content.Context
-import com.mochyy.mochymusic.constants.AccountNameKey
-import com.mochyy.mochymusic.extensions.isUserLoggedIn
+import com.mochyy.mochymusic.importer.ImportLog
+import com.mochyy.mochymusic.importer.ImporterYouTube
 import com.mochyy.mochymusic.importer.ImportSource
 import com.mochyy.mochymusic.importer.ImportedTrack
 import com.mochyy.mochymusic.importer.ParsedImport
@@ -12,13 +11,11 @@ import com.mochyy.mochymusic.importer.PlaylistOrigin
 import com.mochyy.mochymusic.importer.ResyncRead
 import com.mochyy.mochymusic.importer.ResyncReads
 import com.mochyy.mochymusic.importer.ResyncTarget
+import com.mochyy.mochymusic.importer.string
 import com.mochyy.mochymusic.ui.screens.settings.importsync.AccountImportRunner
-import com.mochyy.mochymusic.utils.dataStore
-import com.mochyy.mochymusic.utils.get
-import com.music.innertube.YouTube
+import com.mochyy.mochymusic.utils.ioDispatcher
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
@@ -29,8 +26,20 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import org.json.JSONObject
-import timber.log.Timber
+import kotlin.concurrent.Volatile
+import kotlinx.serialization.json.JsonObject
+
+/**
+ * What one account import needs from the platform: whether YouTube is signed in, and the account
+ * name it was signed in under. Android answers from the same preferences the app always read.
+ */
+interface AccountImportEnvironment {
+    /** the same blocking check the app uses: a signed-in cookie and a working connection */
+    fun isUserLoggedIn(): Boolean
+
+    /** the saved account name, when the client can't say it */
+    suspend fun youTubeAccountName(): String?
+}
 
 /**
  * One sign-in → list → pick → read pass against one service, shared by the Import settings page
@@ -38,7 +47,7 @@ import timber.log.Timber
  */
 class AccountImportSession(
     val service: AccountService,
-    private val context: Context,
+    private val environment: AccountImportEnvironment,
     private val scope: CoroutineScope,
 ) : AccountImportRunner {
     private val connector: AccountConnector? = when (service) {
@@ -92,7 +101,7 @@ class AccountImportSession(
         lastChoosing = null
         _state.value = AccountImportState.SigningIn
         connectJob?.cancel()
-        connectJob = scope.launch(Dispatchers.IO) {
+        connectJob = scope.launch(ioDispatcher) {
             for (signal in connectSignal) {
                 if (library != null) break
                 try {
@@ -104,13 +113,13 @@ class AccountImportSession(
                     // only a real cancellation ends sign-in; a stray one from a request mustn't
                     // leave the page waiting with nothing listening
                     ensureActive()
-                    Timber.w(e, "${service.label} connect attempt was cut short")
+                    ImportLog.w("${service.label} connect attempt was cut short", e)
                 } catch (e: AccountRetryLater) {
                     delay(e.seconds * 1000)
                     connectSignal.trySend(Unit)
                 } catch (e: Exception) {
                     // offline for a moment, or the service hiccuped: the next captured request retries
-                    Timber.w(e, "${service.label} connect attempt failed")
+                    ImportLog.w("${service.label} connect attempt failed", e)
                 }
             }
         }
@@ -126,11 +135,11 @@ class AccountImportSession(
     /** Apple: tokens read straight from MusicKit in the page, as JSON {dev, user}. */
     override fun onApplePageProbe(raw: String?) {
         if (library != null || raw.isNullOrBlank() || raw == "null") return
-        val json = runCatching { JSONObject(raw) }.getOrNull() ?: return
-        json.optString("dev").takeIf { it.length > 20 && it != "null" }?.let {
+        val json = runCatching { AccountHttp.json.parseToJsonElement(raw) as? JsonObject }.getOrNull() ?: return
+        json.string("dev")?.takeIf { it.length > 20 && it != "null" }?.let {
             credentials.addHeader("authorization", "Bearer $it", "https://amp-api.music.apple.com/")
         }
-        json.optString("user").takeIf { it.length > 20 && it != "null" }?.let {
+        json.string("user")?.takeIf { it.length > 20 && it != "null" }?.let {
             credentials.addHeader("media-user-token", it, "https://amp-api.music.apple.com/")
         }
         connectSignal.trySend(Unit)
@@ -157,15 +166,15 @@ class AccountImportSession(
 
     override fun refreshYouTube() {
         if (service != AccountService.YOUTUBE_MUSIC) return
-        scope.launch(Dispatchers.IO) {
-            if (!context.isUserLoggedIn()) {
+        scope.launch(ioDispatcher) {
+            if (!environment.isUserLoggedIn()) {
                 _state.value = AccountImportState.NeedsYouTubeSignIn
                 return@launch
             }
             if (library == null) {
-                val info = YouTube.accountInfo().getOrNull()
+                val info = ImporterYouTube.accountInfo().getOrNull()
                 library = YouTubeMusicLibrary(
-                    accountName = info?.name ?: context.dataStore.get(AccountNameKey, "").ifBlank { null },
+                    accountName = info?.name ?: environment.youTubeAccountName(),
                     accountPhotoUrl = info?.thumbnailUrl,
                 )
             }
@@ -176,7 +185,7 @@ class AccountImportSession(
     // ---- choosing ----
 
     override fun retry() {
-        if (library != null) scope.launch(Dispatchers.IO) { afterConnect() } else signInAgain()
+        if (library != null) scope.launch(ioDispatcher) { afterConnect() } else signInAgain()
     }
 
     private suspend fun afterConnect() {
@@ -194,13 +203,13 @@ class AccountImportSession(
             _state.value = choosing
         } catch (e: CancellationException) {
             currentCoroutineContext().ensureActive()
-            Timber.w(e, "${service.label} library read was cut short")
+            ImportLog.w("${service.label} library read was cut short", e)
             _state.value = AccountImportState.Failed("Couldn't read your ${service.label} library.", signedOut = false)
         } catch (e: AccountImportException) {
             if (e.signedOut) library = null
             _state.value = AccountImportState.Failed(e.message ?: "Couldn't read your library.", e.signedOut)
         } catch (e: Exception) {
-            Timber.e(e, "${service.label} library read failed")
+            ImportLog.w("${service.label} library read failed", e)
             _state.value = AccountImportState.Failed("Couldn't read your ${service.label} library.", signedOut = false)
         }
     }
@@ -226,7 +235,7 @@ class AccountImportSession(
         if (chosen.isEmpty()) return
 
         workJob?.cancel()
-        workJob = scope.launch(Dispatchers.IO) {
+        workJob = scope.launch(ioDispatcher) {
             val liked = mutableListOf<ImportedTrack>()
             val librarySongs = mutableListOf<ImportedTrack>()
             val playlists = linkedMapOf<String, List<ImportedTrack>>()
@@ -258,7 +267,7 @@ class AccountImportSession(
                         break
                     }
                 } catch (e: Exception) {
-                    Timber.w(e, "Reading ${playlist.name} failed")
+                    ImportLog.w("Reading ${playlist.name} failed", e)
                     failed += playlist.name
                 }
             }
@@ -320,13 +329,13 @@ class AccountImportSession(
             _resyncReads.value = ResyncReads(reads, missing.map { it.name })
         } catch (e: CancellationException) {
             currentCoroutineContext().ensureActive()
-            Timber.w(e, "${service.label} re-sync read was cut short")
+            ImportLog.w("${service.label} re-sync read was cut short", e)
             _state.value = AccountImportState.Failed("Couldn't read your playlists on ${service.label}.", signedOut = false)
         } catch (e: AccountImportException) {
             if (e.signedOut) library = null
             _state.value = AccountImportState.Failed(e.message ?: "Couldn't read your playlists.", e.signedOut)
         } catch (e: Exception) {
-            Timber.e(e, "${service.label} re-sync read failed")
+            ImportLog.w("${service.label} re-sync read failed", e)
             _state.value = AccountImportState.Failed("Couldn't read your playlists on ${service.label}.", signedOut = false)
         }
     }
@@ -336,7 +345,7 @@ class AccountImportSession(
         lib.tracks(RemotePlaylist(id, name, trackCount = null))
     } catch (e: AccountImportException) {
         if (e.signedOut) throw e
-        Timber.w(e, "${service.label} has no playlist $id any more")
+        ImportLog.w("${service.label} has no playlist $id any more", e)
         null
     }
 
@@ -347,7 +356,7 @@ class AccountImportSession(
         val lib = library ?: return
         val picked = choosing.playlists.firstOrNull { it.id == id } ?: return
         workJob?.cancel()
-        workJob = scope.launch(Dispatchers.IO) {
+        workJob = scope.launch(ioDispatcher) {
             try {
                 _state.value = AccountImportState.Reading("Reading \"${picked.name}\"", 0, 1)
                 val read = ResyncRead(lib.tracks(picked), PlaylistOrigin(remoteId = picked.id))
@@ -358,7 +367,7 @@ class AccountImportSession(
                 if (e.signedOut) library = null
                 _state.value = AccountImportState.Failed(e.message ?: "Couldn't read \"${picked.name}\".", e.signedOut)
             } catch (e: Exception) {
-                Timber.e(e, "Reading ${picked.name} failed")
+                ImportLog.w("Reading ${picked.name} failed", e)
                 _state.value = AccountImportState.Failed("Couldn't read \"${picked.name}\" on ${service.label}.", signedOut = false)
             }
         }
