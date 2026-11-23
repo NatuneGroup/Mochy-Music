@@ -113,7 +113,7 @@ internal fun FlamingoPlayerStyle(
                         FlamingoArtwork(
                             track = track,
                             playing = transport.isPlaying,
-                            modifier = Modifier.fillMaxWidth(0.86f).fitSquare(),
+                            modifier = Modifier.squareWithin(0.86f),
                         )
                     }
                 }
@@ -159,9 +159,7 @@ internal fun FlamingoPlayerStyle(
                         FlamingoArtwork(
                             track = track,
                             playing = transport.isPlaying,
-                            modifier = Modifier
-                                .fillMaxWidth(0.94f)
-                                .fitSquare(),
+                            modifier = Modifier.squareWithin(0.94f),
                         )
                     }
                 }
@@ -468,9 +466,12 @@ private fun FlamingoIcon(
     }
 }
 
-/** Keeps a square artwork inside the height its stage actually has, however narrow the window. */
-private fun Modifier.fitSquare(): Modifier = this.layout { measurable, constraints ->
-    val side = minOf(constraints.maxWidth, constraints.maxHeight)
+/**
+ * A square artwork [fraction] of the stage's width, shrunk to the stage's height when the window
+ * is short. One measurement, so the square never breaks the width constraint it was given.
+ */
+private fun Modifier.squareWithin(fraction: Float): Modifier = this.layout { measurable, constraints ->
+    val side = minOf((constraints.maxWidth * fraction).toInt(), constraints.maxHeight)
     val placeable = measurable.measure(androidx.compose.ui.unit.Constraints.fixed(side, side))
-    layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+    layout(side, side) { placeable.place(0, 0) }
 }
