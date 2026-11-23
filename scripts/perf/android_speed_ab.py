@@ -209,10 +209,16 @@ def tap(xy: tuple[int, int]) -> None:
     sh(f"input tap {xy[0]} {xy[1]}")
 
 
+def screen_size() -> tuple[int, int]:
+    """The size input coordinates are in: an override (wm size WxH) wins over the physical size."""
+    out = sh("wm size")
+    size = re.search(r"Override size: (\d+)x(\d+)", out) or re.search(r"(\d+)x(\d+)", out)
+    return (int(size.group(1)), int(size.group(2))) if size else (1080, 2400)
+
+
 def scroll_profile() -> None:
     """The same fixed drag every time, so the rows land at the same place in every round."""
-    size = re.search(r"(\d+)x(\d+)", sh("wm size"))
-    w, h = (int(size.group(1)), int(size.group(2))) if size else (1080, 2400)
+    w, h = screen_size()
     sh(f"input swipe {w // 2} {int(h * 0.75)} {w // 2} {int(h * 0.30)} 400")
     time.sleep(1.5)
 
@@ -343,7 +349,8 @@ def traced_round(pkg: str, component: str, taps: dict, out: Path) -> Path | None
     if taps["settings"] != taps["tab"]:
         tap(taps["tab"])
         time.sleep(SETTLE_AFTER_TAP)
-        scroll_profile()
+        for _ in range(taps["profile_scrolls"]):
+            scroll_profile()
     tap(taps["settings"])
     time.sleep(SETTLE_AFTER_TAP)
     if taps["scroll_list"]:
@@ -456,9 +463,16 @@ def measure(label: str, folder: Path, out_root: Path, runs: int) -> dict:
     # the Settings tab opens on the profile page; the settings list itself is behind its "Open settings"
     # row, so that row is the tap measured as "Settings" and the tab itself is only the way there. The row
     # starts at the screen's bottom edge, under the gesture area, so the page is scrolled up first
-    scroll_profile()
-    nodes = ui_nodes(out / "2-settings-tab.xml")
-    open_settings = find(nodes, "Open settings")
+    # how far down the row is depends on the build (an update banner makes the page longer), so drags are
+    # counted until the row is whole and clear of the bottom edge, and every round repeats that count
+    _, screen_h = screen_size()
+    profile_scrolls, open_settings = 0, None
+    while open_settings is None and profile_scrolls < 4:
+        scroll_profile()
+        profile_scrolls += 1
+        nodes = ui_nodes(out / "2-settings-tab.xml")
+        rows = [n for n in nodes if "Open settings" in (n["text"], n["desc"]) and n["h"] >= 30 and n["y"] < screen_h * 0.85]
+        open_settings = (rows[0]["x"], rows[0]["y"]) if rows else None
     if open_settings is not None:
         tap(open_settings)
         time.sleep(SETTLE_AFTER_TAP + 1)
@@ -477,7 +491,8 @@ def measure(label: str, folder: Path, out_root: Path, runs: int) -> dict:
     tap(appearance)
     time.sleep(SETTLE_AFTER_TAP + 1)
     screenshot(out / "3-appearance.png")
-    taps = {"tab": settings, "settings": open_settings or settings, "appearance": appearance, "scroll_list": scroll_list}
+    taps = {"tab": settings, "settings": open_settings or settings, "appearance": appearance, "scroll_list": scroll_list,
+            "profile_scrolls": profile_scrolls}
     result["taps"] = taps
     force_stop(pkg)
 
@@ -494,7 +509,8 @@ def measure(label: str, folder: Path, out_root: Path, runs: int) -> dict:
             # onto the profile page first, unmeasured: the open being timed is the settings list's
             tap(taps["tab"])
             time.sleep(SETTLE_AFTER_TAP)
-            scroll_profile()
+            for _ in range(taps["profile_scrolls"]):
+                scroll_profile()
         gfx_reset(pkg)
         tap(taps["settings"])
         # the frames have to be drawn before gfxinfo can report them; the marker check comes after, so its
