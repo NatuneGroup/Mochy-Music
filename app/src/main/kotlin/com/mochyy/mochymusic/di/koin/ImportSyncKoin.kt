@@ -285,7 +285,11 @@ private class AndroidAccountImportRunnerFactory(
     private val context: Context,
 ) : AccountImportRunnerFactory {
     override fun create(service: AccountService, scope: CoroutineScope): AccountImportRunner =
-        com.mochyy.mochymusic.importer.account.AccountImportSession(service, context, scope)
+        com.mochyy.mochymusic.importer.account.AccountImportSession(
+            service,
+            com.mochyy.mochymusic.importer.AndroidAccountImportEnvironment(context),
+            scope,
+        )
 }
 
 private class AndroidPlaylistResyncGateway(

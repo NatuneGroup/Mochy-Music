@@ -21,6 +21,7 @@ import com.mochyy.mochymusic.constants.YtmSyncKey
 import com.mochyy.mochymusic.importer.MusicImportService
 import com.mochyy.mochymusic.importer.ParsedImport
 import com.mochyy.mochymusic.importer.YouTubeSyncManager
+import com.mochyy.mochymusic.importer.AndroidAccountImportEnvironment
 import com.mochyy.mochymusic.importer.account.AccountImportSession
 import com.mochyy.mochymusic.importer.account.AccountService
 import com.mochyy.mochymusic.importer.parseImportCsv
@@ -67,7 +68,7 @@ class OnboardingViewModel(
 
     fun startProvider(service: AccountService) {
         session?.cancel()
-        session = AccountImportSession(service, context, viewModelScope).also { it.start() }
+        session = AccountImportSession(service, AndroidAccountImportEnvironment(context), viewModelScope).also { it.start() }
     }
 
     fun closeProvider() {
