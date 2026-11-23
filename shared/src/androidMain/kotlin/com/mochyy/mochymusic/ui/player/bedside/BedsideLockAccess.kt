@@ -5,6 +5,7 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Process
 import android.provider.Settings
 import androidx.compose.foundation.background
@@ -29,7 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -37,11 +37,15 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
-import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.BedsideLockPromptDismissedKey
 import com.mochyy.mochymusic.constants.BedsideLockScreenKey
+import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import com.mochyy.mochymusic.utils.rememberPreference
+import org.jetbrains.compose.resources.stringResource
+
+// asking for an unlock from over the lock screen needs android 8.1, older phones just don't get the option
+val LockScreenSupported: Boolean get() = Build.VERSION.SDK_INT >= 27
 
 // miui and hyperos keep a "show on lock screen" switch of their own per app, off until someone turns it on, and while it's off setShowWhenLocked does nothing at all
 private const val MiuiShowWhenLockedOp = 10020
@@ -73,7 +77,7 @@ internal fun canShowOnLockScreen(context: Context): Boolean {
 }
 
 // opens the screen where the switch lives: miui's own permission page if it can find it, the app's info page otherwise
-internal fun openLockScreenAccess(context: Context) {
+fun openLockScreenAccess(context: Context) {
     val pkg = context.packageName
     val miuiPages = listOf(
         "com.miui.permcenter.permissions.PermissionsEditorActivity",
@@ -96,7 +100,7 @@ internal fun openLockScreenAccess(context: Context) {
 
 // whether the switch is on, looked at again every time the app comes back, which is how it notices someone turning it on in settings
 @Composable
-internal fun rememberLockScreenAccess(): State<Boolean> {
+fun rememberLockScreenAccess(): State<Boolean> {
     val context = LocalContext.current
     val allowed = remember(context) { mutableStateOf(canShowOnLockScreen(context)) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { allowed.value = canShowOnLockScreen(context) }
@@ -105,7 +109,7 @@ internal fun rememberLockScreenAccess(): State<Boolean> {
 
 // asks once, over the bedside, for the switch the phone keeps off; "not now" leaves it to the bedside's sheet
 @Composable
-internal fun LockScreenPrompt(modifier: Modifier = Modifier) {
+fun LockScreenPrompt(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val wanted by rememberPreference(BedsideLockScreenKey, defaultValue = true)
     var dismissed by rememberPreference(BedsideLockPromptDismissedKey, defaultValue = false)
@@ -118,13 +122,13 @@ internal fun LockScreenPrompt(modifier: Modifier = Modifier) {
             .background(PromptFill)
             .padding(horizontal = 22.dp, vertical = 18.dp),
     ) {
-        BasicText(stringResource(R.string.bedside_lock_ask_title), style = promptText(16.sp, FontWeight.Bold, Color.White))
+        BasicText(stringResource(Res.string.bedside_lock_ask_title), style = promptText(16.sp, FontWeight.Bold, Color.White))
         Spacer(Modifier.height(6.dp))
-        BasicText(stringResource(R.string.bedside_lock_ask_body), style = promptText(13.sp, FontWeight.Normal, Color.White.copy(alpha = 0.65f)))
+        BasicText(stringResource(Res.string.bedside_lock_ask_body), style = promptText(13.sp, FontWeight.Normal, Color.White.copy(alpha = 0.65f)))
         Spacer(Modifier.height(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            PromptButton(stringResource(R.string.bedside_lock_ask_later), filled = false, modifier = Modifier.weight(1f)) { dismissed = true }
-            PromptButton(stringResource(R.string.bedside_lock_ask_allow), filled = true, modifier = Modifier.weight(1f)) { openLockScreenAccess(context) }
+            PromptButton(stringResource(Res.string.bedside_lock_ask_later), filled = false, modifier = Modifier.weight(1f)) { dismissed = true }
+            PromptButton(stringResource(Res.string.bedside_lock_ask_allow), filled = true, modifier = Modifier.weight(1f)) { openLockScreenAccess(context) }
         }
     }
 }

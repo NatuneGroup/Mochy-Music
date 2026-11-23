@@ -25,9 +25,6 @@ import com.mochyy.mochymusic.ui.component.LocalPlayerBottomSheetState
 import com.mochyy.mochymusic.ui.player.findActivity
 import kotlinx.coroutines.flow.distinctUntilChanged
 
-// asking for an unlock from over the lock screen needs android 8.1, older phones just don't get the option
-internal val LockScreenSupported: Boolean get() = Build.VERSION.SDK_INT >= 27
-
 // how open the player must look before the bedside keeps the screen on or stands over the lock screen
 private const val OpenEnough = 0.9f
 
