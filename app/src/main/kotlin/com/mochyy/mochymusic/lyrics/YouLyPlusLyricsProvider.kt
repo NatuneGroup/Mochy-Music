@@ -2,17 +2,11 @@
 
 package com.mochyy.mochymusic.lyrics
 
-import android.content.Context
 import com.music.youlyplus.YouLyPlus
-import com.mochyy.mochymusic.constants.EnableYouLyPlusKey
-import com.mochyy.mochymusic.utils.dataStore
-import com.mochyy.mochymusic.utils.get
 
 object YouLyPlusLyricsProvider : LyricsProvider {
     override val name = "YouLyPlus"
 
-    override fun isEnabled(context: Context): Boolean =
-        context.dataStore[EnableYouLyPlusKey] ?: true
 
     override suspend fun getLyrics(
         id: String,

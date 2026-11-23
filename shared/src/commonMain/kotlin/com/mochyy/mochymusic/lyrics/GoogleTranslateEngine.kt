@@ -14,9 +14,6 @@
 
 package com.mochyy.mochymusic.lyrics
 
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.okhttp.OkHttp
-import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.bodyAsText
@@ -49,16 +46,8 @@ object GoogleTranslateEngine {
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    private val client by lazy {
-        HttpClient(OkHttp) {
-            expectSuccess = false
-            install(HttpTimeout) {
-                requestTimeoutMillis = 15_000
-                connectTimeoutMillis = 10_000
-                socketTimeoutMillis = 15_000
-            }
-        }
-    }
+    // the engine is the platform's (see LyricsHttpClient); same timeouts it had when built here
+    private val client get() = lyricsHttpClient()
 
     /**
      * Translates [lines] into [targetLanguage], preserving order and count.

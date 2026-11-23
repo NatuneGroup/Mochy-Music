@@ -3,13 +3,18 @@
 package com.mochyy.mochymusic.lyrics
 
 import com.mochyy.mochymusic.constants.PreferredLyricsProvider
-import com.music.directlyrics.LrcRed
-import com.music.directlyrics.Unison
 
-object LyricsProviderRegistry {
+/**
+ * The lyrics sources Android has: thin wrappers over the Android provider modules, the three
+ * YouTube sources and the shared Natune providers, plus lyrics modules while they are on.
+ *
+ * The ordering rules live in shared LyricsSourceOrder (and every platform sorts the same way);
+ * this object only says which instances exist and how each is named on screen.
+ */
+object LyricsProviderRegistry : LyricsProviderCatalog {
     private val providerMap = mapOf(
         "YouLyPlus"       to YouLyPlusLyricsProvider,
-        "Paxsenix"        to PaxSenixLyricsProvider,
+        "Paxsenix"        to PaxsenixLyricsProvider,
         "BetterLyrics"    to BetterLyricsProvider,
         "Unison"          to UnisonLyricsProvider,
         "SimpMusic"       to SimpMusicLyricsProvider,
@@ -36,61 +41,33 @@ object LyricsProviderRegistry {
         moduleProviders = providers.associateBy { it.name }
     }
 
-    val providerNames: List<String> get() = moduleProviders.keys.toList() + providerMap.keys
+    override val providerNames: List<String> get() = moduleProviders.keys.toList() + providerMap.keys
 
-    fun getProviderByName(name: String): LyricsProvider? = providerMap[name] ?: moduleProviders[name]
+    override fun getProviderByName(name: String): LyricsProvider? = providerMap[name] ?: moduleProviders[name]
 
     /** A saved order, with any source added since it was saved at the end, in default order. */
-    fun deserializeProviderOrder(orderString: String): List<String> {
-        if (orderString.isBlank()) return getDefaultProviderOrder()
-        val saved = orderString.split(",").map { it.trim() }.filter { it in providerNames }.distinct()
-        // a lyrics module someone just turned on goes first, they added it to be asked
-        val newModules = moduleProviders.keys.filter { it !in saved }
-        return newModules + saved + getDefaultProviderOrder().filter { it !in saved && it !in newModules }
-    }
+    override fun deserializeProviderOrder(orderString: String): List<String> =
+        LyricsSourceOrder.deserialize(orderString, providerNames, moduleProviders.keys.toList(), LyricsSourceOrder.DefaultOrder)
 
     // the order lyrics are really asked in: the saved one, or until someone sorts, the old single preferred pick first
-    fun effectiveProviderOrder(orderString: String, preferred: PreferredLyricsProvider): List<String> {
-        if (orderString.isNotBlank()) return deserializeProviderOrder(orderString)
-        val preferredName = getProviderNameForEnum(preferred)
-        return listOf(preferredName) + getDefaultProviderOrder().filter { it != preferredName }
-    }
+    override fun effectiveProviderOrder(orderString: String, preferred: PreferredLyricsProvider): List<String> =
+        LyricsSourceOrder.effective(
+            orderString,
+            preferred,
+            providerNames,
+            moduleProviders.keys.toList(),
+            LyricsSourceOrder.DefaultOrder,
+        )
 
     fun serializeProviderOrder(providers: List<String>): String =
-        providers.filter { it in providerNames }.joinToString(",")
+        LyricsSourceOrder.serialize(providers, providerNames)
 
     // NetEase, QQ Music and KuGou near the end: they are Chinese services, and LyricsHelper only
     // believes them first-hand for Chinese songs. NetEase leads them because it often has word
     // timing. YouTube's auto captions last of all - they are speech recognition.
-    fun getDefaultProviderOrder(): List<String> = moduleProviders.keys.toList() + listOf(
-        "BetterLyrics",
-        "BetterLyricsPortato",
-        "Unison",
-        "YouLyPlus",
-        "Paxsenix",
-        "LrcRed",
-        "BiniLyrics",
-        "SimpMusic",
-        "LrcLib",
-        "Megalobiz",
-        "Deezer",
-        "YouTubeSubtitle",
-        "YouTubeMusic",
-        "NetEase",
-        "QQMusic",
-        "Kugou",
-        "Genius",
-        "YouTubeCaptions",
-    )
+    fun getDefaultProviderOrder(): List<String> = moduleProviders.keys.toList() + LyricsSourceOrder.DefaultOrder
 
-    fun getProviderNameForEnum(enum: PreferredLyricsProvider): String = when (enum) {
-        PreferredLyricsProvider.LRCLIB        -> "LrcLib"
-        PreferredLyricsProvider.KUGOU         -> "Kugou"
-        PreferredLyricsProvider.BETTER_LYRICS -> "BetterLyrics"
-        PreferredLyricsProvider.SIMPMUSIC     -> "SimpMusic"
-        PreferredLyricsProvider.YOULYPLUS     -> "YouLyPlus"
-        PreferredLyricsProvider.PAXSENIX      -> "Paxsenix"
-    }
+    fun getProviderNameForEnum(enum: PreferredLyricsProvider): String = LyricsSourceOrder.providerNameFor(enum)
 
     fun getDisplayName(name: String): String = when (name) {
         "YouLyPlus"       -> "YouLyPlus"
@@ -123,7 +100,7 @@ object LyricsProviderRegistry {
     fun getProject(name: String): LyricsProject? = when (name) {
         "YouLyPlus"    -> LyricsProject("LyricsPlus", "https://github.com/ibratabian17/LyricsPlus")
         "BetterLyrics" -> LyricsProject("Better Lyrics", "https://github.com/better-lyrics/better-lyrics")
-        "Unison"       -> LyricsProject("Unison", Unison.RepoUrl)
+        "Unison"       -> LyricsProject("Unison", com.music.directlyrics.Unison.RepoUrl)
         "LrcLib"       -> LyricsProject("LRCLIB", "https://github.com/tranxuanthang/lrclib")
         "SimpMusic"    -> LyricsProject("SimpMusic", "https://github.com/maxrave-dev/SimpMusic")
         else           -> null
@@ -131,11 +108,11 @@ object LyricsProviderRegistry {
 
     // lrc.red and unison require linking back wherever their lyrics are shown
     fun getWebsite(name: String): String? = when (name) {
-        "LrcRed" -> LrcRed.BaseUrl
+        "LrcRed" -> com.music.directlyrics.LrcRed.BaseUrl
         "BiniLyrics" -> "https://lyrics-api.binimum.org/"
         "Megalobiz" -> "https://www.megalobiz.com/"
         "Genius" -> "https://genius.com/"
-        "Unison" -> Unison.BaseUrl
+        "Unison" -> com.music.directlyrics.Unison.BaseUrl
         else     -> null
     }
 }

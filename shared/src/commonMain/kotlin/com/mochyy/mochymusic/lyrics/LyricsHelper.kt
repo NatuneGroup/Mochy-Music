@@ -2,19 +2,16 @@
 
 package com.mochyy.mochymusic.lyrics
 
-import android.content.Context
-import android.util.LruCache
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import com.mochyy.mochymusic.constants.LyricsOrderOverrideKey
 import com.mochyy.mochymusic.constants.LyricsProviderOrderKey
+import com.mochyy.mochymusic.constants.LyricsSourceSwitches
 import com.mochyy.mochymusic.constants.PreferredLyricsProvider
 import com.mochyy.mochymusic.constants.PreferredLyricsProviderKey
 import com.mochyy.mochymusic.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import com.mochyy.mochymusic.extensions.toEnum
 import com.mochyy.mochymusic.models.MediaMetadata
-import com.mochyy.mochymusic.utils.NetworkConnectivityObserver
-import com.mochyy.mochymusic.utils.dataStore
-import com.mochyy.mochymusic.utils.reportException
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,32 +20,51 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import javax.inject.Inject
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
-class LyricsHelper
-@Inject
-constructor(
-    @ApplicationContext private val context: Context,
-    private val networkConnectivity: NetworkConnectivityObserver,
+/**
+ * The lyrics pipeline shared by every platform: which sources are asked, in what order, how their
+ * answers are graded, and what is remembered for the song.
+ *
+ * The platform hands in its one settings store, its connectivity, a way to read an imported file's
+ * own lyrics, the source catalogue and how to report an exception (Android: crash reporting).
+ */
+class LyricsHelper(
+    private val catalog: LyricsProviderCatalog,
+    private val preferences: DataStore<Preferences>,
+    private val network: LyricsNetworkStatus,
+    private val localLyrics: LyricsFileReader,
+    private val reportError: (Throwable) -> Unit = {},
 ) {
 
     private suspend fun resolveLyricsProviders(): List<LyricsProvider> {
-        val preferences = context.dataStore.data.first()
-        val preferred = preferences[PreferredLyricsProviderKey].toEnum(PreferredLyricsProvider.YOULYPLUS)
-        return LyricsProviderRegistry.effectiveProviderOrder(preferences[LyricsProviderOrderKey].orEmpty(), preferred)
-            .mapNotNull { LyricsProviderRegistry.getProviderByName(it) }
+        val settings = preferences.data.first()
+        val preferred = settings[PreferredLyricsProviderKey].toEnum(PreferredLyricsProvider.YOULYPLUS)
+        return catalog.effectiveProviderOrder(settings[LyricsProviderOrderKey].orEmpty(), preferred)
+            .mapNotNull { catalog.getProviderByName(it) }
     }
 
     // the app behaviour switch that lets the saved provider order beat the feature count
     private suspend fun isOrderOverridden(): Boolean =
-        context.dataStore.data.first()[LyricsOrderOverrideKey] ?: false
+        preferences.data.first()[LyricsOrderOverrideKey] ?: false
 
-    private val cache = LruCache<String, List<LyricsResult>>(MAX_CACHE_SIZE)
-    private val bestCache = LruCache<String, LyricsWithProvider>(MAX_CACHE_SIZE)
+    /** A source's switch, read from the same key its own isEnabled read before the move; unlisted sources are always on. */
+    private suspend fun isSourceEnabled(name: String): Boolean {
+        val sourceSwitch = LyricsSourceSwitches[name] ?: return true
+        return preferences.data.first()[sourceSwitch.key] ?: sourceSwitch.defaultOn
+    }
+
+    private suspend fun isOnline(): Boolean = try {
+        network.isOnline()
+    } catch (e: Exception) {
+        true
+    }
+
+    private val cache = LyricsLru<String, List<LyricsResult>>(MAX_CACHE_SIZE)
+    private val bestCache = LyricsLru<String, LyricsWithProvider>(MAX_CACHE_SIZE)
     private var currentLyricsJob: Job? = null
 
     /**
@@ -77,29 +93,24 @@ constructor(
         forceRefresh: Boolean = false,
     ): LyricsWithProvider {
         if (forceRefresh) {
-            bestCache.remove(mediaMetadata.id)
+            lyricsLocked(bestCache) { bestCache.remove(mediaMetadata.id) }
         } else {
-            bestCache.get(mediaMetadata.id)?.let { return it }
+            lyricsLocked(bestCache) { bestCache.get(mediaMetadata.id) }?.let { return it }
         }
 
         // An imported file's own lyrics, from its tags: they're the file's, and they're there
         // offline. Read before anything goes online, so offline mode still has them.
         // Off the caller's thread: the player asks from the main one, and this reads the file.
         mediaMetadata.localUri?.let { uri ->
-            withContext(Dispatchers.IO) { readEmbeddedLyrics(context, android.net.Uri.parse(uri)) }?.let { lyrics ->
-                return LyricsWithProvider(lyrics, EmbeddedLyrics.Provider).also { bestCache.put(mediaMetadata.id, it) }
+            withContext(Dispatchers.IO) { localLyrics.read(uri) }?.let { lyrics ->
+                return LyricsWithProvider(lyrics, EmbeddedLyrics.Provider).also {
+                    lyricsLocked(bestCache) { bestCache.put(mediaMetadata.id, it) }
+                }
             }
         }
 
         // offline mode counts as no network: lyrics already saved for the song still show
-        val isNetworkAvailable = !com.mochyy.mochymusic.utils.OfflineMode.isOn && try {
-            networkConnectivity.isCurrentlyConnected()
-        } catch (e: Exception) {
-
-            true
-        }
-
-        if (!isNetworkAvailable) {
+        if (!isOnline()) {
             // not "not found": nothing was asked, and saying so would be saved as the answer
             return LyricsWithProvider(LYRICS_NOT_FOUND, NoConnectionProvider)
         }
@@ -120,7 +131,7 @@ constructor(
         }
         if (best == null) return LyricsWithProvider(LYRICS_NOT_FOUND, "Unknown")
         val result = LyricsWithProvider(best.lyrics, best.providerName)
-        bestCache.put(mediaMetadata.id, result)
+        lyricsLocked(bestCache) { bestCache.put(mediaMetadata.id, result) }
         return result
     }
 
@@ -169,7 +180,7 @@ constructor(
     /** The enabled providers, in the user's preferred order. */
     suspend fun orderedProviders(): List<LyricsProvider> = resolveLyricsProviders()
 
-    fun isProviderEnabled(provider: LyricsProvider): Boolean = provider.isEnabled(context)
+    suspend fun isProviderEnabled(provider: LyricsProvider): Boolean = isSourceEnabled(provider.name)
 
     /** Asks one provider. Null when it is switched off, has nothing, fails or times out. */
     suspend fun fetchCandidate(
@@ -177,7 +188,7 @@ constructor(
         provider: LyricsProvider,
         order: Int,
     ): ProviderCandidate? {
-        if (!provider.isEnabled(context) || com.mochyy.mochymusic.utils.OfflineMode.isOn) return null
+        if (!isSourceEnabled(provider.name) || !isOnline()) return null
         val lyrics = try {
             withTimeoutOrNull(ProviderTimeoutMs) {
                 provider.getLyrics(
@@ -186,12 +197,12 @@ constructor(
                     mediaMetadata.artists.joinToString { it.name },
                     mediaMetadata.duration,
                     mediaMetadata.album?.title,
-                ).onFailure { reportException(it) }.getOrNull()
+                ).onFailure { reportError(it) }.getOrNull()
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            reportException(e)
+            reportError(e)
             null
         }
         if (lyrics.isNullOrBlank() || lyrics == LYRICS_NOT_FOUND) return null
@@ -209,7 +220,7 @@ constructor(
 
     /** Remembers a source the user picked by hand, so the next lookup returns it. */
     fun rememberChoice(mediaId: String, choice: LyricsWithProvider) {
-        bestCache.put(mediaId, choice)
+        lyricsLocked(bestCache) { bestCache.put(mediaId, choice) }
     }
 
     /**
@@ -491,7 +502,7 @@ constructor(
         currentLyricsJob?.cancel()
 
         val cacheKey = "$songArtists-$songTitle".replace(" ", "")
-        cache.get(cacheKey)?.let { results ->
+        lyricsLocked(cache) { cache.get(cacheKey) }?.let { results ->
             results.forEach {
                 callback(it)
             }
@@ -499,15 +510,7 @@ constructor(
         }
 
         // offline mode counts as no network: lyrics already saved for the song still show
-        val isNetworkAvailable = !com.mochyy.mochymusic.utils.OfflineMode.isOn && try {
-            networkConnectivity.isCurrentlyConnected()
-        } catch (e: Exception) {
-
-            true
-        }
-
-        if (!isNetworkAvailable) {
-
+        if (!isOnline()) {
             return
         }
 
@@ -515,7 +518,7 @@ constructor(
         val providers = resolveLyricsProviders()
         currentLyricsJob = CoroutineScope(SupervisorJob()).launch {
             providers.forEach { provider ->
-                if (provider.isEnabled(context)) {
+                if (isSourceEnabled(provider.name)) {
                     try {
                         provider.getAllLyrics(mediaId, songTitle, songArtists, duration, album) { lyrics ->
                             val result = LyricsResult(provider.name, lyrics)
@@ -523,12 +526,11 @@ constructor(
                             callback(result)
                         }
                     } catch (e: Exception) {
-
-                        reportException(e)
+                        reportError(e)
                     }
                 }
             }
-            cache.put(cacheKey, allResult)
+            lyricsLocked(cache) { cache.put(cacheKey, allResult) }
         }
 
         currentLyricsJob?.join()
@@ -565,10 +567,11 @@ constructor(
         private val PreferredHindiProviders = setOf("BetterLyrics", "YouLyPlus")
 
         /** Chinese services: trusted first-hand only for Chinese songs; see [eligible]. */
+        // the names are the registry keys; the three Android wrappers stay in app, so these are literals
         private val ChineseSources = setOf(
-            KuGouLyricsProvider.name,
-            NetEaseLyricsProvider.name,
-            QQMusicLyricsProvider.name,
+            "Kugou",
+            "NetEase",
+            "QQMusic",
             BetterLyricsPortatoProvider.name, // its endpoint serves QQ Music lyrics
         )
 
@@ -596,3 +599,13 @@ data class LyricsWithProvider(
     val lyrics: String,
     val provider: String,
 )
+
+/** Whether lyrics may go online: Android answers with its offline switch and real connectivity. */
+fun interface LyricsNetworkStatus {
+    suspend fun isOnline(): Boolean
+}
+
+/** Reads an imported file's own lyrics from its uri; Android's content resolver is behind it. */
+fun interface LyricsFileReader {
+    suspend fun read(uri: String): String?
+}
