@@ -27,6 +27,9 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import com.mochyy.mochymusic.constants.CustomBoldFontKey
+import com.mochyy.mochymusic.constants.CustomFontKey
+import com.mochyy.mochymusic.shared.desktop.fonts.DesktopFonts
 import com.mochyy.mochymusic.shared.desktop.media.DesktopMediaControls
 import com.mochyy.mochymusic.shared.desktop.media.YouTubeSearchSource
 import com.mochyy.mochymusic.shared.desktop.media.createSystemMediaSession
@@ -57,6 +60,7 @@ import com.mochyy.mochymusic.shared.resources.playback_failed
 import com.mochyy.mochymusic.shared.ui.theme.StandaloneMochyTheme
 import com.mochyy.mochymusic.utils.LocalAppPreferences
 import com.mochyy.mochymusic.utils.PreferencesCache
+import com.mochyy.mochymusic.utils.rememberPreference
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
@@ -78,6 +82,8 @@ fun runDesktopApp(font: FontFamily) {
     configureDesktopImageLoader()
     // shared ViewModels get the store above and desktopDatabase; nothing opens either until one asks
     com.mochyy.mochymusic.di.startMochyKoin(database = { desktopDatabase }, preferences = { desktopPlaybackPreferences.store })
+    // the desktop half of the graph (the storage page's platform); Android loads its own the same way
+    com.mochyy.mochymusic.shared.desktop.di.startDesktopKoin()
     // the app's font pick falls back to this inter (StandaloneMochyTheme hands it over too, as iOS does)
     com.mochyy.mochymusic.ui.theme.AppFont.inter = font
     // where the window was is read before it opens, so it never jumps from a default place to its own
@@ -205,7 +211,14 @@ private fun runDesktopWindow(font: FontFamily, savedWindow: DesktopWindowSetting
             com.mochyy.mochymusic.LocalPlayerAwareWindowInsets provides NoWindowInsets,
             com.mochyy.mochymusic.ui.component.LocalSubSettingsChrome provides com.mochyy.mochymusic.ui.component.PlainSubSettingsChrome,
         ) {
-            StandaloneMochyTheme(font, desktopPlaybackPreferences) {
+            // Settings > Appearance > Custom font: the picked file lives in Mochy's font folder, and
+            // the whole window draws in it; without one the launcher's Inter is the typeface
+            val (customFont) = rememberPreference(CustomFontKey, defaultValue = "")
+            val (customBoldFont) = rememberPreference(CustomBoldFontKey, defaultValue = "")
+            val themeFont = remember(customFont, customBoldFont, font) {
+                DesktopFonts.family(customFont, customBoldFont) ?: font
+            }
+            StandaloneMochyTheme(themeFont, desktopPlaybackPreferences) {
                 DesktopMusicApp(
                     source = search,
                     lyricsProviders = providers,

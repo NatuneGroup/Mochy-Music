@@ -52,6 +52,7 @@ import com.mochyy.mochymusic.shared.playback.SharedQueue
 import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.shared.resources.arrow_back
 import com.mochyy.mochymusic.shared.resources.back_button_desc
+import com.mochyy.mochymusic.shared.resources.desktop_about_title
 import com.mochyy.mochymusic.shared.resources.desktop_window_settings
 import com.mochyy.mochymusic.shared.resources.desktop_window_settings_desc
 import com.mochyy.mochymusic.shared.resources.library_empty
@@ -107,6 +108,7 @@ internal fun DesktopSettingsHome(navController: NavHostController) {
         recommendations = { open ->
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 DesktopWindowCard(onClick = { open(DesktopRoutes.DesktopWindow) })
+                DesktopAboutCard(onClick = { open(DesktopRoutes.About) })
                 DesktopStatsCard(onClick = { open(DesktopRoutes.Stats) })
             }
         },
@@ -131,6 +133,26 @@ private fun DesktopStatsCard(onClick: () -> Unit) {
                 Text(stringResource(Res.string.rc_stats_title), style = MaterialTheme.typography.titleMedium)
                 Text(
                     stringResource(Res.string.profile_view_stats),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/** What Mochy is, who it is built on and where its licence sits. */
+@Composable
+private fun DesktopAboutCard(onClick: () -> Unit) {
+    SettingsCard {
+        Row(
+            modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(Res.string.desktop_about_title), style = MaterialTheme.typography.titleMedium)
+                Text(
+                    stringResource(Res.string.shell_credit),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
