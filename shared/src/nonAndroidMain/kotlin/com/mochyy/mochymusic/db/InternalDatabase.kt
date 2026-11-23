@@ -70,7 +70,7 @@ import com.mochyy.mochymusic.db.entities.SpeedDialItem
         SortedSongAlbumMap::class,
         PlaylistSongMapPreview::class,
     ],
-    version = 45,
+    version = MusicDatabaseVersion,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)

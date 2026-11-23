@@ -33,7 +33,7 @@ class InternalDatabaseTest {
             val song = assertNotNull(database.songDao.getSongById("test-song"))
             assertEquals("Test song", song.song.title)
             assertEquals(180, song.song.duration)
-            assertEquals(45, database.useReaderConnection { connection ->
+            assertEquals(MusicDatabaseVersion, database.useReaderConnection { connection ->
                 connection.usePrepared("PRAGMA user_version") { it.step(); it.getLong(0).toInt() }
             })
         } finally {

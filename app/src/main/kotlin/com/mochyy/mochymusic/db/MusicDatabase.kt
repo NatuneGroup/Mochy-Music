@@ -111,9 +111,6 @@ class MusicDatabase(
     fun close() = delegate.close()
 }
 
-// bump this with every schema change and add its migration to AllMigrations, the import checks old exports against it too
-const val MusicDatabaseVersion = 45
-
 @Database(
     entities = [
         SongEntity::class,
