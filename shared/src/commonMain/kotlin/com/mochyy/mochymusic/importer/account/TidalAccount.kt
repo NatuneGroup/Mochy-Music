@@ -2,8 +2,8 @@
 
 package com.mochyy.mochymusic.importer.account
 
-import android.util.Base64
 import com.mochyy.mochymusic.importer.ImportedTrack
+import kotlin.io.encoding.Base64
 import com.mochyy.mochymusic.importer.array
 import com.mochyy.mochymusic.importer.dateMs
 import com.mochyy.mochymusic.importer.idString
@@ -44,9 +44,13 @@ object TidalConnector : AccountConnector {
         return null
     }
 
+    // the jwt payload comes base64url without padding; the decoder wants it padded
+    private fun decodeBase64Url(text: String): ByteArray =
+        Base64.UrlSafe.decode(text + "=".repeat((4 - text.length % 4) % 4))
+
     private fun jwtUser(token: String): Pair<String, String>? = runCatching {
         val payload = token.split('.').getOrNull(1) ?: return null
-        val claims = AccountHttp.parse(String(Base64.decode(payload, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)))
+        val claims = AccountHttp.parse(String(decodeBase64Url(payload)))
             ?: return null
         val userId = claims.idString("uid") ?: return null
         val country = claims.string("cc") ?: return null

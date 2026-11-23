@@ -2,10 +2,14 @@
 
 package com.mochyy.mochymusic.importer.account
 
+import com.mochyy.mochymusic.db.nowEpochMillis
+import com.mochyy.mochymusic.link.PlatformLock
 import com.mochyy.mochymusic.importer.ImportedTrack
 import com.mochyy.mochymusic.importer.obj
 import com.mochyy.mochymusic.importer.string
+import io.ktor.http.Url
 import kotlinx.serialization.json.JsonObject
+import kotlin.concurrent.Volatile
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 
@@ -13,7 +17,7 @@ import kotlinx.serialization.json.booleanOrNull
  * The playlist called [name] here, for a Re-sync that has no id to go by. Importing a second
  * playlist with a name already taken calls it "Chill (2)", so that ending is tried without too.
  */
-internal fun List<RemotePlaylist>.named(name: String): RemotePlaylist? {
+fun List<RemotePlaylist>.named(name: String): RemotePlaylist? {
     val plain = name.replace(Regex("""\s\(\d+\)$"""), "")
     return firstOrNull { it.name == name }
         ?: firstOrNull { it.name == plain }
@@ -38,7 +42,7 @@ class AccountRetryLater(val seconds: Long) : Exception()
  * Desktop Chrome: Tidal's web player refuses phones, and Spotify's phone site has no library. Also
  * sent with the requests that read Spotify's library the way its web player does.
  */
-internal const val DESKTOP_USER_AGENT =
+const val DESKTOP_USER_AGENT =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
 
 /**
@@ -59,7 +63,7 @@ class WebPlayerQuery(
      * defaults. A query the page actually sends replaces it.
      */
     val guessed: Boolean = false,
-    val seenAtMs: Long = System.currentTimeMillis(),
+    val seenAtMs: Long = nowEpochMillis(),
 )
 
 /**
@@ -68,6 +72,7 @@ class WebPlayerQuery(
  * tokens from before sign-in (anonymous) simply fail that check.
  */
 class CapturedCredentials {
+    private val lock = PlatformLock()
     private val bearers = LinkedHashMap<String, String>()
     /** When each token was first seen. */
     private val bearerSeenAt = HashMap<String, Long>()
@@ -85,10 +90,10 @@ class CapturedCredentials {
                 if (!trimmed.startsWith("Bearer ", ignoreCase = true)) return
                 val token = trimmed.substring(7).trim()
                 if (token.length < 20) return
-                synchronized(this) {
+                lock.withLock {
                     bearers.remove(token)
                     bearers[token] = hostOf(url)
-                    bearerSeenAt.getOrPut(token) { System.currentTimeMillis() }
+                    bearerSeenAt.getOrPut(token) { nowEpochMillis() }
                     while (bearers.size > MAX_TOKENS) {
                         val oldest = bearers.keys.first()
                         bearers.remove(oldest)
@@ -98,9 +103,9 @@ class CapturedCredentials {
             }
             "media-user-token" -> if (trimmed.length >= 20) appleUserToken = trimmed
             "client-token", "app-platform", "spotify-app-version" ->
-                if (trimmed.isNotEmpty()) synchronized(this) { sessionHeaders[name.trim().lowercase()] = trimmed }
+                if (trimmed.isNotEmpty()) lock.withLock { sessionHeaders[name.trim().lowercase()] = trimmed }
             WEB_PLAYER_QUERY_HEADER -> parseQuery(trimmed)?.let { query ->
-                synchronized(this) {
+                lock.withLock {
                     val known = queries[query.name]
                     // the first one sent wins; one sent beats one read out of the script
                     if (known == null || (known.guessed && !query.guessed)) queries[query.name] = query
@@ -110,10 +115,10 @@ class CapturedCredentials {
     }
 
     /** The web player's own client headers (client-token, app-platform, spotify-app-version). */
-    fun sessionHeaders(): Map<String, String> = synchronized(this) { HashMap(sessionHeaders) }
+    fun sessionHeaders(): Map<String, String> = lock.withLock { HashMap(sessionHeaders) }
 
     /** The first query seen under each name, in the order they were seen. */
-    fun queries(): List<WebPlayerQuery> = synchronized(this) { queries.values.toList() }
+    fun queries(): List<WebPlayerQuery> = lock.withLock { queries.values.toList() }
 
     private fun parseQuery(raw: String): WebPlayerQuery? {
         val json = AccountHttp.parse(raw) ?: return null
@@ -128,34 +133,34 @@ class CapturedCredentials {
     }
 
     /** Newest first; a token whose request had no readable host counts for every service. */
-    fun untriedBearers(hostSuffix: String): List<String> = synchronized(this) {
+    fun untriedBearers(hostSuffix: String): List<String> = lock.withLock {
         bearers.entries.filter { (token, host) -> token !in tried && (host.isEmpty() || host.endsWith(hostSuffix)) }
             .map { it.key }
             .asReversed()
     }
 
-    fun newestBearer(hostSuffix: String): String? = synchronized(this) {
+    fun newestBearer(hostSuffix: String): String? = lock.withLock {
         bearers.entries.lastOrNull { (_, host) -> host.isEmpty() || host.endsWith(hostSuffix) }?.key
     }
 
     /** Every token seen for [hostSuffix], tried or not, newest first. */
-    fun bearers(hostSuffix: String): List<String> = synchronized(this) {
+    fun bearers(hostSuffix: String): List<String> = lock.withLock {
         bearers.entries.filter { (_, host) -> host.isEmpty() || host.endsWith(hostSuffix) }.map { it.key }.asReversed()
     }
 
     /** How long ago [token] was first seen; 0 for one never seen. */
-    fun bearerAgeMs(token: String): Long = synchronized(this) {
-        bearerSeenAt[token]?.let { System.currentTimeMillis() - it } ?: 0
+    fun bearerAgeMs(token: String): Long = lock.withLock {
+        bearerSeenAt[token]?.let { nowEpochMillis() - it } ?: 0
     }
 
-    fun isTried(key: String): Boolean = synchronized(this) { key in tried }
+    fun isTried(key: String): Boolean = lock.withLock { key in tried }
 
     fun markTried(key: String) {
-        synchronized(this) { tried += key }
+        lock.withLock { tried += key }
     }
 
     fun clear() {
-        synchronized(this) {
+        lock.withLock {
             bearers.clear()
             bearerSeenAt.clear()
             tried.clear()
@@ -166,7 +171,7 @@ class CapturedCredentials {
     }
 
     private fun hostOf(url: String): String =
-        runCatching { java.net.URI(url).host }.getOrNull()?.lowercase().orEmpty()
+        runCatching { Url(url).host }.getOrNull()?.lowercase().orEmpty()
 
     private companion object {
         const val MAX_TOKENS = 24

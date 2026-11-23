@@ -2,9 +2,8 @@
 
 package com.mochyy.mochymusic.importer.account
 
+import com.mochyy.mochymusic.importer.createImporterHttpClient
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.okhttp.OkHttp
-import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -21,16 +20,7 @@ internal object AccountHttp {
 
     val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    private val client by lazy {
-        HttpClient(OkHttp) {
-            install(HttpTimeout) {
-                connectTimeoutMillis = 15_000
-                requestTimeoutMillis = 30_000
-                socketTimeoutMillis = 30_000
-            }
-            expectSuccess = false
-        }
-    }
+    private val client: HttpClient by lazy { createImporterHttpClient() }
 
     class Response(val status: Int, val body: String, val retryAfterSeconds: Long?)
 
