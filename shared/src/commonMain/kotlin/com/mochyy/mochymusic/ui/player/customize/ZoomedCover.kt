@@ -41,7 +41,7 @@ fun ZoomedCover(model: Any?, zoom: () -> Float, modifier: Modifier = Modifier) {
 }
 
 /** how much bigger the cropped picture is than the fitted one, 1 when it can't be known yet */
-internal fun fillScale(picture: Size, box: Size): Float {
+fun fillScale(picture: Size, box: Size): Float {
     if (!picture.isSpecified || picture.width <= 0f || picture.height <= 0f) return 1f
     if (box.width <= 0f || box.height <= 0f) return 1f
     val fit = min(box.width / picture.width, box.height / picture.height)

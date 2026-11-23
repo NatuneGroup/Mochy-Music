@@ -48,6 +48,8 @@ import com.mochyy.mochymusic.constants.DiscNameKey
 import com.mochyy.mochymusic.constants.PlayerCoverStyle
 import com.mochyy.mochymusic.constants.PlayerEndTimestamp
 import com.mochyy.mochymusic.constants.PlayerEndTimestampKey
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.graphic_eq
 import com.mochyy.mochymusic.ui.component.AppSwitch
 import com.mochyy.mochymusic.ui.component.ButtonStyle
 import com.mochyy.mochymusic.constants.FlagshipTransportLayout
@@ -274,7 +276,7 @@ private fun ColumnScope.PosterOptions() {
             CoverOption.Switch(
                 title = stringResource(R.string.ps_studio_visualizer),
                 description = stringResource(R.string.ps_studio_visualizer_desc),
-                icon = R.drawable.graphic_eq,
+                icon = Res.drawable.graphic_eq,
                 key = com.mochyy.mochymusic.constants.PosterVisualizerKey,
                 default = false,
             ),
@@ -376,7 +378,7 @@ internal fun SwitchRow(option: CoverOption.Switch) {
             .padding(horizontal = 22.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(painterResource(option.icon), null, tint = Color.White.copy(alpha = if (parentOn) 1f else 0.4f), modifier = Modifier.size(20.dp))
+        Icon(org.jetbrains.compose.resources.painterResource(option.icon), null, tint = Color.White.copy(alpha = if (parentOn) 1f else 0.4f), modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(16.dp))
         Box(Modifier.weight(1f)) { TwoLines(option.title, option.description) }
         AppSwitch(checked = checked, onCheckedChange = { stored = if (option.inverted) !it else it }, enabled = parentOn)
@@ -394,7 +396,7 @@ private fun SliderRow(option: CoverOption.Slider) {
             .padding(horizontal = 22.dp, vertical = 14.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(painterResource(option.icon), null, tint = Color.White, modifier = Modifier.size(20.dp))
+            Icon(org.jetbrains.compose.resources.painterResource(option.icon), null, tint = Color.White, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(16.dp))
             Box(Modifier.weight(1f)) { TwoLines(option.title, option.description) }
             Text("${(stored * 100).toInt()}%", color = Color.White.copy(alpha = 0.55f), style = studioText(StudioType.Caption, FontWeight.Medium))

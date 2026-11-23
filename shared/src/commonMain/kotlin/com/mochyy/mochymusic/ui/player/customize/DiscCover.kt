@@ -30,7 +30,6 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -39,6 +38,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.text.TextStyle
@@ -52,6 +52,7 @@ import coil3.size.Precision
 import coil3.size.Size as CoilSize
 import com.mochyy.mochymusic.constants.PlayerCoverStyle
 import com.mochyy.mochymusic.ui.utils.resize
+import kotlin.math.PI
 import kotlin.math.min
 
 @Immutable
@@ -207,7 +208,7 @@ fun DiscCover(
      */
     saturationProvider: () -> Float = { 1f },
 ) {
-    val context = LocalContext.current
+    val context = LocalPlatformContext.current
     val density = LocalDensity.current
     val geometry = remember(style) { discGeometryFor(style) }
 
@@ -422,7 +423,7 @@ private fun BoxScope.DiscNamePlate(
         val unit = discName.trim().uppercase() + "  ·  "
         val glyphs = unit.map { measurer.measure(it.toString(), style) }
         val unitWidth = glyphs.sumOf { it.size.width.toDouble() }.toFloat().coerceAtLeast(1f)
-        val circumference = (2 * Math.PI * ringR).toFloat()
+        val circumference = (2 * PI * ringR).toFloat()
         val repeats = (circumference / unitWidth).toInt().coerceAtLeast(1)
         // spread the repeats evenly so the end meets the start with no gap
         val stretch = circumference / (unitWidth * repeats)
@@ -431,7 +432,7 @@ private fun BoxScope.DiscNamePlate(
             for (layout in glyphs) {
                 val w = layout.size.width * stretch
                 val angle = (travelled + w / 2f) / ringR
-                rotate(Math.toDegrees(angle.toDouble()).toFloat(), center) {
+                rotate((angle.toDouble() * (180.0 / PI)).toFloat(), center) {
                     val at = Offset(center.x - layout.size.width / 2f, center.y - ringR - layout.size.height / 2f)
                     drawText(layout, color = PrintBase, topLeft = at)
                     drawText(layout, color = PrintInk, topLeft = at, blendMode = androidx.compose.ui.graphics.BlendMode.Overlay)
@@ -451,7 +452,7 @@ private val PrintInk = Color.White.copy(alpha = 0.7f)
  * DiscCover lays it out - including a record wider than the box being centred on it, for the
  * styles laid out by the box's shorter side.
  */
-internal fun discCircleIn(style: PlayerCoverStyle, size: Size): Pair<Offset, Float> {
+fun discCircleIn(style: PlayerCoverStyle, size: Size): Pair<Offset, Float> {
     val g = discGeometryFor(style)
     val unit = if (g.byWidth) size.width else min(size.width, size.height)
     val side = unit * g.diameter
@@ -465,7 +466,7 @@ internal fun discCircleIn(style: PlayerCoverStyle, size: Size): Pair<Offset, Flo
 }
 
 /** [p] lands on [style]'s record in a box [size] */
-internal fun isOnDisc(style: PlayerCoverStyle, size: Size, p: Offset): Boolean {
+fun isOnDisc(style: PlayerCoverStyle, size: Size, p: Offset): Boolean {
     val (center, radius) = discCircleIn(style, size)
     return (p - center).getDistance() <= radius
 }
@@ -481,7 +482,7 @@ fun DiscTonearm(
         val pivot = Offset(size.width * 1.02f, size.height * 0.22f)
         val armLength = size.width * 0.62f
 
-        val angle = Math.toRadians((TonearmRestDegrees + (TonearmLiftDegrees - TonearmRestDegrees) * lift).toDouble())
+        val angle = (TonearmRestDegrees + (TonearmLiftDegrees - TonearmRestDegrees) * lift).toDouble() * (PI / 180.0)
         val head = Offset(
             x = pivot.x + (armLength * kotlin.math.cos(angle)).toFloat(),
             y = pivot.y + (armLength * kotlin.math.sin(angle)).toFloat(),

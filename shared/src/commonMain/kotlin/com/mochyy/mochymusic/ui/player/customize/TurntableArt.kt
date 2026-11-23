@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.unit.dp
+import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.max
@@ -47,7 +48,7 @@ private fun sheenBrush(center: Offset, peak: Float, power: Double, floor: Float 
     val steps = 180
     val stops = Array(steps + 1) { i ->
         val f = i / steps.toFloat()
-        val c = abs(cos(f * 2.0 * Math.PI)).pow(power).toFloat()
+        val c = abs(cos(f * 2.0 * PI)).pow(power).toFloat()
         f to Color.White.copy(alpha = floor + (peak - floor) * c)
     }
     return Brush.sweepGradient(*stops, center = center)
@@ -85,7 +86,7 @@ private fun fineGrooves(center: Offset, periodPx: Float): Brush = Brush.radialGr
  * A record's surface, [radius] round [center], with room for a label [label] of the radius (the
  * label is drawn over it and turns; this doesn't).
  */
-internal fun DrawScope.drawVinyl(center: Offset, radius: Float, label: Float) {
+fun DrawScope.drawVinyl(center: Offset, radius: Float, label: Float) {
     val r = radius
     val runOut = (label + 0.055f).coerceAtMost(0.93f)
     val rimIn = 0.972f
@@ -120,12 +121,12 @@ internal fun DrawScope.drawVinyl(center: Offset, radius: Float, label: Float) {
 
 // the arm, in fractions of the box's width (see TurntableArm)
 /** from the pivot to the end of the tube, where the headshell plugs in */
-internal const val ArmLength = 0.876f
+const val ArmLength = 0.876f
 /** the headshell's offset off the tube's line */
-internal const val ArmHeadBend = 27f
-internal const val ArmHeadLength = 0.145f
+const val ArmHeadBend = 27f
+const val ArmHeadLength = 0.145f
 /** the stylus, under the headshell, this far along it */
-internal const val ArmStylusAlong = 0.115f
+const val ArmStylusAlong = 0.115f
 
 /** the slab the arm stands on, under the record: its middle across, its half width, its top and bottom */
 private const val BaseCenterX = 0.885f
@@ -153,7 +154,7 @@ private val CapFinish = Finish(Color(0xFF303135), Color(0xFF1B1C1E), Color(0xFF0
 private val Shell = Finish(Color(0xFF34353A), Color(0xFF1F2023), Color(0xFF111113))
 
 /** the slab the arm stands on, still: dark, soft-edged, its shadow falling down and to the right */
-internal fun DrawScope.drawArmBase(u: Float) {
+fun DrawScope.drawArmBase(u: Float) {
     val left = (BaseCenterX - BaseHalfWidth) * u
     val top = BaseTop * u
     val width = BaseHalfWidth * 2f * u
@@ -198,7 +199,7 @@ internal fun DrawScope.drawArmBase(u: Float) {
  * The arm with its pivot at [pivot] and its tube pointing [degrees] round (0 = right, 90 = down),
  * [u] being the box's width. [silhouette] draws only its shape, black, for its shadow.
  */
-internal fun DrawScope.drawTonearm(pivot: Offset, degrees: Float, u: Float, silhouette: Boolean) {
+fun DrawScope.drawTonearm(pivot: Offset, degrees: Float, u: Float, silhouette: Boolean) {
     val hair = max(1f, u * 0.0014f)
     withTransform({
         translate(pivot.x, pivot.y)

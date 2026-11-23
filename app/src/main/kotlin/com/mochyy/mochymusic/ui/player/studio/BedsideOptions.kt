@@ -24,6 +24,10 @@ import com.mochyy.mochymusic.constants.BedsideLockScreenKey
 import com.mochyy.mochymusic.constants.BedsideNightTint
 import com.mochyy.mochymusic.constants.BedsideNightTintKey
 import com.mochyy.mochymusic.constants.BedsideScreenSaverKey
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.contrast
+import com.mochyy.mochymusic.shared.resources.lock
+import com.mochyy.mochymusic.shared.resources.lock_open
 import com.mochyy.mochymusic.ui.player.bedside.BedsideOrange
 import com.mochyy.mochymusic.ui.player.bedside.LockScreenSupported
 import com.mochyy.mochymusic.ui.player.bedside.coverTint
@@ -62,7 +66,7 @@ internal fun ColumnScope.BedsideOptions() {
             CoverOption.Switch(
                 title = stringResource(R.string.bedside_saver),
                 description = stringResource(R.string.bedside_saver_caption),
-                icon = R.drawable.contrast,
+                icon = Res.drawable.contrast,
                 key = BedsideScreenSaverKey,
                 default = true,
             ),
@@ -71,7 +75,7 @@ internal fun ColumnScope.BedsideOptions() {
             CoverOption.Switch(
                 title = stringResource(R.string.bedside_keep_awake),
                 description = stringResource(R.string.bedside_keep_awake_caption),
-                icon = R.drawable.lock_open,
+                icon = Res.drawable.lock_open,
                 key = BedsideKeepAwakeKey,
                 default = true,
             ),
@@ -90,7 +94,7 @@ private fun LockScreenRows() {
         CoverOption.Switch(
             title = stringResource(R.string.bedside_lock_screen),
             description = stringResource(R.string.bedside_lock_screen_caption),
-            icon = R.drawable.lock,
+            icon = Res.drawable.lock,
             key = BedsideLockScreenKey,
             default = true,
         ),
