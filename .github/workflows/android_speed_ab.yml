@@ -198,9 +198,16 @@ jobs:
             [ $SECONDS -lt $deadline ] || { tail -60 emulator.log; exit 1; }
             sleep 5
           done
-          "$SDK/platform-tools/adb" root
+          # adbd restarts itself for root, and the first try right after boot often loses that race
+          # ("unable to connect for root: closed"); retry, then check root really took
+          for i in 1 2 3 4 5 6; do
+            "$SDK/platform-tools/adb" root && break || true
+            sleep 5
+            "$SDK/platform-tools/adb" wait-for-device
+          done
           sleep 3
           "$SDK/platform-tools/adb" wait-for-device
+          [ "$("$SDK/platform-tools/adb" shell id -u | tr -d '\r')" = "0" ] || { echo "adb root never took"; exit 1; }
           # let the first-boot work (dexopt of the system, package scans) finish before measuring
           sleep 60
           "$SDK/platform-tools/adb" shell settings put global package_verifier_enable 0 || true
