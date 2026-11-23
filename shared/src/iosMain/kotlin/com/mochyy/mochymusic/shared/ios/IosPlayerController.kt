@@ -1,10 +1,13 @@
 // AVPlayer integration follows Metrolist's iOS MusicPlayer (GPL-3.0).
 package com.mochyy.mochymusic.shared.ios
 
+import com.mochyy.mochymusic.constants.PreloadNextTrackKey
 import com.mochyy.mochymusic.shared.playback.PlayerController
 import com.mochyy.mochymusic.shared.playback.PlayerState
 import com.mochyy.mochymusic.shared.playback.QueueTransport
 import com.mochyy.mochymusic.shared.playback.StreamFormat
+import com.mochyy.mochymusic.utils.PreferencesCache
+import com.metrolist.innertubex.extraction.ExtractedStream
 import com.music.innertube.models.SongItem
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CancellationException
@@ -68,6 +71,10 @@ internal class IosPlayerController(
     private var interruptionActive = false
     private var resumeAfterInterruption = false
     private var interruptedSongId: String? = null
+    // the next song's resolved stream, kept ready while the current one plays (Playback > Preload next)
+    private var prefetchJob: Job? = null
+    private var prefetchedSongId: String? = null
+    private var prefetched: PreparedSong? = null
     // the user's play/pause intent. Kept even before an item exists, so a pause or route loss
     // during stream resolution stops the song once it loads.
     private var wantsToPlay = false
@@ -110,13 +117,10 @@ internal class IosPlayerController(
         publishNowPlaying()
         playbackJob = scope.launch {
             try {
-                val stream = checkNotNull(youtube.resolve(song))
-                val url = checkNotNull(NSURL.URLWithString(stream.audioUrl))
+                // a preloaded stream only counts for the song it was resolved for
+                val prepared = takePrepared(song) ?: prepare(checkNotNull(youtube.resolve(song)))
                 ensureActive()
-                val item = AVPlayerItem(asset = AVURLAsset(
-                    uRL = url,
-                    options = mapOf("AVURLAssetHTTPHeaderFieldsKey" to stream.headers),
-                ))
+                val item = prepared.item
                 endObserver = NSNotificationCenter.defaultCenter.addObserverForName(
                     name = AVPlayerItemDidPlayToEndTimeNotification,
                     `object` = item,
@@ -143,20 +147,13 @@ internal class IosPlayerController(
                         failPlayback()
                     }
                 }
-                val format = stream.codecs?.takeIf { it.isNotBlank() }?.let { codec ->
-                    StreamFormat(
-                        codec = if (codec.startsWith("mp4a")) "AAC" else codec.uppercase(),
-                        sampleRate = stream.sampleRate ?: 0,
-                        bitrate = stream.bitrate ?: 0,
-                    )
-                }
                 player.replaceCurrentItemWithPlayerItem(item)
                 // a pause or route loss while resolving clears wantsToPlay: install the item paused
                 val playNow = wantsToPlay && !interruptionActive
                 mutableState.value = mutableState.value.copy(
                     isPlaying = playNow,
                     isLoading = if (playNow) mutableState.value.isLoading else false,
-                    format = format,
+                    format = prepared.format,
                 )
                 if (playNow) {
                     activateAudioSession()
@@ -219,13 +216,69 @@ internal class IosPlayerController(
         publishNowPlaying()
     }
 
+    /**
+     * Resolves the next song's stream early and keeps the AVPlayerItem ready, so the play() that
+     * follows skips the resolution delay. The shared queue calls this two seconds into the current
+     * song; the Playback page's "Preload next song" switch (on by default) turns it off again.
+     */
+    override fun preloadNext(song: SongItem?) {
+        if (song == null || !preloadsNextSong()) {
+            clearPrefetch()
+            return
+        }
+        if (prefetchedSongId == song.id) return
+        clearPrefetch()
+        prefetchedSongId = song.id
+        prefetchJob = scope.launch {
+            val stream = runCatching { youtube.resolve(song) }.getOrNull() ?: return@launch
+            // Up next changed while this resolved: the player for that song is no longer wanted
+            if (prefetchedSongId != song.id) return@launch
+            prefetched = prepare(stream)
+        }
+    }
+
     override fun release() {
         scope.cancel()
+        clearPrefetch()
         clearItem()
         deactivateAudioSession()
         postBridgeEvent(IosPlaybackBridgeEvents.clearNowPlaying)
         bridgeObservers.forEach { NSNotificationCenter.defaultCenter.removeObserver(it) }
         bridgeObservers.clear()
+    }
+
+    private fun preloadsNextSong(): Boolean =
+        PreferencesCache.current(iosPlaybackPreferences.store)[PreloadNextTrackKey] ?: true
+
+    /** The preloaded song when it is the one asked for; anything else is dropped rather than played. */
+    private fun takePrepared(song: SongItem): PreparedSong? {
+        val ready = prefetched.takeIf { prefetchedSongId == song.id }
+        clearPrefetch()
+        return ready
+    }
+
+    private fun clearPrefetch() {
+        prefetchJob?.cancel()
+        prefetchJob = null
+        prefetchedSongId = null
+        prefetched = null
+    }
+
+    /** One AVPlayerItem for [stream], with the headers the resolved stream needs. Runs on the main thread. */
+    private fun prepare(stream: ExtractedStream): PreparedSong {
+        val url = checkNotNull(NSURL.URLWithString(stream.audioUrl))
+        val item = AVPlayerItem(asset = AVURLAsset(
+            uRL = url,
+            options = mapOf("AVURLAssetHTTPHeaderFieldsKey" to stream.headers),
+        ))
+        val format = stream.codecs?.takeIf { it.isNotBlank() }?.let { codec ->
+            StreamFormat(
+                codec = if (codec.startsWith("mp4a")) "AAC" else codec.uppercase(),
+                sampleRate = stream.sampleRate ?: 0,
+                bitrate = stream.bitrate ?: 0,
+            )
+        }
+        return PreparedSong(item, format)
     }
 
     private fun updatePosition(item: AVPlayerItem) {
@@ -352,6 +405,9 @@ internal class IosPlayerController(
         player.replaceCurrentItemWithPlayerItem(null)
     }
 }
+
+/** An AVPlayerItem resolved from a stream, with the codec badge it should show. */
+private class PreparedSong(val item: AVPlayerItem, val format: StreamFormat?)
 
 /** Notification names shared with the Swift system-media bridge. */
 private object IosPlaybackBridgeEvents {

@@ -28,8 +28,9 @@ fun MainViewController(): UIViewController {
     PreferencesCache.start(iosPlaybackPreferences.store)
     // covers get the same crossfade, memory share and size setting as Android, with a disk cache
     configureIosImageLoader()
-    // shared ViewModels get the store above and iosDatabase; nothing opens either until one asks
-    com.mochyy.mochymusic.di.startMochyKoin(database = { iosDatabase }, preferences = { iosPlaybackPreferences.store })
+    // shared ViewModels get the store above and iosDatabase, plus the iOS platform bindings; nothing
+    // opens either database until a screen asks
+    com.mochyy.mochymusic.di.startMochyKoinOnIos()
     return mainViewController()
 }
 
