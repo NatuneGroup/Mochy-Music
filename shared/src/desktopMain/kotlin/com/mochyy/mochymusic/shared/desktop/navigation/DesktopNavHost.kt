@@ -32,6 +32,11 @@ import com.mochyy.mochymusic.constants.NavTabsKey
 import com.mochyy.mochymusic.shared.desktop.about.DesktopAboutPage
 import com.mochyy.mochymusic.shared.desktop.storage.DesktopStoragePage
 import com.mochyy.mochymusic.shared.desktop.fonts.DesktopFonts
+import com.mochyy.mochymusic.shared.desktop.online.CollectionKind
+import com.mochyy.mochymusic.shared.desktop.online.DesktopBrowsePage
+import com.mochyy.mochymusic.shared.desktop.online.DesktopChartsPage
+import com.mochyy.mochymusic.shared.desktop.online.DesktopCollectionPage
+import com.mochyy.mochymusic.shared.desktop.online.DesktopExplorePage
 import com.mochyy.mochymusic.shared.desktop.window.DesktopWindowSettingsPage
 import com.mochyy.mochymusic.shared.library.LocalLibrary
 import com.mochyy.mochymusic.shared.lyrics.LyricsProvider
@@ -123,6 +128,40 @@ internal fun DesktopNavHost(
         }
         composable(DesktopRoutes.ListenBrainz) { ListenBrainzScreen(navController = navController) }
         composable(DesktopRoutes.NowPlaying) { DesktopNowPlayingPage(navController, queue, providers) }
+        // the online pages: YouTube Music's explore, its browse sections, and one album or playlist
+        composable(DesktopRoutes.Explore) { DesktopExplorePage(navController, queue) }
+        composable(DesktopRoutes.Charts) { DesktopChartsPage(navController, queue) }
+        composable(
+            route = DesktopRoutes.Browse,
+            arguments = listOf(
+                navArgument("browseId") { type = NavType.StringType },
+                navArgument("params") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
+            ),
+        ) { entry ->
+            DesktopBrowsePage(
+                navController = navController,
+                browseId = entry.arguments?.getString("browseId").orEmpty(),
+                params = entry.arguments?.getString("params").orEmpty().ifBlank { null },
+                queue = queue,
+            )
+        }
+        composable(
+            route = DesktopRoutes.Collection,
+            arguments = listOf(
+                navArgument("kind") { type = NavType.StringType },
+                navArgument("id") { type = NavType.StringType },
+            ),
+        ) { entry ->
+            DesktopCollectionPage(
+                navController = navController,
+                kind = CollectionKind.fromRoute(entry.arguments?.getString("kind").orEmpty()),
+                id = entry.arguments?.getString("id").orEmpty(),
+                queue = queue,
+            )
+        }
         desktopSettingsGraph(navController)
     }
 }
