@@ -2,20 +2,13 @@
 
 package com.mochyy.mochymusic.importer
 
-import android.content.Context
-import com.mochyy.mochymusic.constants.YtExcludeImportsKey
-import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.MochyDatabase
 import com.mochyy.mochymusic.db.entities.ImportSessionSong
 import com.mochyy.mochymusic.db.entities.ImportedPlaylist
 import com.mochyy.mochymusic.db.entities.ImportedSong
 import com.mochyy.mochymusic.db.entities.PlaylistEntity
 import com.mochyy.mochymusic.db.entities.PlaylistSongMap
 import com.mochyy.mochymusic.db.nowLocal
-import com.mochyy.mochymusic.extensions.isUserLoggedIn
-import com.mochyy.mochymusic.models.toMediaMetadata
-import com.mochyy.mochymusic.utils.dataStore
-import com.mochyy.mochymusic.utils.get
-import com.music.innertube.YouTube
 import com.music.innertube.models.SongItem
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
@@ -29,18 +22,19 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.toJavaLocalDateTime
-import kotlinx.datetime.toKotlinLocalDateTime
-import timber.log.Timber
-import java.time.Instant
-import java.time.ZoneId
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Duration.Companion.seconds
 import kotlin.coroutines.coroutineContext
 
 /** the work of an import or re-sync: match tracks on youtube music, file songs in the library, make or top up playlists, MusicImportService runs one at a time and owns progress */
 internal class ImportSteps(
-    private val context: Context,
-    private val database: MusicDatabase,
+    private val database: MochyDatabase,
+    private val settings: ImportSettings,
+    private val transactions: ImportTransactions,
     private val progress: MutableStateFlow<ImportProgress>,
+    private val matches: ImportMatches,
+    private val pendingLikes: ImportPendingLikes,
 ) {
     /** where the run comes from; set by the service before each run */
     @Volatile var source: ImportSource = ImportSource.OTHER
@@ -49,15 +43,15 @@ internal class ImportSteps(
     @Volatile var sessionId: Long? = null
 
     /** where each imported playlist lives on its service and what it had there, for re-sync */
-    val record = PlaylistSourceRecord(database)
+    val record = PlaylistSourceRecord(database, transactions)
 
     /** a matcher for one run: it uses the versions the user picked and notes what it finds */
-    fun newMatcher() = TrackMatcher(ImportMatches(AndroidImportMatchStore(context)), source)
+    fun newMatcher() = TrackMatcher(matches, source)
 
     suspend fun runImport(parsed: ParsedImport, options: ImportOptions) {
         val matcher = newMatcher()
-        val signedIn = context.isUserLoggedIn()
-        val keepOffYouTube = context.dataStore.get(YtExcludeImportsKey, false)
+        val signedIn = settings.isUserLoggedIn()
+        val keepOffYouTube = settings.keepImportsOffYouTube()
         val mirror = options.mirrorToYouTube && signedIn && !keepOffYouTube
 
         if (parsed.likedSongs.isNotEmpty()) importLiked(matcher, parsed.likedSongs, mirror)
@@ -73,35 +67,33 @@ internal class ImportSteps(
         val matched = matchAll(matcher, tracks, playlistName = null, label = "Liked songs").distinctBy { it.item.id }
         if (matched.isEmpty()) return
 
-        database.withTransaction {
-            matched.forEach { insert(it.item.toMediaMetadata()) }
-        }
+        transactions.run { insertSongs(matched.map { it.item }) }
         val dates = sourceDates(matched)
         fileIntoLibrary(matched.map { it.item.id }, dates)
 
         // liked when they were liked on the source, so they sit among the existing likes in that order
         val newlyLiked = mutableListOf<String>()
         matched.forEach { (_, item) ->
-            val song = database.getSongById(item.id)?.song ?: return@forEach
+            val song = database.songDao.getSongById(item.id)?.song ?: return@forEach
             if (!song.liked) {
-                database.update(song.copy(liked = true, likedDate = dates.getValue(item.id)))
-                sessionId?.let { database.markLikedByImport(it, item.id) }
+                database.suspendingDao.update(song.copy(liked = true, likedDate = dates.getValue(item.id)))
+                sessionId?.let { database.suspendingDao.markLikedByImport(it, item.id) }
                 newlyLiked += item.id
             }
         }
         progress.update { it.copy(likedAdded = it.likedAdded + newlyLiked.size) }
 
         // remembered either way: a like that fails now (or before signing in) goes up on the next sync
-        PendingYouTubeLikes.add(context, newlyLiked)
+        pendingLikes.add(newlyLiked)
         if (mirror && newlyLiked.isNotEmpty()) {
             progress.update { it.copy(currentLabel = "Liking songs on YouTube") }
             val pushed = mutableListOf<String>()
             newlyLiked.forEach { id ->
                 coroutineContext.ensureActive()
-                if (YouTube.likeVideo(id, true).isSuccess) pushed += id
+                if (ImporterYouTube.likeVideo(id, true).isSuccess) pushed += id
                 delay(LIKE_DELAY_MS)
             }
-            PendingYouTubeLikes.remove(context, pushed)
+            pendingLikes.remove(pushed)
             if (pushed.size < newlyLiked.size) {
                 progress.update { it.copy(youtubeFailures = it.youtubeFailures + "Liked songs (${newlyLiked.size - pushed.size} will retry on next sync)") }
             }
@@ -112,20 +104,20 @@ internal class ImportSteps(
     private suspend fun importLibrarySongs(matcher: TrackMatcher, tracks: List<ImportedTrack>) {
         val matched = matchAll(matcher, tracks, playlistName = null, label = "Library songs").distinctBy { it.item.id }
         if (matched.isEmpty()) return
-        database.withTransaction {
-            matched.forEach { insert(it.item.toMediaMetadata()) }
-        }
+        transactions.run { insertSongs(matched.map { it.item }) }
         fileIntoLibrary(matched.map { it.item.id }, sourceDates(matched))
     }
 
     /** when each song was added on the source so lists keep its order, a song with no date gets one just before the song above it since dateless sources list newest first */
+    @OptIn(kotlin.time.ExperimentalTime::class)
     private fun sourceDates(matched: List<Matched>): Map<String, LocalDateTime> {
         val now = nowLocal()
         val dates = HashMap<String, LocalDateTime>()
         var previous: LocalDateTime? = null
         matched.forEach { (track, item) ->
-            val date = track.addedAtMs?.let { java.time.LocalDateTime.ofInstant(Instant.ofEpochMilli(it), ZoneId.systemDefault()).toKotlinLocalDateTime() }
-                ?: previous?.toJavaLocalDateTime()?.minusSeconds(1)?.toKotlinLocalDateTime()
+            val date = track.addedAtMs
+                ?.let { kotlin.time.Instant.fromEpochMilliseconds(it).toLocalDateTime(TimeZone.currentSystemDefault()) }
+                ?: previous?.minus(1.seconds)
                 ?: now
             dates[item.id] = date
             previous = date
@@ -146,7 +138,7 @@ internal class ImportSteps(
         // importing a playlist again tops up the copy made last time instead of duplicating it
         record.existingCopy(source, name, origin)?.let { existing ->
             // topping up one that has no picture of its own: it gets the source's
-            if (existing.thumbnailUrl == null && cover != null) database.update(existing.copy(thumbnailUrl = cover))
+            if (existing.thumbnailUrl == null && cover != null) database.suspendingDao.update(existing.copy(thumbnailUrl = cover))
             val fresh = record.newTracks(existing.id, tracks)
             countAsDone(tracks.size - fresh.size)
             val added = topUp(matcher, existing, fresh, signedIn, intoLibrary = true)
@@ -166,9 +158,9 @@ internal class ImportSteps(
             isEditable = true,
             thumbnailUrl = cover,
         )
-        database.withTransaction {
-            insert(playlist)
-            insert(
+        transactions.run {
+            database.suspendingDao.insert(playlist)
+            database.suspendingDao.insert(
                 ImportedPlaylist(
                     playlistId = playlist.id,
                     source = source.key,
@@ -181,9 +173,9 @@ internal class ImportSteps(
                     authorUrl = origin?.author?.profileUrl,
                 ),
             )
-            matched.distinctBy { it.id }.forEach { insert(it.toMediaMetadata()) }
+            insertSongs(matched)
             songIds.forEachIndexed { index, songId ->
-                insert(PlaylistSongMap(songId = songId, playlistId = playlist.id, position = index))
+                database.suspendingDao.insert(PlaylistSongMap(songId = songId, playlistId = playlist.id, position = index))
             }
         }
         record.remember(source, playlist.id, tracks, origin)
@@ -212,14 +204,14 @@ internal class ImportSteps(
         if (songIds.isEmpty()) return emptyList()
 
         // after the last position rather than the count: removing songs leaves gaps
-        val start = (database.playlistSongs(playlist.id).first().maxOfOrNull { it.map.position } ?: -1) + 1
+        val start = (database.playlistDao.playlistSongs(playlist.id).first().maxOfOrNull { it.map.position } ?: -1) + 1
         var added: List<String> = emptyList()
-        database.withTransaction {
-            matched.distinctBy { it.id }.forEach { insert(it.toMediaMetadata()) }
-            val already = playlistDuplicates(playlist.id, songIds).toSet()
+        transactions.run {
+            insertSongs(matched)
+            val already = database.suspendingDao.playlistDuplicates(playlist.id, songIds).toSet()
             added = songIds.filterNot { it in already }
             added.forEachIndexed { index, songId ->
-                insert(PlaylistSongMap(songId = songId, playlistId = playlist.id, position = start + index))
+                database.suspendingDao.insert(PlaylistSongMap(songId = songId, playlistId = playlist.id, position = start + index))
             }
         }
         if (intoLibrary) fileIntoLibrary(songIds)
@@ -228,7 +220,7 @@ internal class ImportSteps(
         val browseId = playlist.browseId
         if (browseId != null && signedIn && added.isNotEmpty()) {
             progress.update { it.copy(currentLabel = "Adding to \"${playlist.name}\" on YouTube") }
-            YouTube.addVideosToPlaylist(browseId, added).onFailure {
+            ImporterYouTube.addVideosToPlaylist(browseId, added).onFailure {
                 progress.update { p -> p.copy(youtubeFailures = p.youtubeFailures + playlist.name) }
             }
         }
@@ -241,22 +233,32 @@ internal class ImportSteps(
         val now = nowLocal()
         val from = source.key
         val session = sessionId
-        database.withTransaction {
+        transactions.run {
             songIds.distinct().forEach { id ->
-                val song = getSongById(id)?.song ?: return@forEach
+                val song = database.songDao.getSongById(id)?.song ?: return@forEach
                 val adding = song.inLibrary == null
                 // imported on purpose, so its album shows in Albums even when a like put it in first
-                if (adding || song.addedByLike) update(song.copy(inLibrary = song.inLibrary ?: addedAt[id] ?: now, addedByLike = false))
-                insert(ImportedSong(songId = id, source = from, importedAt = now))
+                if (adding || song.addedByLike) {
+                    database.suspendingDao.update(song.copy(inLibrary = song.inLibrary ?: addedAt[id] ?: now, addedByLike = false))
+                }
+                database.suspendingDao.insert(ImportedSong(songId = id, source = from, importedAt = now))
                 // the first step to touch a song records it; a later one finds it already in
-                if (session != null) insert(ImportSessionSong(session, id, addedToLibrary = adding, liked = false))
+                if (session != null) database.suspendingDao.insert(ImportSessionSong(session, id, addedToLibrary = adding, liked = false))
             }
+        }
+    }
+
+    /** the rows of every found song, inside one transaction when called from one */
+    private suspend fun insertSongs(songs: List<SongItem>) {
+        songs.distinctBy { it.id }.forEach { song ->
+            val (entity, artists) = song.toImportSong()
+            database.suspendingDao.insertSongWithArtists(entity, artists)
         }
     }
 
     private suspend fun mirrorPlaylist(playlistId: String, name: String) {
         progress.update { it.copy(currentLabel = "Creating \"$name\" on YouTube") }
-        if (!YouTubePlaylistMirror.mirror(database, playlistId, name)) {
+        if (!YouTubePlaylistMirror.mirror(database, transactions, playlistId, name)) {
             progress.update { it.copy(youtubeFailures = it.youtubeFailures + name) }
         }
     }
@@ -280,7 +282,7 @@ internal class ImportSteps(
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
-                        Timber.w(e, "Match failed for ${track.title}")
+                        ImportLog.w("Match failed for ${track.title}", e)
                         null
                     }
                     progress.update { p ->

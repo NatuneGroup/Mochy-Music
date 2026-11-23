@@ -8,6 +8,7 @@ import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.YtExcludeImportsKey
 import com.mochyy.mochymusic.constants.YtPullHistoryKey
 import com.mochyy.mochymusic.constants.YtSyncHoldKey
+import com.mochyy.mochymusic.db.InternalDatabase
 import com.mochyy.mochymusic.db.MusicDatabase
 import com.mochyy.mochymusic.db.entities.Event
 import com.mochyy.mochymusic.db.entities.PlaylistEntity
@@ -48,6 +49,7 @@ class YouTubeSyncManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val database: MusicDatabase,
     private val syncUtils: SyncUtils,
+    private val internalDatabase: InternalDatabase,
 ) {
     private val scope = CoroutineScope(
         SupervisorJob() + Dispatchers.IO + CoroutineExceptionHandler { _, e -> Timber.e(e, "YouTube sync task failed") }
@@ -112,7 +114,7 @@ class YouTubeSyncManager @Inject constructor(
         val failed = mutableListOf<String>()
         locals.forEachIndexed { index, playlist ->
             setLabel("Creating \"${playlist.playlist.name}\" (${index + 1}/${locals.size})")
-            if (YouTubePlaylistMirror.mirror(database, playlist.playlist.id, playlist.playlist.name)) created++
+            if (YouTubePlaylistMirror.mirror(database, AndroidImportTransactions(internalDatabase), playlist.playlist.id, playlist.playlist.name)) created++
             else failed += playlist.playlist.name
             delay(400)
         }
