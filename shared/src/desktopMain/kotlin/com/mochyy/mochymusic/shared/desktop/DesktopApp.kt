@@ -78,7 +78,12 @@ private fun runDesktopWindow(font: FontFamily) = application {
         title = stringResource(Res.string.app_name),
         state = rememberWindowState(width = 1100.dp, height = 720.dp),
     ) {
-        CompositionLocalProvider(LocalAppPreferences provides desktopPlaybackPreferences.store) {
+        CompositionLocalProvider(
+            LocalAppPreferences provides desktopPlaybackPreferences.store,
+            // settings sub-pages: nothing covers the bottom here, and their header is a plain tint
+            com.mochyy.mochymusic.LocalPlayerAwareWindowInsets provides androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
+            com.mochyy.mochymusic.ui.component.LocalSubSettingsChrome provides com.mochyy.mochymusic.ui.component.PlainSubSettingsChrome,
+        ) {
             StandaloneMochyTheme(font, desktopPlaybackPreferences) {
                 StandaloneMusicApp(
                     search,

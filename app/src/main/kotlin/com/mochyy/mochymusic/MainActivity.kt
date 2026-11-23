@@ -984,6 +984,7 @@ class MainActivity : ComponentActivity() {
                     LocalDetailAccentColor provides detailAccentColor,
                     LocalArtworkColor provides themeColor,
                     LocalPlayerAwareWindowInsets provides playerAwareWindowInsets,
+                    com.mochyy.mochymusic.ui.component.LocalSubSettingsChrome provides com.mochyy.mochymusic.ui.component.AppSubSettingsChrome,
                     LocalDownloadUtil provides downloadUtil,
                     LocalShimmerTheme provides ShimmerTheme,
                     LocalSyncUtils provides syncUtils,
@@ -1765,7 +1766,6 @@ private val ShowSettingsDetail: (String) -> Unit = { full ->
     com.mochyy.mochymusic.ui.component.TopToaster.show(full, iconRes = R.drawable.info)
 }
 
-val LocalPlayerAwareWindowInsets = staticCompositionLocalOf<WindowInsets> { error("No WindowInsets provided") }
 val LocalDownloadUtil = staticCompositionLocalOf<DownloadUtil> { error("No DownloadUtil provided") }
 val LocalSyncUtils = staticCompositionLocalOf<SyncUtils> { error("No SyncUtils provided") }
 val LocalCropAlbumArt = compositionLocalOf { false }

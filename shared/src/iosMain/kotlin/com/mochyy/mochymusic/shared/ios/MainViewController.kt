@@ -41,7 +41,12 @@ private fun mainViewController(): UIViewController = ComposeUIViewController {
         Font(Res.font.inter_regular, FontWeight.Normal),
         Font(Res.font.inter_semibold, FontWeight.SemiBold),
     )
-    CompositionLocalProvider(LocalAppPreferences provides iosPlaybackPreferences.store) {
+    CompositionLocalProvider(
+        LocalAppPreferences provides iosPlaybackPreferences.store,
+        // settings sub-pages: nothing covers the bottom here, and their header is a plain tint
+        com.mochyy.mochymusic.LocalPlayerAwareWindowInsets provides androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
+        com.mochyy.mochymusic.ui.component.LocalSubSettingsChrome provides com.mochyy.mochymusic.ui.component.PlainSubSettingsChrome,
+    ) {
         StandaloneMochyTheme(inter, iosPlaybackPreferences) {
             StandaloneMusicApp(
                 source = youtube,

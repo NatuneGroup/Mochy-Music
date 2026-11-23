@@ -2,7 +2,6 @@
 
 package com.mochyy.mochymusic.ui.component
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
@@ -54,9 +53,6 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
@@ -64,13 +60,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.lerp as lerpDp
 import androidx.compose.ui.util.lerp
-import coil3.compose.rememberAsyncImagePainter
 import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
-import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.back_content_desc
+import com.mochyy.mochymusic.shared.resources.pc_hide_search
+import com.mochyy.mochymusic.shared.resources.search
+import com.mochyy.mochymusic.shared.resources.settings_clear_search
+import com.mochyy.mochymusic.shared.resources.settings_search_placeholder
 import com.mochyy.mochymusic.ui.screens.search.rememberScrollCollapseProgress
 import kotlin.math.PI
 import kotlin.math.sin
+import com.mochyy.mochymusic.ui.utils.BackPressHandler
 import com.mochyy.mochymusic.ui.utils.stableStatusBars
+import org.jetbrains.compose.resources.stringResource
 
 private val PagePadding = 20.dp
 private val BackButtonSize = 40.dp
@@ -106,7 +108,8 @@ fun SubSettingsScaffold(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scrollState = rememberScrollState()
-    val glassState = remember { GlassState() }
+    val chrome = LocalSubSettingsChrome.current
+    val glass = chrome.rememberHeaderGlass()
 
     val headerFoundationColor = Color.Black
 
@@ -132,13 +135,11 @@ fun SubSettingsScaffold(
     // The search pill is a single element that actually resizes (real layout constraints, not a
     // scaled graphicsLayer) and slides from its resting spot below the header to the icon slot at
     // top-right, so it reads as one shape warping into a circle rather than one thing fading out
-    // while an unrelated icon fades in elsewhere. The two rects are plain layout constants - no
-    // live position measurement feeding back into the content a RenderNode is capturing.
-    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+    // while an unrelated icon fades in elsewhere. The two rects come from the page's width as the
+    // pill's own layout sees it - no live position measurement feeding back into the content a
+    // RenderNode is capturing.
     val expandedBarX = PagePadding
     val expandedBarY = totalHeaderHeight
-    val expandedBarWidth = screenWidth - PagePadding * 2
-    val collapsedBarX = screenWidth - PagePadding - BackButtonSize
     val collapsedBarY = statusBarTop + HeaderTopPadding
 
     LaunchedEffect(collapse) {
@@ -150,7 +151,7 @@ fun SubSettingsScaffold(
             modifier = Modifier
                 .fillMaxSize()
 
-                .glassRoot(glassState, isActive = { !scrollState.isScrollInProgress })
+                .then(glass.backdrop(isActive = { !scrollState.isScrollInProgress }))
                 .verticalScroll(scrollState)
                 .padding(horizontal = PagePadding)
         ) {
@@ -175,8 +176,7 @@ fun SubSettingsScaffold(
                 .align(Alignment.TopCenter)
                 .graphicsLayer { alpha = collapseProgress }
         ) {
-            ProgressiveGlassBackground(
-                state = glassState,
+            glass.Background(
                 maxBlurRadius = { 40f * collapseProgress },
                 foundationColor = headerFoundationColor.copy(alpha = 0.55f),
                 direction = BlurDirection.BottomToTop,
@@ -221,8 +221,8 @@ fun SubSettingsScaffold(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.arrow_back_ios),
-                    contentDescription = stringResource(R.string.back_content_desc),
+                    painter = chrome.backIcon(),
+                    contentDescription = stringResource(Res.string.back_content_desc),
                     tint = Color.White,
                     modifier = Modifier.size(18.dp)
                 )
@@ -264,15 +264,7 @@ fun SubSettingsScaffold(
                         translationY = lerp(ExpandedTitleTop.toPx(), collapsedTop, p)
 
                         val blurPx = sin(p.coerceIn(0f, 1f) * PI.toFloat()) * TitleMorphMaxBlurPx
-                        // DECAL is API 31. The argument is read before BlurEffectCache.get can
-                        // return early, so naming it outside this check threw NoSuchFieldError on
-                        // Android 11 and older the first time the header drew: every settings
-                        // page crashed on opening. Below 31 there's no blur either way.
-                        renderEffect = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                            BlurEffectCache.element(blurPx, android.graphics.Shader.TileMode.DECAL)
-                        } else {
-                            null
-                        }
+                        renderEffect = chrome.titleBlur(blurPx)
                     },
             ) {
                 Text(
@@ -299,8 +291,11 @@ fun SubSettingsScaffold(
             // deforming into a circle rather than a new element appearing elsewhere.
             Box(
                 modifier = Modifier
-                    .layout { measurable, _ ->
+                    .layout { measurable, constraints ->
                         val p = collapse.value
+                        val pageWidth = constraints.maxWidth.toDp()
+                        val expandedBarWidth = pageWidth - PagePadding * 2
+                        val collapsedBarX = pageWidth - PagePadding - BackButtonSize
                         val width = lerpDp(expandedBarWidth, BackButtonSize, p).roundToPx()
                         val height = lerpDp(SearchBarHeight, BackButtonSize, p).roundToPx()
                         val placeable = measurable.measure(Constraints.fixed(width, height))
@@ -343,19 +338,15 @@ fun SubSettingsScaffold(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        painter = if (searchOverlayVisible) {
-                            painterResource(R.drawable.close)
-                        } else {
-                            rememberAsyncImagePainter(model = R.raw.search)
-                        },
-                        contentDescription = stringResource(if (searchOverlayVisible) R.string.pc_hide_search else R.string.search),
+                        painter = if (searchOverlayVisible) chrome.closeIcon() else chrome.searchIcon(),
+                        contentDescription = stringResource(if (searchOverlayVisible) Res.string.pc_hide_search else Res.string.search),
                         tint = Color.White,
                         modifier = Modifier.size(if (searchOverlayVisible) 18.dp else 16.dp)
                     )
                 }
             }
 
-            BackHandler(enabled = searchOverlayVisible) { searchOverlayVisible = false }
+            BackPressHandler(enabled = searchOverlayVisible) { searchOverlayVisible = false }
 
             AnimatedVisibility(
                 visible = searchOverlayVisible,
@@ -410,7 +401,7 @@ fun SubSettingsSearchBar(
                 decorationBox = { innerTextField ->
                     if (query.isEmpty()) {
                         Text(
-                            text = stringResource(R.string.settings_search_placeholder),
+                            text = stringResource(Res.string.settings_search_placeholder),
                             fontFamily = com.mochyy.mochymusic.ui.theme.InterFontFamily,
                             fontSize = 16.sp,
                             color = Color.White.copy(alpha = 0.5f)
@@ -423,8 +414,8 @@ fun SubSettingsSearchBar(
             if (query.isNotEmpty()) {
                 androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(8.dp))
                 Icon(
-                    painter = painterResource(R.drawable.close),
-                    contentDescription = stringResource(R.string.settings_clear_search),
+                    painter = LocalSubSettingsChrome.current.closeIcon(),
+                    contentDescription = stringResource(Res.string.settings_clear_search),
                     tint = Color.White.copy(alpha = 0.7f),
                     modifier = Modifier
                         .size(20.dp)

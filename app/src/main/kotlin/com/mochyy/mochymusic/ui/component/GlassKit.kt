@@ -500,21 +500,11 @@ fun GlassPillBackground(
     }
 }
 
-enum class BlurDirection { TopToBottom, BottomToTop }
+// BlurDirection, FlatBarScrimAlpha and rememberProgressiveBlur live in :shared (ui/component/GlassStyle.kt), same package
 
 // the hairline where a flat bar's blur stops, when progressive blur is off
 private val FlatBarEdgeColor = Color.White.copy(alpha = 0.16f)
 private val FlatBarEdgeWidth = 1.dp
-
-// how dark the one even tint is that replaces a bar's fading scrim while progressive blur is off
-const val FlatBarScrimAlpha = 0.45f
-
-// whether bars blur progressively; off, they're flat with a hairline, and their own fading scrims turn into one tint
-@Composable
-fun rememberProgressiveBlur(): Boolean {
-    val (enabled) = rememberPreference(com.mochyy.mochymusic.constants.EnableProgressiveBlurKey, defaultValue = true)
-    return enabled
-}
 
 @Composable
 fun ProgressiveGlassBackground(
