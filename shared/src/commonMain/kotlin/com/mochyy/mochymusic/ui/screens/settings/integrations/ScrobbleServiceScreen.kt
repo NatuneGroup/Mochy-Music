@@ -21,6 +21,7 @@ import com.mochyy.mochymusic.constants.ScrobbleDelayPercentKey
 import com.mochyy.mochymusic.constants.ScrobbleDelaySecondsKey
 import com.mochyy.mochymusic.constants.ScrobbleMinSongDurationKey
 import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.scrobble_plays_waiting
 import com.mochyy.mochymusic.shared.resources.cloud
 import com.mochyy.mochymusic.shared.resources.favorite
 import com.mochyy.mochymusic.shared.resources.integrations

@@ -23,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.CacheDrawScope
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -126,8 +127,9 @@ internal fun likedCoverBase(corners: List<Color>): Color =
     }.second
 
 // Android keeps its native-canvas drawing (LikedCover.android.kt); desktop and iOS draw the same
-// gradients with Compose brushes.
-internal expect fun DrawScope.drawLikedCover(corners: List<Color>)
+// gradients with Compose brushes. Built once per size and set of colours inside drawWithCache, so the
+// native paints and gradients aren't re-created on every redraw.
+internal expect fun CacheDrawScope.likedCoverDrawer(corners: List<Color>): DrawScope.() -> Unit
 
 /** The desktop/iOS drawing: the same corner gradients, through Compose instead of android.graphics. */
 internal fun DrawScope.drawLikedCoverSkia(corners: List<Color>) {
@@ -180,8 +182,8 @@ fun LikedCover(
     Box(
         contentAlignment = heartAlignment,
         modifier = modifier.drawWithCache {
-            val corners = listOf(c0, c1, c2, c3)
-            onDrawBehind { drawLikedCover(corners) }
+            val draw = likedCoverDrawer(listOf(c0, c1, c2, c3))
+            onDrawBehind(draw)
         },
     ) {
         Icon(

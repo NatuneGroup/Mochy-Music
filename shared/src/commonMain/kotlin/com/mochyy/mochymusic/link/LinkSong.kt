@@ -11,6 +11,7 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.put
 
 // a song as one device hands it to another: enough to show it and to find it on youtube, no local paths
 data class LinkSong(

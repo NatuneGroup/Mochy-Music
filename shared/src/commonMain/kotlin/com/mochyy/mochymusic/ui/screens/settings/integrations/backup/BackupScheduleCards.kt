@@ -26,6 +26,11 @@ import com.mochyy.mochymusic.constants.CloudBackupAutoKey
 import com.mochyy.mochymusic.constants.CloudBackupEveryMinutesKey
 import com.mochyy.mochymusic.constants.CloudBackupKeepKey
 import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.backup_every_days
+import com.mochyy.mochymusic.shared.resources.backup_every_hours
+import com.mochyy.mochymusic.shared.resources.backup_every_minutes
+import com.mochyy.mochymusic.shared.resources.backup_every_weeks
+import com.mochyy.mochymusic.shared.resources.backup_keep_count
 import com.mochyy.mochymusic.shared.resources.backup_auto_desc
 import com.mochyy.mochymusic.shared.resources.backup_auto_title
 import com.mochyy.mochymusic.shared.resources.backup_every

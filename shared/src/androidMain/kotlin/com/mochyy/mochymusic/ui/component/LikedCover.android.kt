@@ -3,16 +3,16 @@ package com.mochyy.mochymusic.ui.component
 import android.graphics.Paint
 import android.graphics.RadialGradient
 import android.graphics.Shader
+import androidx.compose.ui.draw.CacheDrawScope
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
-import com.mochyy.mochymusic.ui.theme.likedCoverBase
 
-internal actual fun DrawScope.drawLikedCover(corners: List<Color>) {
+internal actual fun CacheDrawScope.likedCoverDrawer(corners: List<Color>): DrawScope.() -> Unit {
     val paints = LikedCoverPaints(corners, size.width, size.height)
-    drawIntoCanvas { canvas -> paints.draw(canvas.nativeCanvas, size.width, size.height) }
+    return { drawIntoCanvas { canvas -> paints.draw(canvas.nativeCanvas, size.width, size.height) } }
 }
 
 // the cover's gradients for one size and set of colours, so the live cover and its saved picture are drawn the same

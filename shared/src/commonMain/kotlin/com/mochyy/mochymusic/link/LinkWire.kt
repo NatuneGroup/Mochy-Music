@@ -15,7 +15,8 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
 import io.ktor.http.withCharset
 import io.ktor.utils.io.ByteReadChannel
-import io.ktor.utils.io.cancel
+import io.ktor.utils.io.charsets.Charsets
+import kotlinx.coroutines.cancel
 
 // the names both sides agree on, so a phone and a tv on different app versions still find each other
 object LinkWire {
@@ -92,7 +93,7 @@ class LinkReply internal constructor(private val response: HttpResponse) {
         return response.bodyAsBytes()
     }
 
-    fun channel(): ByteReadChannel {
+    suspend fun channel(): ByteReadChannel {
         consumed = true
         return response.bodyAsChannel()
     }
@@ -101,7 +102,8 @@ class LinkReply internal constructor(private val response: HttpResponse) {
     fun close() {
         if (!consumed) {
             consumed = true
-            response.bodyAsChannel().cancel()
+            // cancelling the response's own job drops the unread body and frees the connection
+            response.cancel()
         }
     }
 }

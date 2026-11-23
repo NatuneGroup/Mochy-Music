@@ -127,7 +127,7 @@ fun rememberStatsPickerDialogHost(): StatsPickerHost {
                         .padding(bottom = 12.dp),
                 ) {
                     current.buttonBar { sheet.value = null }
-                    current.content()
+                    current.content(this)
                 }
             }
         }

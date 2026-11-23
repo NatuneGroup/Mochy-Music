@@ -117,7 +117,7 @@ class ImportSyncViewModel(
                 val (csv, summary) = MochyCsvExporter.build(database)
                 // the BOM makes Excel read names in any script correctly; our reader skips it
                 val bom = byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte())
-                platform.writeFile(uri, bom + csv.toByteArray(Charsets.UTF_8))
+                platform.writeFile(uri, bom + csv.encodeToByteArray())
                 "Exported ${summary.likedSongs} liked songs and ${summary.playlists} playlists (${summary.playlistSongs} songs)."
             } catch (e: CancellationException) {
                 throw e

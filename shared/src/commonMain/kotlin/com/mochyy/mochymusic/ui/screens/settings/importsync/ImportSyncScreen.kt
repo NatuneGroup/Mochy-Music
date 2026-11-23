@@ -51,7 +51,7 @@ import com.mochyy.mochymusic.ui.component.SettingsGroupStyle
 import com.mochyy.mochymusic.ui.component.SettingsItem
 import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
 import com.mochyy.mochymusic.viewmodels.ImportSyncViewModel
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.painterResource
