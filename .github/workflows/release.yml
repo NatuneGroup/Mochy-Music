@@ -1,0 +1,69 @@
+name: Stable release
+
+# Every push to main builds the signed Foss arm64 APK and publishes it as a normal
+# GitHub release (v8.4.4, v8.4.5 ...), the shape of Natune's stable release. Skipped
+# when main is still at the last release. The app's Release update channel installs these.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# one at a time, so two runs never pick the same version
+concurrency:
+  group: mochy-stable
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Select stable release version
+    if: github.repository == 'NatuneGroup/Mochy-Music' && github.ref == 'refs/heads/main'
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    permissions:
+      contents: read
+    outputs:
+      should_build: ${{ steps.version.outputs.should_build }}
+      version: ${{ steps.version.outputs.version }}
+      tag_name: ${{ steps.version.outputs.tag_name }}
+      version_name: ${{ steps.version.outputs.version_name }}
+      version_code: ${{ steps.version.outputs.version_code }}
+      commit_sha: ${{ steps.version.outputs.commit_sha }}
+      notes: ${{ steps.version.outputs.notes }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Decide whether to build
+        id: version
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/release_version.py stable | tee -a "$GITHUB_OUTPUT" > plan.txt
+          { echo "notes<<MOCHY_NOTES_EOF"; cat release-notes.md; echo "MOCHY_NOTES_EOF"; } >> "$GITHUB_OUTPUT"
+          if grep -qx 'unchanged=true' plan.txt; then
+            echo "main is still at the last release; skipping."
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-and-publish:
+    name: Build and publish stable release
+    needs: prepare
+    if: needs.prepare.outputs.should_build == 'true'
+    uses: ./.github/workflows/_publish-release.yml
+    with:
+      channel: stable
+      version: ${{ needs.prepare.outputs.version }}
+      tag_name: ${{ needs.prepare.outputs.tag_name }}
+      version_name: ${{ needs.prepare.outputs.version_name }}
+      version_code: ${{ needs.prepare.outputs.version_code }}
+      commit_sha: ${{ needs.prepare.outputs.commit_sha }}
+      notes: ${{ needs.prepare.outputs.notes }}
+    secrets: inherit
+    permissions:
+      contents: write

@@ -97,3 +97,6 @@ lint/
 
 # the release signing key, decoded from CI secrets; never committed
 app/keystore/
+
+# python caches from the release scripts
+__pycache__/
