@@ -42,15 +42,14 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.importer.ImportProgress
 import com.mochyy.mochymusic.importer.ImportSource
 import com.mochyy.mochymusic.importer.account.AccountService
@@ -59,6 +58,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import com.mochyy.mochymusic.ui.screens.search.SearchColors
 import com.mochyy.mochymusic.ui.component.damageBoundary
 import com.mochyy.mochymusic.ui.screens.setup.onboarding.ProviderSquircle
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.close
+import com.mochyy.mochymusic.shared.resources.lib_import_adding
+import com.mochyy.mochymusic.shared.resources.lib_import_adding_from
+import com.mochyy.mochymusic.shared.resources.lib_import_adding_resync
+import com.mochyy.mochymusic.shared.resources.lib_import_banner_title
+import com.mochyy.mochymusic.shared.resources.lib_import_checking_resync
+import com.mochyy.mochymusic.shared.resources.lib_import_getting_ready
 import kotlin.math.ceil
 
 /** The services the banner flows past - the ones an account can be imported from. */
@@ -75,7 +82,7 @@ private val BannerShape = RoundedCornerShape(24.dp)
 private const val MarqueeMsPerIcon = 2600
 
 /** The services the Imported tab always lists, in the mock's order, even before anything came from them. */
-internal val ImportedTabServices = listOf(
+val ImportedTabServices = listOf(
     ImportSource.SPOTIFY,
     ImportSource.YOUTUBE_MUSIC,
     ImportSource.APPLE_MUSIC,
@@ -83,7 +90,7 @@ internal val ImportedTabServices = listOf(
 )
 
 /** A service's name on a half-width card, where "YouTube Music" next to its icon would be cut off. */
-internal val ImportSource.cardLabel: String
+val ImportSource.cardLabel: String
     get() = if (this == ImportSource.YOUTUBE_MUSIC) "YouTube" else label
 
 /**
@@ -131,7 +138,7 @@ private fun ImportPromoBanner(onClick: () -> Unit, onDismiss: (() -> Unit)? = nu
             ProviderMarquee()
             Spacer(Modifier.height(20.dp))
             Text(
-                text = stringResource(R.string.lib_import_banner_title),
+                text = stringResource(Res.string.lib_import_banner_title),
                 color = SearchColors.Primary,
                 fontSize = 21.sp,
                 lineHeight = 25.sp,
@@ -152,8 +159,8 @@ private fun ImportPromoBanner(onClick: () -> Unit, onDismiss: (() -> Unit)? = nu
                     .clickable(role = Role.Button, onClick = onDismiss),
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.close),
-                    contentDescription = stringResource(R.string.close),
+                    painter = painterResource(Res.drawable.close),
+                    contentDescription = stringResource(Res.string.close),
                     tint = SearchColors.Primary,
                     modifier = Modifier.size(16.dp),
                 )
@@ -242,13 +249,13 @@ private fun ImportProgressBanner(progress: ImportProgress, onClick: () -> Unit) 
         Text(
             text = when {
                 progress.resync != null && total <= 0 ->
-                    stringResource(R.string.lib_import_checking_resync, progress.resync.playlistName)
+                    stringResource(Res.string.lib_import_checking_resync, progress.resync.playlistName)
                 progress.resync != null ->
-                    stringResource(R.string.lib_import_adding_resync, done, total, progress.resync.playlistName)
-                total <= 0 -> stringResource(R.string.lib_import_getting_ready)
+                    stringResource(Res.string.lib_import_adding_resync, done, total, progress.resync.playlistName)
+                total <= 0 -> stringResource(Res.string.lib_import_getting_ready)
                 progress.source != null ->
-                    stringResource(R.string.lib_import_adding_from, done, total, progress.source.label)
-                else -> stringResource(R.string.lib_import_adding, done, total)
+                    stringResource(Res.string.lib_import_adding_from, done, total, progress.source.label)
+                else -> stringResource(Res.string.lib_import_adding, done, total)
             },
             color = SearchColors.Primary,
             fontSize = 21.sp,
