@@ -12,8 +12,6 @@ import com.mochyy.mochymusic.constants.HistorySource
 import com.mochyy.mochymusic.db.MusicDatabase
 import com.mochyy.mochymusic.utils.dataStore
 import com.mochyy.mochymusic.utils.reportException
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,15 +23,12 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import javax.inject.Inject
 import kotlinx.datetime.toJavaLocalDateTime
 
 @OptIn(ExperimentalCoroutinesApi::class)
-@HiltViewModel
 class HistoryViewModel
-@Inject
 constructor(
-    @ApplicationContext private val context: Context,
+    private val context: Context,
     val database: MusicDatabase,
 ) : ViewModel() {
     var historySource = MutableStateFlow(HistorySource.LOCAL)
