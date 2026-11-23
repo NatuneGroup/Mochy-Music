@@ -1,7 +1,9 @@
 // AVPlayer integration follows Metrolist's iOS MusicPlayer (GPL-3.0).
 package com.mochyy.mochymusic.shared.ios
 
+import com.mochyy.mochymusic.constants.MixWithOtherAppsKey
 import com.mochyy.mochymusic.constants.PreloadNextTrackKey
+import com.mochyy.mochymusic.shared.library.LocalLibrary
 import com.mochyy.mochymusic.shared.playback.PlayerController
 import com.mochyy.mochymusic.shared.playback.PlayerState
 import com.mochyy.mochymusic.shared.playback.QueueTransport
@@ -21,6 +23,8 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -58,6 +62,7 @@ import platform.darwin.NSObjectProtocol
 internal class IosPlayerController(
     private val youtube: IosYouTubeClient,
     private val queueTransport: QueueTransport,
+    private val library: LocalLibrary,
     private val playbackFailedText: () -> String,
 ) : PlayerController {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -75,6 +80,8 @@ internal class IosPlayerController(
     private var prefetchJob: Job? = null
     private var prefetchedSongId: String? = null
     private var prefetched: PreparedSong? = null
+    // the songs saved to the library, so the lock screen's like button knows its own state
+    private var likedIds: Set<String> = emptySet()
     // the user's play/pause intent. Kept even before an item exists, so a pause or route loss
     // during stream resolution stops the song once it loads.
     private var wantsToPlay = false
@@ -103,8 +110,32 @@ internal class IosPlayerController(
         observeBridgeEvent(IosPlaybackBridgeEvents.outputRemoved) { pauseFromSystemControl() }
         observeBridgeEvent(IosPlaybackBridgeEvents.remoteNext) { queueTransport.next() }
         observeBridgeEvent(IosPlaybackBridgeEvents.remotePrevious) { if (!queueTransport.previous()) skipToPrevious() }
+        // the lock screen's 15-second arrows, the interval iOS shows
+        observeBridgeEvent(IosPlaybackBridgeEvents.remoteSkipForward) {
+            if (player.currentItem != null) seekTo(mutableState.value.positionMs + SystemSkipMs)
+        }
+        observeBridgeEvent(IosPlaybackBridgeEvents.remoteSkipBackward) {
+            if (player.currentItem != null) seekTo((mutableState.value.positionMs - SystemSkipMs).coerceAtLeast(0L))
+        }
+        observeBridgeEvent(IosPlaybackBridgeEvents.remoteLike) { setLiked(true) }
+        observeBridgeEvent(IosPlaybackBridgeEvents.remoteUnlike) { setLiked(false) }
         // Next-track availability follows the phone queue, so republish when it changes.
         scope.launch { queueTransport.canGoNext.collect { publishNowPlaying() } }
+        // Playback > Play alongside other apps: the Swift bridge sets the audio session's mix option
+        // from it, so the switch in the shared settings page works on iOS as it does on Android
+        scope.launch {
+            iosPlaybackPreferences.values
+                .map { prefs -> prefs[MixWithOtherAppsKey] ?: false }
+                .distinctUntilChanged()
+                .collect { mix -> postBridgeEvent(IosPlaybackBridgeEvents.audioSessionMix, mix.toString()) }
+        }
+        // the like button lights up from the saved list, whichever screen changed it
+        scope.launch {
+            library.saved.collect { songs ->
+                likedIds = songs.mapTo(HashSet()) { it.id }
+                publishNowPlaying()
+            }
+        }
     }
 
     override fun play(song: SongItem) {
@@ -247,6 +278,19 @@ internal class IosPlayerController(
         bridgeObservers.clear()
     }
 
+    /** Saves or unsaves the song on the lock screen, then tells the system the new state. */
+    private fun setLiked(liked: Boolean) {
+        val song = mutableState.value.song ?: return
+        if ((song.id in likedIds) == liked) {
+            publishNowPlaying()
+            return
+        }
+        scope.launch {
+            runCatching { library.setSaved(song, liked) }
+            publishNowPlaying()
+        }
+    }
+
     private fun preloadsNextSong(): Boolean =
         PreferencesCache.current(iosPlaybackPreferences.store)[PreloadNextTrackKey] ?: true
 
@@ -267,9 +311,13 @@ internal class IosPlayerController(
     /** One AVPlayerItem for [stream], with the headers the resolved stream needs. Runs on the main thread. */
     private fun prepare(stream: ExtractedStream): PreparedSong {
         val url = checkNotNull(NSURL.URLWithString(stream.audioUrl))
+        // precise timing so the scrubber and the lock screen's duration count the real stream length
         val item = AVPlayerItem(asset = AVURLAsset(
             uRL = url,
-            options = mapOf("AVURLAssetHTTPHeaderFieldsKey" to stream.headers),
+            options = mapOf(
+                "AVURLAssetHTTPHeaderFieldsKey" to stream.headers,
+                "AVURLAssetPreferPreciseDurationAndTimingKey" to true,
+            ),
         ))
         val format = stream.codecs?.takeIf { it.isNotBlank() }?.let { codec ->
             StreamFormat(
@@ -338,6 +386,7 @@ internal class IosPlayerController(
             put("isPlaying", current.isPlaying)
             // the rate the lock screen advances its clock at: zero while waiting on the network, so it doesn't run ahead of the audio
             put("playbackRate", if (current.isPlaying && !current.isLoading) 1.0 else 0.0)
+            put("isLiked", song != null && song.id in likedIds)
             put("canGoNext", queueTransport.canGoNext.value)
             // previous always has an action (restart the song, or step back), so it is on whenever a song is loaded
             put("canGoPrevious", song != null && player.currentItem != null)
@@ -425,4 +474,12 @@ private object IosPlaybackBridgeEvents {
     const val interruptionBegan = "${prefix}interruptionBegan"
     const val interruptionEnded = "${prefix}interruptionEnded"
     const val outputRemoved = "${prefix}outputRemoved"
+    const val remoteSkipForward = "${prefix}remoteSkipForward"
+    const val remoteSkipBackward = "${prefix}remoteSkipBackward"
+    const val remoteLike = "${prefix}remoteLike"
+    const val remoteUnlike = "${prefix}remoteUnlike"
+    const val audioSessionMix = "${prefix}audioSessionMix"
 }
+
+/** How far the lock screen's skip arrows move, the interval the system shows. */
+private const val SystemSkipMs = 15_000L

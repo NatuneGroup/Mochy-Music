@@ -54,6 +54,17 @@
     <array>
         <string>audio</string>
     </array>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Mochy looks for your other devices on the same Wi-Fi so playback can move between them.</string>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_mochylink._tcp</string>
+        <string>_mochytv._tcp</string>
+    </array>
+    <key>UIFileSharingEnabled</key>
+    <true/>
+    <key>LSSupportsOpeningDocumentsInPlace</key>
+    <true/>
     <key>UILaunchScreen</key>
     <dict/>
     <key>UIRequiredDeviceCapabilities</key>

@@ -15,7 +15,7 @@ internal object IosPlaybackRuntime {
     /** The phone UI's queue owner; system next/previous go through it. */
     val queueTransport = QueueTransport()
 
-    val player by lazy { IosPlayerController(youtube, queueTransport) { playbackFailedText } }
+    val player by lazy { IosPlayerController(youtube, queueTransport, library) { playbackFailedText } }
     /** Up next for the whole app; started by whichever comes first, the phone UI or a CarPlay scene. */
     val queue by lazy {
         SharedQueue(player, iosPlaybackPreferences, library, queueTransport, MainScope()).also { it.start() }
