@@ -163,8 +163,14 @@ class CrossmixAnalysisRepository(
     private suspend fun decodeAndAnalyze(uri: Uri, mediaId: String, progress: Progress): TrackAnalysis {
         val analyzer = StreamingTrackAnalyzer()
         val resampler = MonoResampler()
+        // one buffer reused for every chunk the decoder hands over
+        var pcmScratch = ShortArray(0)
         val outcome = StreamPcmDecoder.decode(dataSourceFactory(), uri, mediaId, MaxTrackMs * 1_000L) { pcm, channels, sampleRate, presentationUs ->
-            resampler.push(pcm, channels, sampleRate, analyzer::feed)
+            val frames = pcm.remaining() / channels
+            val sampleCount = frames * channels
+            if (pcmScratch.size < sampleCount) pcmScratch = ShortArray(sampleCount)
+            pcm.get(pcmScratch, 0, sampleCount)
+            resampler.push(pcmScratch, sampleCount, channels, sampleRate, analyzer::feed)
             progress.decodedUs = presentationUs
         }
         val lastPresentationUs = outcome.lastPresentationUs
@@ -312,35 +318,3 @@ internal fun usableFor(complete: Boolean, wholeTrack: Boolean): Boolean = comple
 internal fun shouldReplace(existingComplete: Boolean?, newComplete: Boolean): Boolean =
     existingComplete == null || newComplete || !existingComplete
 
-/** downmixes pcm 16 to mono and resamples it to the analyser's rate, carrying phase between calls */
-internal class MonoResampler {
-    private val out = FloatArray(8_192)
-    private var input = ShortArray(0)
-    private var count = 0
-    private var position = 0.0
-    private var previous = 0f
-
-    fun push(pcm: java.nio.ShortBuffer, channels: Int, inputRate: Int, sink: (FloatArray, Int) -> Unit) {
-        val step = inputRate.toDouble() / StreamingTrackAnalyzer.SampleRate
-        val frames = pcm.remaining() / channels
-        // one bulk copy out of the decoder's buffer: reading it a sample at a time cost a call per sample
-        val samples = frames * channels
-        if (input.size < samples) input = ShortArray(samples)
-        pcm.get(input, 0, samples)
-        var read = 0
-        for (frame in 0 until frames) {
-            var sum = 0f
-            for (c in 0 until channels) sum += input[read++] / 32_768f
-            val current = sum / channels
-            // emit every output sample that falls between the previous input sample and this one
-            while (position <= 1.0) {
-                out[count++] = previous + (current - previous) * position.toFloat()
-                if (count == out.size) { sink(out, count); count = 0 }
-                position += step
-            }
-            position -= 1.0
-            previous = current
-        }
-        if (count > 0) { sink(out, count); count = 0 }
-    }
-}
