@@ -105,6 +105,7 @@ import com.mochyy.mochymusic.ui.screens.search.SearchScreen
 import com.mochyy.mochymusic.utils.rememberEnumPreference
 import com.mochyy.mochymusic.utils.rememberPreference
 import com.mochyy.mochymusic.ui.screens.settings.ProfileScreen
+import com.mochyy.mochymusic.ui.screens.settings.showVideoQualitySheet
 import com.mochyy.mochymusic.ui.screens.library.LibraryAlbumsScreen
 import com.mochyy.mochymusic.ui.screens.SectionDetailScreen
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -421,7 +422,24 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.NowPlayingSettingsRoute) {
-        com.mochyy.mochymusic.ui.screens.settings.NowPlayingSettingsScreen(navController = navController)
+        // the video size sheet, the canvas order control and the floating lyrics switch are the app's own
+        // widgets and permissions, so the shared page takes them from here
+        val overlay = com.mochyy.mochymusic.ui.component.LocalZoomOutOverlayState.current
+        com.mochyy.mochymusic.ui.screens.settings.NowPlayingSettingsScreen(
+            navController = navController,
+            videoQualitySheet = { selected, onSelect -> overlay.showVideoQualitySheet(selected = selected, onSelect = onSelect) },
+            canvasOrderSelect = { options, selectedIndex, onSelect, contentDescription ->
+                com.mochyy.mochymusic.ui.screens.audiolab.LabSelect(
+                    options = options,
+                    selectedIndex = selectedIndex,
+                    onSelect = onSelect,
+                    contentDescription = contentDescription,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            },
+            floatingLyrics = com.mochyy.mochymusic.floating.rememberFloatingLyricsSwitch(),
+            softLightSupported = com.mochyy.mochymusic.ui.player.SoftLightSupported,
+        )
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.integrations.IntegrationsRoute) {
