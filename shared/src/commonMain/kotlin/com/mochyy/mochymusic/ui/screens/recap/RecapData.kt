@@ -9,6 +9,7 @@
 
 package com.mochyy.mochymusic.ui.screens.recap
 
+import com.mochyy.mochymusic.utils.ioDispatcher
 import androidx.compose.runtime.Immutable
 import com.mochyy.mochymusic.db.MochyDatabase
 import com.mochyy.mochymusic.db.RecapEventRow
@@ -154,7 +155,7 @@ sealed interface RecapAvailability {
  */
 object RecapStats {
 
-    suspend fun load(db: MochyDatabase, range: StatsRange): ListeningStats = withContext(recapIoDispatcher) {
+    suspend fun load(db: MochyDatabase, range: StatsRange): ListeningStats = withContext(ioDispatcher) {
         val from = range.start.toStoredMillis()
         val events = db.historyDao.recapEvents(from, range.endExclusive.toStoredMillis())
         val ids = events.mapTo(LinkedHashSet()) { it.songId }.toList()
@@ -224,7 +225,7 @@ object RecapStats {
     }
 
     /** First day anything was played, for the Stats timeline and as a fallback join date. */
-    suspend fun firstPlayDate(db: MochyDatabase): LocalDate? = withContext(recapIoDispatcher) {
+    suspend fun firstPlayDate(db: MochyDatabase): LocalDate? = withContext(ioDispatcher) {
         db.historyDao.firstEventTimestamp()?.let { storedMillisToDateTime(it).date }
     }
 

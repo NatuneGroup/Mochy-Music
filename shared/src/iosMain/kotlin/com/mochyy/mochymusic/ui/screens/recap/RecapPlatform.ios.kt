@@ -1,8 +1,7 @@
 package com.mochyy.mochymusic.ui.screens.recap
 
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.number
 
 // No java.time on iOS yet: English names until the platform gets its own formatter. There is no
 // earlier iOS behaviour to match here.
@@ -26,8 +25,6 @@ actual fun fullMonthName(month: Int): String = FullMonthNames[month - 1]
 private val FullDayNames = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 
 actual fun fullDayName(isoDay: Int): String = FullDayNames[isoDay - 1]
-
-internal actual val recapIoDispatcher: CoroutineDispatcher get() = Dispatchers.IO
 
 private fun pad2(value: Int): String = value.toString().padStart(2, '0')
 

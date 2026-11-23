@@ -1,7 +1,5 @@
 package com.mochyy.mochymusic.ui.screens.recap
 
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.toJavaLocalDateTime
 import java.time.DayOfWeek
@@ -16,8 +14,6 @@ actual fun fullMonthName(month: Int): String =
 
 actual fun fullDayName(isoDay: Int): String =
     DayOfWeek.of(isoDay).getDisplayName(TextStyle.FULL, Locale.getDefault())
-
-internal actual val recapIoDispatcher: CoroutineDispatcher get() = Dispatchers.IO
 
 internal actual fun receiptDateStamp(value: LocalDateTime): String =
     DateTimeFormatter.ofPattern("dd/MM/yyyy").format(value.toJavaLocalDateTime())
