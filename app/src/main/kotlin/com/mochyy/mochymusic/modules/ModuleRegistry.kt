@@ -131,7 +131,8 @@ class ModuleRegistry @Inject constructor(
     private val prefs = context.getSharedPreferences("source_modules", Context.MODE_PRIVATE)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val looks = ModuleLooks(context)
-    private val updates by lazy { ModuleUpdates(prefs, client) }
+    private val http by lazy { OkHttpModuleHttp(client) }
+    private val updates by lazy { ModuleUpdates(SharedPreferencesModuleStore(prefs), http) }
 
     private val client by lazy {
         OkHttpClient.Builder()
@@ -364,7 +365,7 @@ class ModuleRegistry @Inject constructor(
 
     // the release's zip lands in the cache, then it's read exactly like a zip picked from the phone
     private suspend fun checkGitHub(link: GitHubReleases.Link): LinkCheck {
-        val found = GitHubReleases.download(client, context.cacheDir, link, preferDebug = PreferDebugZips)
+        val found = GitHubReleases.download(http, link, preferDebug = PreferDebugZips)
         val zip = when (found) {
             is GitHubReleases.Found.Zip -> found
             is GitHubReleases.Found.Newest -> return LinkCheck.Unreachable
@@ -372,9 +373,18 @@ class ModuleRegistry @Inject constructor(
             GitHubReleases.Found.NoModule -> return LinkCheck.NoModuleInRelease
             GitHubReleases.Found.Unreachable -> return LinkCheck.Unreachable
         }
-        val result = checkZip(Uri.fromFile(zip.file))
+        val result = checkZip(Uri.fromFile(cacheZip(zip.name, zip.bytes)))
         val source = ModuleSource.GitHub(link.owner, link.repo, zip.release.tag, zip.release.stamp)
         return (result as? LinkCheck.Ready)?.copy(from = zip.from, source = source) ?: result
+    }
+
+    // the downloaded release zip in the same cache folder as before, under its own file name
+    private fun cacheZip(name: String, bytes: ByteArray): File {
+        val folder = File(context.cacheDir, "github_modules").apply {
+            deleteRecursively()
+            mkdirs()
+        }
+        return File(folder, name).apply { writeBytes(bytes) }
     }
 
     /** reads a module's zip without adding anything: its manifest.json, and the service it names when it plays songs or lyrics */

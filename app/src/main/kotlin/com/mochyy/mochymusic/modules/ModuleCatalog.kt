@@ -7,7 +7,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -41,20 +40,14 @@ class ModuleCatalog @Inject constructor() {
                 if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
                 response.body.string()
             }
-            val modules = JSONObject(text).optJSONArray("modules") ?: return@runCatching emptyList()
-            (0 until modules.length()).mapNotNull { index ->
-                val item = modules.optJSONObject(index) ?: return@mapNotNull null
-                val url = item.optString("url").takeIf { it.isNotBlank() } ?: return@mapNotNull null
-                val adds = item.optJSONArray("adds")?.let { list ->
-                    (0 until list.length()).mapNotNull { featureOf(list.optString(it)) }.toSet()
-                }.orEmpty()
+            parseModuleCatalog(text).map { entry ->
                 CatalogModule(
-                    name = item.optString("name").ifBlank { url },
-                    description = item.optString("description"),
-                    url = url,
-                    adds = adds,
-                    author = item.optString("author").takeIf { it.isNotBlank() },
-                    icon = item.optString("icon").takeIf { it.startsWith("https://") },
+                    name = entry.name,
+                    description = entry.description,
+                    url = entry.url,
+                    adds = entry.adds.mapNotNull(::featureOf).toSet(),
+                    author = entry.author,
+                    icon = entry.icon,
                 )
             }
         }
