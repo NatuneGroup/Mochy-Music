@@ -48,6 +48,13 @@ class BridgedDrawablesTest {
     }
 
     @Test
+    fun controlTintedIconsAreBridged() {
+        // sleep_timer is tinted ?attr/colorControlNormal in app/res; the bridged copy has no theme reference
+        val text = File(drawables, "sleep_timer.xml").readText()
+        assertTrue("?attr" !in text && "@android:" !in text, text)
+    }
+
+    @Test
     fun theSettingsArrowIsBridged() {
         // the icon that crashed Settings → Now Playing
         val text = File(drawables, "navigate_next.xml").readText()

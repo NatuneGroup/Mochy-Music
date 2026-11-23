@@ -222,8 +222,11 @@ object ResourceBridge {
     // "@android:color/white" → "#FFFFFFFF": the framework's own values for the only two it's used for
     private val FrameworkColorValues = mapOf("white" to "#FFFFFFFF", "transparent" to "#00000000")
     private val FrameworkColor = Regex(""""@android:color/(white|transparent)"""")
+    // ?attr/colorControlNormal is only a default tint: Compose's Icon tints with its own colour over it, so
+    // the bridged copy drops it (an Image() of such an icon draws its fill, white, instead)
+    private val ControlTint = Regex("""\s*android:tint="\?attr/colorControlNormal"""")
     private fun withFrameworkColors(text: String): String =
-        FrameworkColor.replace(text) { "\"${FrameworkColorValues.getValue(it.groupValues[1])}\"" }
+        FrameworkColor.replace(text.replace(ControlTint, "")) { "\"${FrameworkColorValues.getValue(it.groupValues[1])}\"" }
 
     // android:width="24.0dip" → android:width="24.0dp"
     private val DipSize = Regex("""(android:(?:width|height)=")([0-9.]+)dip"""")
