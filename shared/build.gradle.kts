@@ -232,23 +232,27 @@ object ResourceBridge {
         }
 
         val drawables = File(out, "drawable").apply { mkdirs() }
-        res.resolve("drawable").listFiles().orEmpty().forEach { file ->
-            // Android also reads "24.0dip"; Compose resources only read dp or px and throw at runtime on
-            // anything else (a crash the first time a shared screen draws that icon), so sizes are rewritten
-            // here, and a vector still sized some other way is left out: asking for it fails the build instead
-            // the two framework colours icons use become the values Android gives them, so Compose can read them
-            val vectorText = if (file.extension == "xml") withFrameworkColors(file.readText()).let { text ->
-                val plain = "<vector" in text && "<animated-vector" !in text && "?attr" !in text &&
-                    "@color/" !in text && "@android:" !in text && "@drawable/" !in text
-                if (plain) text.replace(DipSize) { "${it.groupValues[1]}${it.groupValues[2]}dp\"" } else null
-            }?.takeIf { text -> VectorSize.findAll(text).all { it.groupValues[2] == "dp" || it.groupValues[2] == "px" } } else null
-            val raster = file.extension in setOf("png", "webp", "jpg")
-            if ((vectorText != null || raster) && !File(drawables, file.name).exists() &&
-                drawables.listFiles().orEmpty().none { it.nameWithoutExtension == file.nameWithoutExtension }
-            ) {
-                if (vectorText != null) File(drawables, file.name).writeText(vectorText) else file.copyTo(File(drawables, file.name))
+        // app icons that ship once at their own size live in drawable-nodpi, which Compose has no
+        // folder for; drawable is read first so a name in both keeps the copy it already had
+        listOf("drawable", "drawable-nodpi")
+            .flatMap { res.resolve(it).listFiles().orEmpty().asList() }
+            .forEach { file ->
+                // Android also reads "24.0dip"; Compose resources only read dp or px and throw at runtime on
+                // anything else (a crash the first time a shared screen draws that icon), so sizes are rewritten
+                // here, and a vector still sized some other way is left out: asking for it fails the build instead
+                // the two framework colours icons use become the values Android gives them, so Compose can read them
+                val vectorText = if (file.extension == "xml") withFrameworkColors(file.readText()).let { text ->
+                    val plain = "<vector" in text && "<animated-vector" !in text && "?attr" !in text &&
+                        "@color/" !in text && "@android:" !in text && "@drawable/" !in text
+                    if (plain) text.replace(DipSize) { "${it.groupValues[1]}${it.groupValues[2]}dp\"" } else null
+                }?.takeIf { text -> VectorSize.findAll(text).all { it.groupValues[2] == "dp" || it.groupValues[2] == "px" } } else null
+                val raster = file.extension in setOf("png", "webp", "jpg")
+                if ((vectorText != null || raster) && !File(drawables, file.name).exists() &&
+                    drawables.listFiles().orEmpty().none { it.nameWithoutExtension == file.nameWithoutExtension }
+                ) {
+                    if (vectorText != null) File(drawables, file.name).writeText(vectorText) else file.copyTo(File(drawables, file.name))
+                }
             }
-        }
     }
 
     // "@android:color/white" → "#FFFFFFFF": the framework's own values for the only two it's used for
