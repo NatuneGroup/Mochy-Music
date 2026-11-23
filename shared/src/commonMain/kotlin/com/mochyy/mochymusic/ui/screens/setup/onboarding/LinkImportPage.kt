@@ -2,6 +2,7 @@
 
 package com.mochyy.mochymusic.ui.screens.setup.onboarding
 
+import com.mochyy.mochymusic.ui.screens.library.ImportSourceIcon
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -173,7 +174,7 @@ private fun LinkPreviewCard(parsed: ParsedImport) {
                     Text(name, color = Color.White, fontSize = 17.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         parsed.provider?.let { source ->
-                            SourceBadge(source, size = 18.dp)
+                            ImportSourceIcon(source, size = 18.dp)
                             Spacer(Modifier.width(6.dp))
                         }
                         val songs = pluralStringResource(Res.plurals.onb_songs, parsed.totalSongs, parsed.totalSongs)
@@ -227,32 +228,3 @@ private fun AuthorRow(author: PlaylistAuthor) {
     }
 }
 
-/** the link's service icon, or a neutral squircle with a note for a source with no icon of ours */
-@Composable
-private fun SourceBadge(source: ImportSource, size: Dp) {
-    val service = when (source) {
-        ImportSource.SPOTIFY -> AccountService.SPOTIFY
-        ImportSource.APPLE_MUSIC -> AccountService.APPLE_MUSIC
-        ImportSource.TIDAL -> AccountService.TIDAL
-        ImportSource.YOUTUBE_MUSIC -> AccountService.YOUTUBE_MUSIC
-        ImportSource.DEEZER, ImportSource.SOUNDCLOUD, ImportSource.OTHER -> null
-    }
-    if (service != null) {
-        ProviderSquircle(service, size = size)
-    } else {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(size)
-                .clip(SquircleShape)
-                .background(SearchColors.TileHigh),
-        ) {
-            Icon(
-                painter = painterResource(Res.drawable.library_music),
-                contentDescription = source.label,
-                tint = SearchColors.Secondary,
-                modifier = Modifier.size(size * 0.5f),
-            )
-        }
-    }
-}
