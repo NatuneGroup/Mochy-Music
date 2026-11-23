@@ -9,8 +9,14 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Process
-import android.widget.Toast
 import androidx.core.content.FileProvider
+import com.mochyy.mochymusic.constants.AccountChannelHandleKey
+import com.mochyy.mochymusic.constants.AccountEmailKey
+import com.mochyy.mochymusic.constants.AccountNameKey
+import com.mochyy.mochymusic.constants.LastFMUsernameKey
+import com.mochyy.mochymusic.constants.LibreFmUsernameKey
+import com.mochyy.mochymusic.constants.ProxyUsernameKey
+import com.mochyy.mochymusic.constants.UsernameKey
 import com.mochyy.mochymusic.BuildConfig
 import com.mochyy.mochymusic.R
 import timber.log.Timber
@@ -18,6 +24,7 @@ import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.flow.first
 import kotlin.system.exitProcess
 
 class CrashHandler private constructor(
@@ -125,18 +132,31 @@ class CrashHandler private constructor(
         // transfer/cloud-backup zip. The settings share row is the only way out.
         fun crashDir(context: Context): File = File(context.noBackupFilesDir, "crash")
 
-        fun shareLatestCrash(context: Context) {
-            val report = CrashLog.latestReport(crashDir(context))
-            if (report == null) {
-                Toast.makeText(context, R.string.crash_no_log, Toast.LENGTH_SHORT).show()
-                return
+        /**
+         * the newest report, redacted ([CrashRedactor]) into a copy in cache where the share sheet can
+         * reach it, or null when nothing has crashed. The user's own account names, tokens and keys are
+         * masked by value as well as by pattern. Reads the settings store: call off the main thread.
+         */
+        suspend fun exportLatestCrash(context: Context): File? {
+            val report = CrashLog.latestReport(crashDir(context)) ?: return null
+            val prefs = runCatching { context.dataStore.data.first() }.getOrNull()
+            val known = buildList {
+                if (prefs != null) {
+                    SecretPreferences.SecretKeys.forEach { key -> prefs[key]?.let(::add) }
+                    listOf(
+                        AccountNameKey, AccountEmailKey, AccountChannelHandleKey, UsernameKey,
+                        LastFMUsernameKey, LibreFmUsernameKey, ProxyUsernameKey,
+                    ).forEach { key -> prefs[key]?.let(::add) }
+                }
             }
+            // the crash folder is outside the FileProvider's roots, so the share sheet gets a copy in
+            // cache; the original stays in no-backup storage, unredacted
+            return CrashRedactor.exportCopy(report, File(context.cacheDir, "crash-share"), known)
+        }
+
+        /** hands [copy] (from [exportLatestCrash]) to the share sheet */
+        fun shareCrashCopy(context: Context, copy: File) {
             runCatching {
-                // the crash folder is outside the FileProvider's roots, so the share sheet gets a copy
-                // in cache; the original stays in no-backup storage
-                val folder = File(context.cacheDir, "crash-share").apply { mkdirs() }
-                val copy = File(folder, report.name)
-                report.copyTo(copy, overwrite = true)
                 val uri = FileProvider.getUriForFile(context, context.packageName + ".FileProvider", copy)
                 val send = Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
