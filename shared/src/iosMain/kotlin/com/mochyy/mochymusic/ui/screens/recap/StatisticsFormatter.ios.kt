@@ -24,11 +24,14 @@ internal actual class StatisticsFormatter actual constructor() {
         }
 
     private val months = formatter("LLL")
+    private val weekdaysFull = formatter("EEEE")
     private val weekdaysNarrow = formatter("EEEEE")
     private val dates = formatter("EEE, LLL d")
     private val times = formatter("jm")
 
     actual fun shortMonth(month: Int): String = months.stringFromDate(nativeDate(2000, month, 15))
+
+    actual fun fullWeekday(isoDay: Int): String = weekdaysFull.stringFromDate(nativeDate(2024, 1, isoDay))
 
     actual fun narrowWeekday(isoDay: Int): String = weekdaysNarrow.stringFromDate(nativeDate(2024, 1, isoDay))
 

@@ -25,14 +25,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
-internal class RecapSnippetPlayer(private val context: Context, private val scope: CoroutineScope) {
+internal class RecapSnippetPlayer(private val context: Context, private val scope: CoroutineScope) : RecapSnippets {
     private var player: ExoPlayer? = null
     private var playingId: String? = null
     private var job: Job? = null
     private var released = false
 
     /** Starts [songId] from its beginning, fading in. Anything already playing fades out first. */
-    fun play(songId: String, fadeInMs: Long = 1400L) {
+    override fun play(songId: String, fadeInMs: Long) {
         if (released || songId == playingId) return
         playingId = songId
         val previous = player
@@ -79,7 +79,7 @@ internal class RecapSnippetPlayer(private val context: Context, private val scop
     }
 
     /** Fades whatever is playing out and lets it go. */
-    fun stop(fadeOutMs: Long = 900L) {
+    override fun stop(fadeOutMs: Long) {
         playingId = null
         job?.cancel()
         val current = player ?: return
@@ -98,7 +98,7 @@ internal class RecapSnippetPlayer(private val context: Context, private val scop
         }
     }
 
-    fun release() {
+    override fun release() {
         released = true
         job?.cancel()
         player?.release()

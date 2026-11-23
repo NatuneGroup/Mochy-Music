@@ -8,6 +8,9 @@ import kotlinx.datetime.LocalDate
  * uses the platform formatter.
  */
 internal expect class StatisticsFormatter() {
+    /** "Wednesday" - the full weekday name in the device's language, Monday = 1. */
+    fun fullWeekday(isoDay: Int): String
+
     /** "Nov" - java.time's TextStyle.SHORT month name. */
     fun shortMonth(month: Int): String
 
