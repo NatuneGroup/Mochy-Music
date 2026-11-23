@@ -56,6 +56,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -96,7 +97,7 @@ constructor(
                     SongFilter.DOWNLOADED -> database.downloadedSongs(sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
                     SongFilter.UPLOADED -> database.uploadedSongs(sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
                 }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun syncLikedSongs() {
         viewModelScope.launch(Dispatchers.IO) { syncUtils.syncLikedSongs() }
@@ -133,7 +134,7 @@ constructor(
                     ArtistFilter.LIKED -> database.artistsBookmarked(sortType, descending)
                     ArtistFilter.LIBRARY -> database.artists(sortType, descending)
                 }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun sync() {
         viewModelScope.launch(Dispatchers.IO) { syncUtils.syncArtistsSubscriptions() }
@@ -141,34 +142,34 @@ constructor(
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
-            allArtists.collect { artists ->
-                artists
-                    .map { it.artist }
-                    .filter {
-                        it.thumbnailUrl == null || Duration.between(
-                            it.lastUpdateTime.toJavaLocalDateTime(),
-                            LocalDateTime.now()
-                        ) > Duration.ofDays(10)
-                    }.forEach { artist ->
-                        val preferredThumbnailUrl = ArtistImageResolver.resolveThumbnail(artist)
-                        YouTube.artist(artist.id).onSuccess { artistPage ->
+            // refresh stale thumbnails once instead of pinning the room flow forever in the background
+            val artists = allArtists.first { it.isNotEmpty() }
+            artists
+                .map { it.artist }
+                .filter {
+                    it.thumbnailUrl == null || Duration.between(
+                        it.lastUpdateTime.toJavaLocalDateTime(),
+                        LocalDateTime.now()
+                    ) > Duration.ofDays(10)
+                }.forEach { artist ->
+                    val preferredThumbnailUrl = ArtistImageResolver.resolveThumbnail(artist)
+                    YouTube.artist(artist.id).onSuccess { artistPage ->
+                        database.query {
+                            update(artist, artistPage, preferredThumbnailUrl)
+                        }
+                    }.onFailure {
+                        if (preferredThumbnailUrl != null) {
                             database.query {
-                                update(artist, artistPage, preferredThumbnailUrl)
-                            }
-                        }.onFailure {
-                            if (preferredThumbnailUrl != null) {
-                                database.query {
-                                    update(
-                                        artist.copy(
-                                            thumbnailUrl = preferredThumbnailUrl,
-                                            lastUpdateTime = nowLocal()
-                                        )
+                                update(
+                                    artist.copy(
+                                        thumbnailUrl = preferredThumbnailUrl,
+                                        lastUpdateTime = nowLocal()
                                     )
-                                }
+                                )
                             }
                         }
                     }
-            }
+                }
         }
     }
 }
@@ -200,7 +201,7 @@ constructor(
                     AlbumFilter.LIBRARY -> database.albums(sortType, descending).map { it.filterExplicitAlbums(hideExplicit) }
                     AlbumFilter.UPLOADED -> database.albumsUploaded(sortType, descending).map { it.filterExplicitAlbums(hideExplicit) }
                 }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun sync() {
         viewModelScope.launch(Dispatchers.IO) { syncUtils.syncLikedAlbums() }
@@ -208,27 +209,27 @@ constructor(
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
-            allAlbums.collect { albums ->
-                albums
-                    .filter {
-                        it.album.songCount == 0
-                    }.forEach { album ->
-                        YouTube
-                            .album(album.id)
-                            .onSuccess { albumPage ->
+            // backfill empty albums once instead of holding an eternal room subscriber in the background
+            val albums = allAlbums.first { it.isNotEmpty() }
+            albums
+                .filter {
+                    it.album.songCount == 0
+                }.forEach { album ->
+                    YouTube
+                        .album(album.id)
+                        .onSuccess { albumPage ->
+                            database.query {
+                                update(album.album, albumPage, album.artists)
+                            }
+                        }.onFailure {
+                            reportException(it)
+                            if (it.message?.contains("NOT_FOUND") == true) {
                                 database.query {
-                                    update(album.album, albumPage, album.artists)
-                                }
-                            }.onFailure {
-                                reportException(it)
-                                if (it.message?.contains("NOT_FOUND") == true) {
-                                    database.query {
-                                        delete(album.album)
-                                    }
+                                    delete(album.album)
                                 }
                             }
-                    }
-            }
+                        }
+                }
         }
     }
 }
@@ -252,7 +253,7 @@ constructor(
             }.distinctUntilChanged()
             .flatMapLatest { (sortType, descending, hideYoutubeShorts) ->
                 database.playlists(sortType, descending).map { it.filterYoutubeShorts(hideYoutubeShorts) }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun sync() {
         viewModelScope.launch(Dispatchers.IO) { syncUtils.syncSavedPlaylists() }
@@ -276,7 +277,7 @@ constructor(
     val artist =
         database
             .artist(artistId)
-            .stateIn(viewModelScope, SharingStarted.Lazily, null)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val songs =
         context.dataStore.data
@@ -291,7 +292,7 @@ constructor(
             .flatMapLatest { (sortDesc, hideExplicit, hideVideoSongs) ->
                 val (sortType, descending) = sortDesc
                 database.artistSongs(artistId, sortType, descending).map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
-            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 }
 
 @HiltViewModel
@@ -328,74 +329,72 @@ constructor(
             .artistsBookmarked(
                 ArtistSortType.CREATE_DATE,
                 true,
-            ).stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+            ).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     var albums = context.dataStore.data
         .map { it[HideExplicitKey] ?: false }
         .distinctUntilChanged()
         .flatMapLatest { hideExplicit ->
             database.albumsLiked(AlbumSortType.CREATE_DATE, true).map { it.filterExplicitAlbums(hideExplicit) }
-        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     var playlists = context.dataStore.data
         .map { it[HideYoutubeShortsKey] ?: true }
         .distinctUntilChanged()
         .flatMapLatest { hideYoutubeShorts ->
             database.playlists(PlaylistSortType.CREATE_DATE, true).map { it.filterYoutubeShorts(hideYoutubeShorts) }
-        }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
-            albums.collect { albums ->
-                albums
-                    .filter {
-                        it.album.songCount == 0
-                    }.forEach { album ->
-                        YouTube
-                            .album(album.id)
-                            .onSuccess { albumPage ->
-                                database.query {
-                                    update(album.album, albumPage, album.artists)
-                                }
-                            }.onFailure {
-                                reportException(it)
-                                if (it.message?.contains("NOT_FOUND") == true) {
-                                    database.query {
-                                        delete(album.album)
-                                    }
-                                }
-                            }
-                    }
-            }
-        }
-        viewModelScope.launch(Dispatchers.IO) {
-            artists.collect { artists ->
-                artists
-                    .map { it.artist }
-                    .filter {
-                        it.thumbnailUrl == null ||
-                                Duration.between(
-                                    it.lastUpdateTime.toJavaLocalDateTime(),
-                                    LocalDateTime.now(),
-                                ) > Duration.ofDays(10)
-                    }.forEach { artist ->
-                        val preferredThumbnailUrl = ArtistImageResolver.resolveThumbnail(artist)
-                        YouTube.artist(artist.id).onSuccess { artistPage ->
+            val loadedAlbums = albums.first { it.isNotEmpty() }
+            loadedAlbums
+                .filter {
+                    it.album.songCount == 0
+                }.forEach { album ->
+                    YouTube
+                        .album(album.id)
+                        .onSuccess { albumPage ->
                             database.query {
-                                update(artist, artistPage, preferredThumbnailUrl)
+                                update(album.album, albumPage, album.artists)
                             }
                         }.onFailure {
-                            if (preferredThumbnailUrl != null) {
+                            reportException(it)
+                            if (it.message?.contains("NOT_FOUND") == true) {
                                 database.query {
-                                    update(
-                                        artist.copy(
-                                            thumbnailUrl = preferredThumbnailUrl,
-                                            lastUpdateTime = nowLocal(),
-                                        )
-                                    )
+                                    delete(album.album)
                                 }
                             }
                         }
+                }
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val loadedArtists = artists.first { it.isNotEmpty() }
+            loadedArtists
+                .map { it.artist }
+                .filter {
+                    it.thumbnailUrl == null ||
+                            Duration.between(
+                                it.lastUpdateTime.toJavaLocalDateTime(),
+                                LocalDateTime.now(),
+                            ) > Duration.ofDays(10)
+                }.forEach { artist ->
+                    val preferredThumbnailUrl = ArtistImageResolver.resolveThumbnail(artist)
+                    YouTube.artist(artist.id).onSuccess { artistPage ->
+                        database.query {
+                            update(artist, artistPage, preferredThumbnailUrl)
+                        }
+                    }.onFailure {
+                        if (preferredThumbnailUrl != null) {
+                            database.query {
+                                update(
+                                    artist.copy(
+                                        thumbnailUrl = preferredThumbnailUrl,
+                                        lastUpdateTime = nowLocal(),
+                                    )
+                                )
+                            }
+                        }
                     }
-            }
+                }
         }
     }
 }

@@ -441,6 +441,10 @@ interface HistoryDao {
     @Query("SELECT COUNT(*) FROM event")
     fun eventCount(): Flow<Int>
 
+    // lightweight distinct song ids for discovery filtering without loading every joined event row
+    @Query("SELECT DISTINCT songId FROM event")
+    suspend fun allPlayedSongIds(): List<String>
+
     /** Every play in [fromTimeStamp, toTimeStamp), bare - the monthly recap and Stats aggregate these themselves. */
     @Query("SELECT songId, timestamp, playTime FROM event WHERE timestamp >= :fromTimeStamp AND timestamp < :toTimeStamp")
     suspend fun recapEvents(fromTimeStamp: Long, toTimeStamp: Long): List<RecapEventRow>

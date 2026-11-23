@@ -2,7 +2,8 @@ package com.mochyy.mochymusic.db
 
 import com.mochyy.mochymusic.db.daos.SpeedDialDao
 
-// bump this with every schema change and add its migration to AllMigrations, the import checks old exports against it too.
+// bump this with every schema change and add its migration to AllMigrations (Android) and SharedMigrations
+// (desktop and iOS, nonAndroidMain); the import checks old exports against it too.
 // Both InternalDatabase classes (app/ for Android, nonAndroidMain for desktop and iOS) read it.
 const val MusicDatabaseVersion = 45
 

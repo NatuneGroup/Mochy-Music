@@ -3,6 +3,7 @@ package com.mochyy.mochymusic.shared.ios
 import androidx.room.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.mochyy.mochymusic.db.InternalDatabase
+import com.mochyy.mochymusic.db.SharedMigrations
 import com.mochyy.mochymusic.shared.library.LibraryDatabase
 import com.mochyy.mochymusic.shared.library.LocalLibrary
 import com.mochyy.mochymusic.shared.settings.PlaybackSettingsFile
@@ -27,6 +28,7 @@ internal val iosLibrary by lazy {
 internal val iosDatabase by lazy {
     Room.databaseBuilder<InternalDatabase>(name = "${applicationSupportPath()}/mochy.db")
         .setDriver(BundledSQLiteDriver())
+        .addMigrations(*SharedMigrations)
         .build()
 }
 

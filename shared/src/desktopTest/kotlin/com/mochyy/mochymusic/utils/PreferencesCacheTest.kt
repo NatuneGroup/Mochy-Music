@@ -5,6 +5,11 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -25,23 +30,36 @@ class PreferencesCacheTest {
     private val key = booleanPreferencesKey("cacheTestFlag")
 
     @Test
-    fun readsTheSavedValueAtOnceThenFollowsWrites() = runBlocking {
+    fun readsTheSavedValueAtOnceThenFollowsWrites() {
         val cache = StorePreferencesCache()
-        val file = File.createTempFile("mochy-prefs", ".preferences_pb").apply { delete(); deleteOnExit() }
-        val store = PreferenceDataStoreFactory.createWithPath { file.absolutePath.toPath() }
-        store.edit { it[key] = true }
+        val file = File.createTempFile("mochy-prefs", ".preferences_pb").apply { delete() }
+        // both the store's actor and the cache's collector run on this test's own scope, so the test
+        // can stop them and wait; left on the cache's long-lived IO scope they keep reading a file
+        // that no longer exists, and an exception from a thread no test owns lands in whatever test
+        // starts next as UncaughtExceptionsBeforeTest
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        try {
+            runBlocking {
+                val store = PreferenceDataStoreFactory.createWithPath(scope = scope) { file.absolutePath.toPath() }
+                store.edit { it[key] = true }
 
-        // what a first frame sees: the value on disk, read synchronously
-        assertEquals(true, cache.current(store)[key])
-        assertTrue(cache.isWarm)
+                // what a first frame sees: the value on disk, read synchronously
+                assertEquals(true, cache.current(store)[key])
+                assertTrue(cache.isWarm)
 
-        cache.start(store)
-        assertSame(store, cache.store)
-        cache.set(store, key, false)
-        withTimeout(5_000) {
-            while (cache.snapshot.value[key] != false) delay(10)
+                cache.start(store, scope)
+                assertSame(store, cache.store)
+                cache.set(store, key, false)
+                withTimeout(5_000) {
+                    while (cache.snapshot.value[key] != false) delay(10)
+                }
+                assertEquals(false, cache.current(store)[key])
+            }
+        } finally {
+            // only delete the file once nothing is reading it any more
+            runBlocking { withTimeout(5_000) { scope.coroutineContext[Job]!!.cancelAndJoin() } }
+            file.delete()
         }
-        assertEquals(false, cache.current(store)[key])
     }
 
     @Test

@@ -81,8 +81,10 @@ jobs:
           # the updater picks the asset named for the installed ABI and flavour
           assets=()
           for flavour in foss gms; do
-            apks=(built/$flavour/*.apk)
-            [ "${#apks[@]}" -eq 1 ] && [ -f "${apks[0]}" ] || { echo "expected one $flavour APK, got: ${apks[*]}"; exit 1; }
+            # upload-artifact keeps the glob's wildcard folder (arm64Foss/release/), so the APK is not
+            # directly under built/<flavour>; find it instead of assuming one level
+            mapfile -t apks < <(find "built/$flavour" -type f -name '*.apk')
+            [ "${#apks[@]}" -eq 1 ] && [ -f "${apks[0]}" ] || { echo "expected one $flavour APK, got: ${apks[*]:-none}"; exit 1; }
             asset="mochy-${VERSION}-arm64-${flavour}.apk"
             mv "${apks[0]}" "$asset"
             sha256sum "$asset" | tee "$asset.sha256"
