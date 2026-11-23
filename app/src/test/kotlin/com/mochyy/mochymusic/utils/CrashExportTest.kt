@@ -3,6 +3,7 @@ package com.mochyy.mochymusic.utils
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -94,5 +95,42 @@ class CrashExportTest {
     fun redactingLeavesOrdinaryLinesAlone() {
         val line = "2026-11-23 15:00:00.000 I MusicService: queue moved to 3 of 12 (MusicService.kt:412)"
         assertEquals(line, CrashRedactor.redact(line))
+    }
+
+    @Test
+    fun everyExportKeepsItsOwnCopy() {
+        // the same report name twice, as when one crash is shared, then shared again after more logging
+        val reports = Files.createTempDirectory("crash").toFile()
+        val share = Files.createTempDirectory("share").toFile()
+        val report = File(reports, "crash-20261123-150000.log")
+
+        report.writeText("report A")
+        val a = CrashRedactor.exportCopy(report, share, emptyList())
+        report.writeText("report B")
+        val b = CrashRedactor.exportCopy(report, share, emptyList())
+
+        // an app that was given A and hasn't opened it yet still finds A's bytes at A's path
+        assertTrue(a.exists())
+        assertEquals("report A", a.readText())
+        assertEquals("report B", b.readText())
+        assertNotEquals(a.absolutePath, b.absolutePath)
+        assertEquals(report.name, a.name)
+        assertEquals(report.name, b.name)
+    }
+
+    @Test
+    fun oldCopiesExpireOnAgeNotOnTheNextExport() {
+        val report = Files.createTempFile("crash-", ".log").toFile().apply { writeText("x") }
+        val share = Files.createTempDirectory("share").toFile()
+        val now = System.currentTimeMillis()
+
+        val old = CrashRedactor.exportCopy(report, share, emptyList(), now)
+        old.parentFile!!.setLastModified(now - CrashRedactor.SHARE_RETENTION_MS - 60_000)
+        val recent = CrashRedactor.exportCopy(report, share, emptyList(), now)
+        val next = CrashRedactor.exportCopy(report, share, emptyList(), now)
+
+        assertFalse("a copy older than the retention time goes", old.exists())
+        assertTrue("a recent copy stays when another is prepared", recent.exists())
+        assertTrue(next.exists())
     }
 }

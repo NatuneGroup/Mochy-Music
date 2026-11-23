@@ -759,6 +759,8 @@
     <string name="crash_close">Close</string>
     <string name="crash_no_log">No crash log available</string>
     <string name="crash_preview_title">Check before sharing</string>
+    <string name="crash_prepare_failed">The crash report couldn\'t be prepared for sharing. Check that the phone has free space, then try again.</string>
+    <string name="crash_try_again">Try again</string>
     <string name="crash_preview_desc">Account names, tokens, keys, links and file locations are replaced with [redacted]. This is exactly what will be shared.</string>
 
     <!-- Theme Palette Names -->

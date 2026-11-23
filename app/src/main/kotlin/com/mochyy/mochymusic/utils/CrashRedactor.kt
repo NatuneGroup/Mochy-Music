@@ -8,7 +8,9 @@
 package com.mochyy.mochymusic.utils
 
 import java.io.File
+import java.io.IOException
 import java.net.URLEncoder
+import java.util.UUID
 
 object CrashRedactor {
     const val MASK = "[redacted]"
@@ -63,12 +65,40 @@ object CrashRedactor {
         return out
     }
 
-    /** writes the redacted copy of [report] into [folder] (replacing an earlier copy) and returns it */
-    fun exportCopy(report: File, folder: File, known: Collection<String>): File {
+    // a copy handed to the share sheet has to stay readable until the app it went to opens it, which can be
+    // much later; so each export gets its own copy that nothing overwrites, and copies only go after a day
+    // (or when more than SHARE_KEEP have piled up), never because another report was prepared
+    internal const val SHARE_RETENTION_MS = 24L * 60 * 60 * 1000
+    internal const val SHARE_KEEP = 20
+
+    /**
+     * writes the redacted copy of [report] into a folder of its own under [folder] and returns it. The copy
+     * keeps the report's name (that's what the receiving app shows); its folder makes the path unique, so
+     * an earlier copy's content URI keeps pointing at that copy's bytes
+     */
+    fun exportCopy(report: File, folder: File, known: Collection<String>, now: Long = System.currentTimeMillis()): File {
         folder.mkdirs()
-        folder.listFiles()?.forEach { it.delete() }
-        val copy = File(folder, report.name)
-        copy.writeText(redact(report.readText(), known))
+        expireCopies(folder, now)
+        var dir: File
+        do {
+            dir = File(folder, "$now-${UUID.randomUUID().toString().take(8)}")
+        } while (dir.exists())
+        if (!dir.mkdirs()) throw IOException("could not create $dir")
+        // written whole under a temporary name first, so a half-written copy is never what gets shared
+        val part = File(dir, report.name + ".part")
+        part.writeText(redact(report.readText(), known))
+        val copy = File(dir, report.name)
+        if (!part.renameTo(copy)) throw IOException("could not finish $copy")
+        copy.setReadOnly()
         return copy
+    }
+
+    /** removes copies older than [SHARE_RETENTION_MS] and all but the newest [SHARE_KEEP] */
+    internal fun expireCopies(folder: File, now: Long) {
+        val entries = folder.listFiles()?.sortedByDescending { it.lastModified() } ?: return
+        entries.forEachIndexed { index, entry ->
+            // plain files are copies from the earlier one-folder layout; they age out the same way
+            if (index >= SHARE_KEEP || now - entry.lastModified() > SHARE_RETENTION_MS) entry.deleteRecursively()
+        }
     }
 }
