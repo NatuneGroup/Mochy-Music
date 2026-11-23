@@ -106,6 +106,8 @@ kotlin {
             implementation(libs.activity)
             // the moved cover components read colours with the same androidx.palette the app uses
             implementation(libs.palette)
+            // the Android-only shared-element containers read the nav entry's ViewModel store (LocalViewModelStoreOwner)
+            implementation(libs.viewmodel.compose)
         }
         getByName("desktopMain").dependencies {
             implementation(compose.desktop.common)
