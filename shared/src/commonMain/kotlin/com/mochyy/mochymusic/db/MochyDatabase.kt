@@ -25,9 +25,10 @@ interface MochyDatabase {
     /**
      * The app DatabaseDao's artistSongs, for shared code: it needs queries from two shared DAOs
      * (SongDao and HistoryDao), so it lives here rather than in either. Same queries, ordering and limit
-     * as the blocking original.
+     * as the blocking original. Named apart from DatabaseDao.artistSongs: Android's MusicDatabase is both,
+     * and Kotlin rejects one function inheriting two sets of default arguments.
      */
-    fun artistSongs(
+    fun observeArtistSongs(
         artistId: String,
         sortType: ArtistSongSortType,
         descending: Boolean,
