@@ -214,6 +214,7 @@ import com.mochyy.mochymusic.ui.launch.LocalLaunchIntro
 import com.mochyy.mochymusic.ui.launch.launchRise
 import com.mochyy.mochymusic.LocalDatabase
 import com.mochyy.mochymusic.LocalDownloadUtil
+import com.mochyy.mochymusic.shared.playback.LocalPlayerConnection as SharedLocalPlayerConnection
 import com.mochyy.mochymusic.utils.SyncUtils
 import com.mochyy.mochymusic.utils.dataStore
 import com.mochyy.mochymusic.utils.get
@@ -994,6 +995,8 @@ class MainActivity : ComponentActivity() {
                     com.mochyy.mochymusic.ui.component.LocalPlayerBottomSheetState provides playerBottomSheetState,
 
                     LocalPlayerConnection provides playerConnection,
+                    // the same player for shared Compose code; the app's own LocalPlayerConnection stays the Android type
+                    SharedLocalPlayerConnection provides playerConnection,
                     LocalGlassState provides glassState,
                     LocalHideAppChrome provides hideAppChrome,
                     LocalDetailAccentColor provides detailAccentColor,

@@ -52,7 +52,7 @@ import com.mochyy.mochymusic.shared.lyrics.findPlayerLyrics
 import com.mochyy.mochymusic.shared.lyrics.suspendRunCatching
 import com.mochyy.mochymusic.shared.media.SearchSource
 import com.mochyy.mochymusic.shared.playback.SharedQueue
-import com.mochyy.mochymusic.shared.playback.PlayerController
+import com.mochyy.mochymusic.shared.playback.LocalPlayerConnection
 import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.shared.resources.library_empty
 import com.mochyy.mochymusic.shared.resources.library_filter_hint
@@ -99,7 +99,6 @@ private enum class PlayerPanel { Queue, Lyrics, Settings }
 @Composable
 internal fun StandaloneMusicApp(
     source: SearchSource,
-    player: PlayerController,
     lyricsProviders: List<LyricsProvider>,
     settings: PlaybackPreferences,
     library: LocalLibrary,
@@ -109,6 +108,8 @@ internal fun StandaloneMusicApp(
     settingsContent: @Composable (PlaybackPreferences, CodecBadgeWriter) -> Unit =
         { preferences, badgeWriter -> SharedSettingsScreen(preferences, badgeWriter) },
 ) {
+    // the one seam shared screens use; every platform root provides it above this shell
+    val player = LocalPlayerConnection.current ?: return
     val playback by player.state.collectAsState()
     // Up next lives in the app's SharedQueue, not here, so CarPlay and the media controls share it
     val queued by queue.upcoming.collectAsState()
