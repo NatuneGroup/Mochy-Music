@@ -39,7 +39,8 @@ class CrossmixAnalysisRepository(
     private val context: Context,
     private val dataSourceFactory: () -> DataSource.Factory,
 ) {
-    private val memory = ConcurrentHashMap<String, TrackAnalysis>()
+    // bounded memory cache because every analysis is already persisted on disk
+    private val memory = android.util.LruCache<String, TrackAnalysis>(16)
     private val failures = ConcurrentHashMap<String, String>()
     private val cacheDir = File(context.cacheDir, "crossmix-analysis-v2").also { it.mkdirs() }
 
@@ -57,6 +58,19 @@ class CrossmixAnalysisRepository(
     }.asCoroutineDispatcher()
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private val queue = AnalysisQueue<TrackAnalysis?>(scope)
+
+    // stops the background analysis thread when the service destroys
+    fun release() {
+        scope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
+        dispatcher.close()
+        memory.evictAll()
+    }
+
+    // keeps a few nearby track analyses hot in ram and drops older ones that are already saved on disk
+    fun trimMemory() {
+        memory.trimToSize(4)
+        failures.clear()
+    }
 
     /**
      * Calls off analyses still waiting or running for songs other than [items] (the playing song and
@@ -82,11 +96,11 @@ class CrossmixAnalysisRepository(
         val uri = item.localConfiguration?.uri ?: return null
         val mediaId = keyOf(item) ?: return null
         val cacheKey = item.localConfiguration?.customCacheKey?.takeIf { it.isNotBlank() } ?: mediaId
-        usable(memory[mediaId], wholeTrack)?.let { return it }
+        usable(memory.get(mediaId), wholeTrack)?.let { return it }
         // the disk is read off the analysis thread, which may be busy decoding another song
         val stored = withContext(Dispatchers.IO) { read(mediaId) }
         stored?.let { remember(mediaId, it) }
-        usable(memory[mediaId], wholeTrack)?.let { return it }
+        usable(memory.get(mediaId), wholeTrack)?.let { return it }
 
         val job = queue.submit(mediaId) {
                 val progress = Progress()
@@ -120,11 +134,11 @@ class CrossmixAnalysisRepository(
             wholeTrack && result != null && !result.complete ->
                 failures[mediaId] = "the stream ended after ${result.analyzedMs / 1_000} s"
         }
-        return usable(result ?: memory[mediaId], wholeTrack)
+        return usable(result ?: memory.get(mediaId), wholeTrack)
     }
 
     /** what's already known, without decoding anything */
-    fun cached(mediaId: String): TrackAnalysis? = memory[mediaId]
+    fun cached(mediaId: String): TrackAnalysis? = memory.get(mediaId)
 
     /** why the last analysis of mediaId came back empty, if it did */
     fun lastFailure(mediaId: String): String? = failures[mediaId]
@@ -139,11 +153,11 @@ class CrossmixAnalysisRepository(
 
     /** keeps [analysis] unless a better one is known already; true when it was kept */
     private fun remember(mediaId: String, analysis: TrackAnalysis): Boolean {
-        var kept = false
-        memory.compute(mediaId) { _, existing ->
-            if (shouldReplace(existing?.complete, analysis.complete)) { kept = true; analysis } else existing
+        synchronized(memory) {
+            if (!shouldReplace(memory.get(mediaId)?.complete, analysis.complete)) return false
+            memory.put(mediaId, analysis)
+            return true
         }
-        return kept
     }
 
     private suspend fun decodeAndAnalyze(uri: Uri, mediaId: String, progress: Progress): TrackAnalysis {

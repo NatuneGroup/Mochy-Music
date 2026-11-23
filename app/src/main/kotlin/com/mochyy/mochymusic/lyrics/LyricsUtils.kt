@@ -328,7 +328,20 @@ object LyricsUtils {
         "Ѓ", "ѓ", "Ѕ", "ѕ", "Ќ", "ќ"
     )
 
-    private val kuromojiTokenizer: Tokenizer by lazy { Tokenizer() }
+    // built on demand and dropped on memory trims so the japanese ipadic tables (~20 mb) don't stay pinned in ram
+    @Volatile
+    private var kuromojiInstance: Tokenizer? = null
+    private val kuromojiLock = Any()
+
+    private val kuromojiTokenizer: Tokenizer
+        get() = kuromojiInstance ?: synchronized(kuromojiLock) {
+            kuromojiInstance ?: Tokenizer().also { kuromojiInstance = it }
+        }
+
+    fun releaseKuromoji() {
+        synchronized(kuromojiLock) { kuromojiInstance = null }
+    }
+
     private val KanaRun = Regex("[ぁ-ゖァ-ヺーｦ-ﾟ\\u3099\\u309A]+")
 
     private fun tokenizeJapanese(text: String): List<Token>? = if (BuildConfig.COMPACT_APK) {

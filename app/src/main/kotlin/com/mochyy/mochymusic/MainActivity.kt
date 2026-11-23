@@ -125,6 +125,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.coroutineScope
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.navigation.NavHostController
@@ -307,6 +308,7 @@ class MainActivity : ComponentActivity() {
     // keeps the app's animation speed following android's own animation scale while we're open
     private var systemScaleObserver: android.database.ContentObserver? = null
     private var introPlays = false
+    private var rootGlassState: GlassState? = null
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -352,8 +354,10 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         playerConnection?.isUiVisible?.value = true
-        // paired phones are checked on, and a steered device asked what it plays, only while mochy is on screen
-        if (!isTelevision()) phoneLink.get().appShown()
+        // paired phones are checked on only when at least one device is paired, keeping PhoneLinkHost lazy otherwise
+        if (!isTelevision() && com.mochyy.mochymusic.link.phone.PhoneLinkHost.hasPairedDevices(this)) {
+            phoneLink.get().appShown()
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -370,7 +374,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         playerConnection?.isUiVisible?.value = false
-        if (!isTelevision()) phoneLink.get().appHidden()
+        if (!isTelevision() && com.mochyy.mochymusic.link.phone.PhoneLinkHost.hasPairedDevices(this)) {
+            phoneLink.get().appHidden()
+        }
+        // drop the recorded backdrop display list and idle video players while the window is hidden
+        rootGlassState?.discard()
+        com.mochyy.mochymusic.ui.player.video.YouTubeVideoSessions.releaseIdle()
         unbindService(serviceConnection)
         super.onStop()
     }
@@ -384,8 +393,11 @@ class MainActivity : ComponentActivity() {
             isFinishing
         ) {
             stopService(Intent(this, MusicService::class.java))
-            unbindService(serviceConnection)
+            // onStop already unbound serviceConnection, so guard against a double unbind aborting cleanup below
+            runCatching { unbindService(serviceConnection) }
         }
+        rootGlassState?.discard()
+        rootGlassState = null
         // the service outlives us, so take our listener off its player or a recreate leaves the old one firing
         com.mochyy.mochymusic.link.LinkPlayer.release(playerConnection)
         playerConnection?.dispose()
@@ -628,32 +640,35 @@ class MainActivity : ComponentActivity() {
                 return@LaunchedEffect
             }
 
-            playerConnection.service.currentMediaMetadata
-                .map { it?.thumbnailUrl }
-                .distinctUntilChanged()
-                .collectLatest { artworkUrl ->
-                    artworkColorInt = if (artworkUrl.isNullOrBlank()) null else withContext(Dispatchers.IO) {
-                        try {
-                            val result = imageLoader.execute(
-                                ImageRequest.Builder(this@MainActivity)
-                                    .data(artworkUrl)
-                                    .size(128)
-                                    .allowHardware(false)
-                                    .memoryCachePolicy(CachePolicy.ENABLED)
-                                    .diskCachePolicy(CachePolicy.ENABLED)
-                                    .networkCachePolicy(CachePolicy.ENABLED)
-                                    .crossfade(false)
-                                    .build()
-                            )
-                            result.image?.toBitmap()?.extractThemeColor()?.toArgb()
-                        } catch (cancelled: kotlinx.coroutines.CancellationException) {
-                            throw cancelled
-                        } catch (_: Exception) {
-                            null
+            // pause dynamic theme extraction while the activity is stopped so background track changes don't decode covers or recompose hidden ui
+            lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                playerConnection.service.currentMediaMetadata
+                    .map { it?.thumbnailUrl }
+                    .distinctUntilChanged()
+                    .collectLatest { artworkUrl ->
+                        artworkColorInt = if (artworkUrl.isNullOrBlank()) null else withContext(Dispatchers.IO) {
+                            try {
+                                val result = imageLoader.execute(
+                                    ImageRequest.Builder(this@MainActivity)
+                                        .data(artworkUrl)
+                                        .size(112, 112)
+                                        .allowHardware(false)
+                                        .memoryCachePolicy(CachePolicy.DISABLED)
+                                        .diskCachePolicy(CachePolicy.ENABLED)
+                                        .networkCachePolicy(CachePolicy.ENABLED)
+                                        .crossfade(false)
+                                        .build()
+                                )
+                                result.image?.toBitmap()?.extractThemeColor()?.toArgb()
+                            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                throw cancelled
+                            } catch (_: Exception) {
+                                null
+                            }
                         }
+                        artworkSettled = true
                     }
-                    artworkSettled = true
-                }
+            }
         }
 
         val artworkColor = artworkColorInt?.let { Color(it) }
@@ -671,7 +686,7 @@ class MainActivity : ComponentActivity() {
                     .fillMaxSize()
                     .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface)
             ) {
-                val glassState = remember { GlassState() }
+                val glassState = remember { GlassState().also { rootGlassState = it } }
                 val hideAppChrome = remember { mutableStateOf(false) }
                 val detailAccentColor = remember { mutableStateOf<Color?>(null) }
                 val focusManager = LocalFocusManager.current
@@ -1291,7 +1306,7 @@ class MainActivity : ComponentActivity() {
                                         Modifier
                                             .fillMaxSize()
                                             .windowInsetsPadding(WindowInsets.stableSystemBars.only(WindowInsetsSides.Horizontal))
-                                            .glassRoot(glassState, isActive = { true })
+                                            .glassRoot(glassState, isActive = { playerBottomSheetState.progress < 0.999f })
                                     ) {
                                     if (settingsPane) {
                                         com.mochyy.mochymusic.ui.screens.settings.SettingsListPane(

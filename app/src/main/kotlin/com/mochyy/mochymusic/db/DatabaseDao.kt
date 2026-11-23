@@ -771,19 +771,19 @@ interface DatabaseDao : SongDao, PlaylistDao, HistoryDao {
     fun update(playlistEntity: PlaylistEntity, playlistItem: PlaylistItem) {
         // read fresh: the sync walks every playlist slowly, and a copy from its start wrote over edits made meanwhile
         val current = playlistEntity(playlistEntity.id) ?: playlistEntity
-        update(
-            current.copy(
-                name = playlistItem.title,
-                browseId = playlistItem.id,
-                // a cover made or picked in mochy stays, youtube's own picture went over it on every sync
-                thumbnailUrl = current.thumbnailUrl.takeIf(PlaylistCoverStore::isManaged) ?: playlistItem.thumbnail,
-                isEditable = playlistItem.isEditable,
-                remoteSongCount = playlistItem.songCountText?.let { Regex("""\d+""").find(it)?.value?.toIntOrNull() },
-                playEndpointParams = playlistItem.playEndpoint?.params,
-                shuffleEndpointParams = playlistItem.shuffleEndpoint?.params,
-                radioEndpointParams = playlistItem.radioEndpoint?.params
-            )
+        val updated = current.copy(
+            name = playlistItem.title,
+            browseId = playlistItem.id,
+            // a cover made or picked in mochy stays, youtube's own picture went over it on every sync
+            thumbnailUrl = current.thumbnailUrl.takeIf(PlaylistCoverStore::isManaged) ?: playlistItem.thumbnail,
+            isEditable = playlistItem.isEditable,
+            remoteSongCount = playlistItem.songCountText?.let { Regex("""\d+""").find(it)?.value?.toIntOrNull() },
+            playEndpointParams = playlistItem.playEndpoint?.params,
+            shuffleEndpointParams = playlistItem.shuffleEndpoint?.params,
+            radioEndpointParams = playlistItem.radioEndpoint?.params
         )
+        // skip writing when nothing changed so room doesn't invalidate every playlist observer during sync
+        if (updated != current) update(updated)
     }
 
     @Upsert
@@ -842,6 +842,19 @@ interface DatabaseDao : SongDao, PlaylistDao, HistoryDao {
         from: Int,
     ): List<PlaylistSongMap>
 
+    // bare snapshots for sync undo so auto-sync never runs multi-table joins just to record ids and dates
+    @Query("SELECT id, likedDate FROM song WHERE liked")
+    suspend fun likedSongSnapshots(): List<LikedSongSnapshot>
+
+    @Query("SELECT id, inLibrary FROM song WHERE inLibrary IS NOT NULL")
+    suspend fun librarySongSnapshots(): List<LibrarySongSnapshot>
+
+    @Query("SELECT id FROM playlist WHERE browseId IS NOT NULL")
+    suspend fun syncedPlaylistIds(): List<String>
+
+    @Query("SELECT playlistId, songId, setVideoId FROM playlist_song_map WHERE playlistId IN (SELECT id FROM playlist WHERE browseId IS NOT NULL) ORDER BY playlistId, position")
+    suspend fun syncedPlaylistEntries(): List<SyncedPlaylistEntrySnapshot>
+
     @RawQuery
     fun raw(supportSQLiteQuery: SupportSQLiteQuery): Int
 
@@ -849,6 +862,22 @@ interface DatabaseDao : SongDao, PlaylistDao, HistoryDao {
         raw("PRAGMA wal_checkpoint(FULL)".toSQLiteQuery())
     }
 }
+
+data class LikedSongSnapshot(
+    val id: String,
+    val likedDate: LocalDateTime?,
+)
+
+data class LibrarySongSnapshot(
+    val id: String,
+    val inLibrary: LocalDateTime,
+)
+
+data class SyncedPlaylistEntrySnapshot(
+    val playlistId: String,
+    val songId: String,
+    val setVideoId: String?,
+)
 
 private val TIMESTAMP_NAME_REGEX = Regex("""^\d{1,2}:\d{2}(:\d{2})?$""")
 

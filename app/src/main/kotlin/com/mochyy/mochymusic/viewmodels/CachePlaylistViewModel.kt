@@ -18,10 +18,12 @@ import com.mochyy.mochymusic.utils.dataStore
 import com.mochyy.mochymusic.utils.get
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 import com.mochyy.mochymusic.db.nowLocal
@@ -34,8 +36,8 @@ class CachePlaylistViewModel @Inject constructor(
     @DownloadCache private val downloadCache: SimpleCache
 ) : ViewModel() {
 
-    // SongMenu also gets this ViewModel for removal; scan only when the list is observed.
-    val cachedSongs: StateFlow<List<Song>> = flow<List<Song>> {
+    // polls only while the cache playlist screen is visible and off the main thread
+    val cachedSongs: StateFlow<List<Song>> = flow {
         while (true) {
             val hideExplicit = context.dataStore.get(HideExplicitKey, false)
             val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
@@ -69,12 +71,12 @@ class CachePlaylistViewModel @Inject constructor(
                     .filter { it.song.dateDownload != null }
                     .sortedByDescending { it.song.dateDownload }
                     .filterExplicit(hideExplicit)
-                    .filterVideoSongs(hideVideoSongs)
+                    .filterVideoSongs(hideVideoSongs),
             )
 
-            delay(1000)
+            delay(3000)
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(stopTimeoutMillis = 0), emptyList())
+    }.flowOn(Dispatchers.IO).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun removeSongFromCache(songId: String) {
         playerCache.removeResource(songId)

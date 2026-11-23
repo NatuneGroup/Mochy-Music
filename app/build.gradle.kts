@@ -42,7 +42,7 @@ extensions.configure<ApplicationExtension> {
             "mochy.versionCode $ciVersionCode is below $versionCodeFloor; it would not install over the last release"
         }
         versionCode = ciVersionCode ?: versionCodeFloor
-        versionName = providers.gradleProperty("mochy.versionName").orNull ?: "8.4.3 build#1290"
+        versionName = providers.gradleProperty("mochy.versionName").orNull ?: "8.4.5 build#1299"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true

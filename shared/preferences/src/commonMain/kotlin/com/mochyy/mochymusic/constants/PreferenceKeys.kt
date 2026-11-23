@@ -152,6 +152,8 @@ val YtSyncSourcesTaggedKey = booleanPreferencesKey("ytSyncSourcesTagged")
 val YtExcludeImportsKey = booleanPreferencesKey("ytExcludeImports")
 /** Set by an undo: YouTube pulls wait until the user runs Sync now, so the undo isn't written back. */
 val YtSyncHoldKey = booleanPreferencesKey("ytSyncHold")
+/** Whether the signed-in YouTube account has YouTube Music Premium (unlocks 256 kbps AAC/Opus streams). */
+val YtAccountIsPremiumKey = booleanPreferencesKey("ytAccountIsPremium")
 
 /** The profile ID card's "USR#" number and join date (epoch day), fixed when onboarding finishes. */
 val ProfileCardNumberKey = stringPreferencesKey("profileCardNumber")
@@ -436,7 +438,7 @@ val LastArtistSyncKey = longPreferencesKey("last_artist_sync")
 val LastPlaylistSyncKey = longPreferencesKey("last_playlist_sync")
 val LastFullSyncKey = longPreferencesKey("last_full_sync")
 
-const val SYNC_COOLDOWN = 30 * 60L
+const val SYNC_COOLDOWN = 5 * 60L
 
 val ArtistViewTypeKey = stringPreferencesKey("artistViewType")
 val AlbumViewTypeKey = stringPreferencesKey("albumViewType")
@@ -660,8 +662,6 @@ enum class PlayerStyle(
 ) {
     // the flagship as it is now: frosted cover fade, moving cover colours, the new buttons and bottom bar
     FLAGSHIP("Flagship", "Flagship", PlayerStyleTraits(StyleFamily.Flagship, StyleEditor.Full, onTv = true)),
-    // the flagship before its layout refresh, kept as a variant under it in the selector
-    CLASSIC("Classic", "Classic", PlayerStyleTraits(StyleFamily.Flagship, StyleEditor.Full)),
     /** the flagship with a record player for its cover, whose arm is the seek bar */
     TURNTABLE("Turntable", "Turntable", PlayerStyleTraits(StyleFamily.Flagship, StyleEditor.Simple, turnable = true)),
     // the song's youtube video across the whole screen, turned sideways, with its lyrics in a pane
@@ -706,21 +706,21 @@ enum class PlayerStyle(
         fun fromStored(name: String?): PlayerStyle? = when (name) {
             "SIMPLE", "SIMPLE_COMPACT" -> TIMELINE
             "LYRICS_ABSTRACT" -> LYRICS
-            // everyone on the old flagship moves to the new one once; picking classic later sticks
-            "DEFAULT" -> FLAGSHIP
+            // everyone on the old default or removed classic moves to flagship
+            "DEFAULT", "CLASSIC" -> FLAGSHIP
             else -> null
         }
 
         // the selector's columns, each look with its variants stacked under it, a swipe down away
         val selectorColumns: List<List<PlayerStyle>> = listOf(
-            listOf(FLAGSHIP, CLASSIC),
+            listOf(FLAGSHIP),
             listOf(TURNTABLE),
             listOf(VIDEO),
             listOf(IPOD),
             // the tiles first, the single big clock a swipe down under them
             listOf(BEDSIDE_TILES, BEDSIDE),
             listOf(POSTER),
-            // the lyrics stage sits under the timeline, the way the classic sits under the flagship
+            // the lyrics stage sits under the timeline
             listOf(TIMELINE, LYRICS),
             // the ported looks: namida, the apple music design, and the tiktok feed
             listOf(NAMIDA),
