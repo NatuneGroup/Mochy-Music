@@ -3,11 +3,16 @@ package com.mochyy.mochymusic.di.koin
 import com.mochyy.mochymusic.db.InternalDatabase
 import com.mochyy.mochymusic.db.MochyDatabase
 import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.lyrics.AndroidLyricsFileReader
+import com.mochyy.mochymusic.lyrics.AndroidLyricsNetwork
 import com.mochyy.mochymusic.lyrics.LyricsHelper
+import com.mochyy.mochymusic.lyrics.LyricsProviderRegistry
 import com.mochyy.mochymusic.playback.CachedSongs
 import com.mochyy.mochymusic.ui.tv.TvSearchViewModel
 import com.mochyy.mochymusic.ui.tv.TvSongsViewModel
 import com.mochyy.mochymusic.utils.NetworkConnectivityObserver
+import com.mochyy.mochymusic.utils.dataStore
+import com.mochyy.mochymusic.utils.reportException
 import com.mochyy.mochymusic.viewmodels.IpodLibraryViewModel
 import com.mochyy.mochymusic.viewmodels.LyricsMenuViewModel
 import com.mochyy.mochymusic.viewmodels.LyricsScreenViewModel
@@ -37,7 +42,15 @@ val playerTvModule = module {
 
     // unscoped in Hilt too - every view model that asked was given its own instance and its own
     // in-memory lyrics cache; a factory keeps it exactly that way
-    factory { LyricsHelper(androidContext(), get()) }
+    factory {
+        LyricsHelper(
+            catalog = LyricsProviderRegistry,
+            preferences = androidContext().dataStore,
+            network = AndroidLyricsNetwork(get()),
+            localLyrics = AndroidLyricsFileReader(androidContext()),
+            reportError = { reportException(it) },
+        )
+    }
 
     // the TV songs list reads what the player has in its cache. A second SimpleCache over the same
     // folder is not allowed (Media3 locks it), so this is the instance the player already built and

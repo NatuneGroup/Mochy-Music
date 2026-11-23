@@ -49,6 +49,31 @@ internal object TtmlParser {
             emptyList()
         }
 
+    /**
+     * [lines] as LRC, the shape the Android BetterLyrics parser writes: each line's tag and voice
+     * tags, then its word timings as "<word:start:end|...>" on the next line.
+     */
+    fun toLrc(lines: List<ParsedLine>): String = buildString {
+        lines.forEach { line ->
+            val timeMs = (line.startTime * 1000).toLong()
+            val minutes = timeMs / 60_000
+            val seconds = (timeMs % 60_000) / 1000
+            val centiseconds = (timeMs % 1000) / 10
+            val agentPrefix = if (!line.agent.isNullOrEmpty()) "{agent:${line.agent}}" else ""
+            val background = if (line.isBackground) "{bg}" else ""
+            append('[')
+            append(minutes.toString().padStart(2, '0')).append(':')
+            append(seconds.toString().padStart(2, '0')).append('.')
+            append(centiseconds.toString().padStart(2, '0')).append(']')
+            append(agentPrefix).append(background).append(line.text).append('\n')
+            if (line.words.isNotEmpty()) {
+                append('<')
+                append(line.words.joinToString("|") { word -> "${word.text}:${word.startTime}:${word.endTime}" })
+                append('>').append('\n')
+            }
+        }
+    }
+
     /** The document-level credits: declared writers and whether translations/transliterations are machine-made. */
     fun parseCredits(ttml: String): LyricsCredits =
         try {

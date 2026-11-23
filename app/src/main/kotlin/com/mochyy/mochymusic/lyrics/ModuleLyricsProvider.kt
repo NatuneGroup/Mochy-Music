@@ -2,7 +2,6 @@
 
 package com.mochyy.mochymusic.lyrics
 
-import android.content.Context
 import com.mochyy.mochymusic.module.LyricsModule
 import com.mochyy.mochymusic.module.TrackQuery
 import kotlinx.coroutines.Dispatchers
@@ -13,7 +12,6 @@ class ModuleLyricsProvider(private val module: LyricsModule) : LyricsProvider {
 
     val displayName: String get() = module.info.name
 
-    override fun isEnabled(context: Context): Boolean = true
 
     override suspend fun getLyrics(
         id: String,

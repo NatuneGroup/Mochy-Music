@@ -4,9 +4,6 @@ package com.mochyy.mochymusic.lyrics
 
 import android.content.Context
 import com.music.paxsenix.Paxsenix
-import com.mochyy.mochymusic.constants.EnablePaxsenixKey
-import com.mochyy.mochymusic.utils.dataStore
-import com.mochyy.mochymusic.utils.get
 import timber.log.Timber
 
 object PaxSenixLyricsProvider : LyricsProvider {
@@ -14,13 +11,9 @@ object PaxSenixLyricsProvider : LyricsProvider {
 
     override val name = "Paxsenix"
 
-    override fun isEnabled(context: Context): Boolean {
-
-        val enabled = context.dataStore[EnablePaxsenixKey] ?: true
-        if (enabled) {
-            Paxsenix.init(context)
-        }
-        return enabled
+    /** The Android app hands its context in once; the lookup needs it for the client's user agent. */
+    fun initialize(context: Context) {
+        Paxsenix.init(context)
     }
 
     override suspend fun getLyrics(
