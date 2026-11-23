@@ -38,7 +38,9 @@ import com.mochyy.mochymusic.ui.component.DefaultDialog
 import com.mochyy.mochymusic.utils.CrashHandler
 import kotlinx.coroutines.Dispatchers
 import java.io.File
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import kotlinx.coroutines.withContext
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.ui.component.SettingsGroup
@@ -67,6 +69,47 @@ fun PlaybackDiagnosticsScreen(navController: NavController) {
     val scope = rememberCoroutineScope()
     var crashCopy by remember { mutableStateOf<File?>(null) }
     var crashLines by remember { mutableStateOf<List<String>>(emptyList()) }
+    // one preparation at a time: a second tap while the copy is being written does nothing
+    var preparingCrash by remember { mutableStateOf(false) }
+    var crashPrepareFailed by remember { mutableStateOf(false) }
+    fun prepareCrash() {
+        if (preparingCrash) return
+        preparingCrash = true
+        crashPrepareFailed = false
+        scope.launch {
+            try {
+                val copy = withContext(Dispatchers.IO) {
+                    CrashHandler.exportLatestCrash(context)?.also { crashLines = it.readLines() }
+                }
+                if (copy == null) {
+                    Toast.makeText(context, R.string.crash_no_log, Toast.LENGTH_SHORT).show()
+                } else {
+                    crashCopy = copy
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // a full disk or an unreadable report: say so and offer the same step again
+                Timber.e(e, "Could not prepare the crash report")
+                crashPrepareFailed = true
+            } finally {
+                preparingCrash = false
+            }
+        }
+    }
+
+    if (crashPrepareFailed) {
+        DefaultDialog(
+            onDismiss = { crashPrepareFailed = false },
+            title = { Text(stringResource(R.string.crash_share_title)) },
+            buttons = {
+                TextButton(onClick = { crashPrepareFailed = false }) { Text(stringResource(android.R.string.cancel)) }
+                TextButton(onClick = { prepareCrash() }) { Text(stringResource(R.string.crash_try_again)) }
+            },
+        ) {
+            Text(stringResource(R.string.crash_prepare_failed), style = MaterialTheme.typography.bodyMedium)
+        }
+    }
 
     crashCopy?.let { copy ->
         // what the share sheet will get, line for line, before it gets it
@@ -165,18 +208,7 @@ fun PlaybackDiagnosticsScreen(navController: NavController) {
                         descriptionText = stringResource(R.string.crash_share_row_desc),
                         icon = painterResource(R.drawable.bug_report),
                         iconShape = CircleShape,
-                        onClick = {
-                            scope.launch {
-                                val copy = withContext(Dispatchers.IO) {
-                                    CrashHandler.exportLatestCrash(context)?.also { crashLines = it.readLines() }
-                                }
-                                if (copy == null) {
-                                    Toast.makeText(context, R.string.crash_no_log, Toast.LENGTH_SHORT).show()
-                                } else {
-                                    crashCopy = copy
-                                }
-                            }
-                        },
+                        onClick = { prepareCrash() },
                     ),
                 ),
         )
