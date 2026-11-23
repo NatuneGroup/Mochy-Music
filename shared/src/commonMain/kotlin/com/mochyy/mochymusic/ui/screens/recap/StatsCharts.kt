@@ -63,26 +63,27 @@ import coil3.compose.AsyncImage
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import com.mochyy.mochymusic.ui.utils.resize
 import kotlin.math.max
+import kotlin.math.PI
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-internal val StatsAccent = Color(0xFF88FF76)
-internal val StatsInk = Color.White
-internal val StatsInkSecondary = Color(0xFFB8B8B8)
-internal val StatsInkMuted = Color(0xFF7A7A7A)
+val StatsAccent = Color(0xFF88FF76)
+val StatsInk = Color.White
+val StatsInkSecondary = Color(0xFFB8B8B8)
+val StatsInkMuted = Color(0xFF7A7A7A)
 private val Grid = Color(0xFF242424)
 private val BarRest = Color(0xFF3A3A3A)
 private val TooltipBg = Color(0xFF2C2C2C)
 
 /** Categorical order for genres on the dark card (validated: CVD ΔE ≥ 8.4, normal ≥ 19.3 adjacent). */
-internal val GenreColors = listOf(Color(0xFF3987E5), Color(0xFFD95926), Color(0xFF199E70), Color(0xFFC98500), Color(0xFFD55181))
-internal val GenreOther = Color(0xFF5A5A5A)
+val GenreColors = listOf(Color(0xFF3987E5), Color(0xFFD95926), Color(0xFF199E70), Color(0xFFC98500), Color(0xFFD55181))
+val GenreOther = Color(0xFF5A5A5A)
 
 private val AxisStyle = TextStyle(fontFamily = InterFontFamily, fontSize = 11.sp, color = StatsInkMuted)
 private val TipStyle = TextStyle(fontFamily = InterFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = StatsInk)
 
 /** "3h 05m" for a tooltip, "45m" when under an hour. */
-internal fun shortDuration(ms: Long): String {
+fun shortDuration(ms: Long): String {
     val m = (ms / 60_000L).coerceAtLeast(0L)
     return if (m >= 60) "${m / 60}h ${(m % 60).toString().padStart(2, '0')}m" else "${m}m"
 }
@@ -100,7 +101,7 @@ private fun rememberGrowIn(key: Any?): Animatable<Float, *> {
  * non-null for; [nameOf] titles a point in the scrub tooltip.
  */
 @Composable
-internal fun ListeningLine(
+fun ListeningLine(
     values: List<Long>,
     labelAt: (Int) -> String?,
     nameOf: (Int) -> String,
@@ -169,7 +170,7 @@ internal fun ListeningLine(
 
 /** Seven bars, Monday first; the busiest day in the accent, the rest neutral. */
 @Composable
-internal fun WeekdayBars(values: List<Long>, labels: List<String>, modifier: Modifier = Modifier) {
+fun WeekdayBars(values: List<Long>, labels: List<String>, modifier: Modifier = Modifier) {
     val measurer = rememberTextMeasurer()
     val grow = rememberGrowIn(values)
     var touched by remember(values) { mutableIntStateOf(-1) }
@@ -209,14 +210,14 @@ internal fun WeekdayBars(values: List<Long>, labels: List<String>, modifier: Mod
 
 /** The genre ring: top five in categorical order, the rest folded into "Other", 2dp gaps between. */
 @Composable
-internal fun GenreDonut(shares: List<GenreShare>, modifier: Modifier = Modifier) {
+fun GenreDonut(shares: List<GenreShare>, modifier: Modifier = Modifier) {
     val grow = rememberGrowIn(shares)
     val slices = remember(shares) { donutSlices(shares) }
     Canvas(modifier = modifier.size(92.dp)) {
         val stroke = 13.dp.toPx()
         val gap = 2.dp.toPx()
         val radius = size.minDimension / 2f - stroke / 2f
-        val gapDeg = Math.toDegrees((gap / radius).toDouble()).toFloat()
+        val gapDeg = ((gap / radius).toDouble() * 180.0 / PI).toFloat()
         var start = -90f
         val total = 360f * grow.value
         slices.forEach { (fraction, color) ->
@@ -237,7 +238,7 @@ internal fun GenreDonut(shares: List<GenreShare>, modifier: Modifier = Modifier)
     }
 }
 
-internal fun donutSlices(shares: List<GenreShare>): List<Pair<Float, Color>> {
+fun donutSlices(shares: List<GenreShare>): List<Pair<Float, Color>> {
     val top = shares.take(GenreColors.size)
     val rest = shares.drop(GenreColors.size).sumOf { it.fraction.toDouble() }.toFloat()
     return top.mapIndexed { i, g -> g.fraction to GenreColors[i] } + if (rest > 0.001f) listOf(rest to GenreOther) else emptyList()
@@ -245,7 +246,7 @@ internal fun donutSlices(shares: List<GenreShare>): List<Pair<Float, Color>> {
 
 /** Ranked rows - number, picture, name, detail, and a share bar against the #1. */
 @Composable
-internal fun RankList(
+fun RankList(
     rows: List<RankRow>,
     circle: Boolean,
     modifier: Modifier = Modifier,
@@ -311,7 +312,7 @@ internal fun RankList(
     }
 }
 
-internal class RankRow(
+class RankRow(
     val title: String,
     val detail: String,
     val value: Long,

@@ -87,6 +87,7 @@ import com.mochyy.mochymusic.constants.ProfilePicUriKey
 import com.mochyy.mochymusic.ui.component.BlurDirection
 import com.mochyy.mochymusic.ui.component.BlurEffectCache
 import com.mochyy.mochymusic.ui.component.GlassState
+import com.mochyy.mochymusic.ui.component.HomeContentInset
 import com.mochyy.mochymusic.ui.component.LocalBottomSheetPageState
 import com.mochyy.mochymusic.ui.component.PopupSheetHandle
 import com.mochyy.mochymusic.ui.component.ProgressiveGlassBackground
@@ -95,6 +96,8 @@ import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import com.mochyy.mochymusic.ui.utils.resize
 import com.mochyy.mochymusic.ui.utils.stableSystemBars
 import com.mochyy.mochymusic.utils.rememberPreference
+import kotlinx.datetime.toJavaLocalDate
+import kotlinx.datetime.toJavaLocalTime
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.Month
@@ -242,8 +245,9 @@ fun StatsScreen(navController: NavController) {
                     StatsRuler(
                         selected = range,
                         available = available,
-                        today = today,
+                        todayYear = today.year,
                         labelStart = PagePadding,
+                        restInset = HomeContentInset,
                         onSelect = { p ->
                             year = p.year
                             if (p.kind == StatsRange.Kind.Month) month = p.month
@@ -890,7 +894,7 @@ private fun RepeatCard(repeat: RepeatDay) {
                 Text(repeat.song.title, style = statsText(18f, tracking = -0.5f))
                 Text(repeat.song.artistName, style = statsText(12f, FontWeight.SemiBold, StatsInkMuted, 0f))
                 Text(
-                    pluralStringResource(R.plurals.rc_stats_repeat_times, repeat.plays, repeat.plays, shortDate(repeat.date)),
+                    pluralStringResource(R.plurals.rc_stats_repeat_times, repeat.plays, repeat.plays, shortDate(repeat.date.toJavaLocalDate())),
                     style = statsText(13f, FontWeight.SemiBold, StatsAccent, 0f),
                     modifier = Modifier.padding(top = 4.dp),
                 )
@@ -976,13 +980,13 @@ private fun HabitsCard(
                 value = shortDuration(habits.longestSessionMs),
                 hint =
                     habits.longestSessionStart?.let {
-                        stringResource(R.string.rc_stats_date_at_time, shortDate(it.toLocalDate()), timeLabel(it.toLocalTime()))
+                        stringResource(R.string.rc_stats_date_at_time, shortDate(it.date.toJavaLocalDate()), timeLabel(it.time.toJavaLocalTime()))
                     },
             )
             HabitTile(
                 label = stringResource(R.string.rc_stats_habit_biggest),
                 value = shortDuration(habits.biggestDayMs),
-                hint = habits.biggestDay?.let(::shortDate),
+                hint = habits.biggestDay?.let { shortDate(it.toJavaLocalDate()) },
             )
         }
     }

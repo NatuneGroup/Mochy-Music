@@ -37,7 +37,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -47,14 +46,11 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.mochyy.mochymusic.R
-import com.mochyy.mochymusic.ui.component.HomeContentInset
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.platform_stats_ruler_description
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import kotlinx.coroutines.launch
-import java.time.LocalDate
-import java.time.Month
-import java.time.format.TextStyle as JavaTextStyle
-import java.util.Locale
+import org.jetbrains.compose.resources.stringResource
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -62,8 +58,9 @@ import kotlin.math.roundToInt
 private val ItemWidth = 160.dp
 private val RulerHeight = 88.dp
 
-// the chosen period's first tick, at rest: far enough in that its large name fits centred over it
-private val RestAnchor = HomeContentInset + 44.dp
+// how far the chosen period's first tick sits from the left at rest, on top of [restInset]: far
+// enough in that its large name fits centred over it
+private val RestAnchorExtra = 44.dp
 private val LabelBottom = 40.dp
 private val TicksCentre = 66.dp
 private val MajorTick = 34.dp
@@ -85,26 +82,28 @@ private val GreyLabel = Color(0xFF474747)
 private val GreyLabelLit = Color(0xFF6E6E6E)
 
 @Composable
-internal fun StatsRuler(
+fun StatsRuler(
     selected: StatsRange,
     available: Set<StatsRange>,
-    today: LocalDate,
+    todayYear: Int,
     onSelect: (StatsRange) -> Unit,
     labelStart: Dp,
+    restInset: Dp,
     modifier: Modifier = Modifier,
 ) {
+    val restAnchor = restInset + RestAnchorExtra
     val density = LocalDensity.current
     val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
     val measurer = rememberTextMeasurer()
 
     val itemsKey = if (selected.kind == StatsRange.Kind.Month) selected.year else 0
-    val items = remember(selected.kind, itemsKey, today, available) {
+    val items = remember(selected.kind, itemsKey, todayYear, available) {
         if (selected.kind == StatsRange.Kind.Month) {
             (1..12).map { StatsRange(StatsRange.Kind.Month, selected.year, it) }
         } else {
-            val first = minOf(available.minOfOrNull { it.year } ?: today.year, today.year) - 2
-            (first..today.year + 1).map { StatsRange(StatsRange.Kind.Year, it) }
+            val first = minOf(available.minOfOrNull { it.year } ?: todayYear, todayYear) - 2
+            (first..todayYear + 1).map { StatsRange(StatsRange.Kind.Year, it) }
         }
     }
     val labels = remember(items, measurer) { items.map { measurer.measure(labelOf(it), BigLabel) } }
@@ -140,7 +139,7 @@ internal fun StatsRuler(
         if (target != currentCommitted) currentOnSelect(items[target])
     }
 
-    val rulerDescription = stringResource(R.string.platform_stats_ruler_description, labelOf(selected))
+    val rulerDescription = stringResource(Res.string.platform_stats_ruler_description, labelOf(selected))
 
     Canvas(
         modifier = modifier
@@ -173,7 +172,7 @@ internal fun StatsRuler(
             }
             .pointerInput(items) {
                 detectTapGestures { at ->
-                    val anchor = RestAnchor.toPx()
+                    val anchor = restAnchor.toPx()
                     val i = (pos.value + (at.x - anchor) / itemPx).roundToInt()
                     if (i !in items.indices || items[i] !in currentAvailable) return@detectTapGestures
                     lastTick = i
@@ -183,7 +182,7 @@ internal fun StatsRuler(
             },
     ) {
         val p = pos.value
-        val anchor = lerpF(RestAnchor.toPx(), size.width / 2f, lift.value)
+        val anchor = lerpF(restAnchor.toPx(), size.width / 2f, lift.value)
         val fade = EdgeFade.toPx()
         val cy = TicksCentre.toPx()
         val labelBottom = LabelBottom.toPx()
@@ -195,7 +194,7 @@ internal fun StatsRuler(
             val open = period in available
 
             // a tick a day (a month, for years); the first one taller, the period's own mark
-            val ticks = if (period.kind == StatsRange.Kind.Month) period.start.lengthOfMonth() else 12
+            val ticks = period.bucketCount
             val step = itemPx / ticks
             for (k in 0 until ticks) {
                 val x = x0 + k * step
@@ -219,7 +218,7 @@ internal fun StatsRuler(
             val k = lerpF(SmallLabelScale, 1f, near)
             val w = layout.size.width * k
             val h = layout.size.height * k
-            val aligned = x0 - (RestAnchor.toPx() - labelStart.toPx())
+            val aligned = x0 - (restAnchor.toPx() - labelStart.toPx())
             val left = max(lerpF(x0 - w / 2f, aligned, near * (1f - lift.value)), 6.dp.toPx())
             val color = if (open) lerp(StatsInkMuted, StatsInk, near) else lerp(GreyLabel, GreyLabelLit, near)
             val alpha = max(edge(x0), near)
@@ -247,11 +246,7 @@ internal fun StatsRuler(
 }
 
 private fun labelOf(period: StatsRange): String =
-    if (period.kind == StatsRange.Kind.Month) {
-        Month.of(period.month).getDisplayName(JavaTextStyle.FULL, Locale.getDefault())
-    } else {
-        "${period.year}"
-    }
+    if (period.kind == StatsRange.Kind.Month) fullMonthName(period.month) else "${period.year}"
 
 private fun smooth(x: Float): Float {
     val t = x.coerceIn(0f, 1f)

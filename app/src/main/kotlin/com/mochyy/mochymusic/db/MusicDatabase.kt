@@ -54,12 +54,23 @@ import kotlinx.datetime.toKotlinLocalDateTime
 
 class MusicDatabase(
     private val delegate: InternalDatabase,
-) : DatabaseDao by delegate.dao {
-    val speedDialDao: SpeedDialDao
+) : DatabaseDao by delegate.dao, MochyDatabase {
+    // the shared side of the database: screens and ViewModels in :shared ask for these, the same DAOs
+    // DatabaseDao already delegates to this wrapper
+    override val songDao: SongDao
+        get() = delegate.songDao
+
+    override val playlistDao: PlaylistDao
+        get() = delegate.playlistDao
+
+    override val historyDao: HistoryDao
+        get() = delegate.historyDao
+
+    override val speedDialDao: SpeedDialDao
         get() = delegate.speedDialDao
 
     // suspend versions of the blocking queries, for callers already in a coroutine
-    val suspendingDao: SuspendingDao
+    override val suspendingDao: SuspendingDao
         get() = delegate.suspendingDao
 
     /**
