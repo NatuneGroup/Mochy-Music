@@ -21,7 +21,7 @@ private val Edge = Color.White.copy(alpha = 0.55f)
 
 // a phone handing over to a tv with a dashed arrow between them; small on the hero card, big when adding a device
 @Composable
-internal fun LinkPicture(modifier: Modifier, scale: Float = 1f, centered: Boolean = true) {
+fun LinkPicture(modifier: Modifier, scale: Float = 1f, centered: Boolean = true) {
     Canvas(modifier) {
         val phone = Size(20.dp.toPx() * scale, 34.dp.toPx() * scale)
         val tv = Size(38.dp.toPx() * scale, 26.dp.toPx() * scale)
@@ -43,7 +43,7 @@ internal fun LinkPicture(modifier: Modifier, scale: Float = 1f, centered: Boolea
 
 // one device drawn large, the way the device sheet opens: a tv or a computer's screen on its stand, or a phone, tablet or car screen
 @Composable
-internal fun DevicePicture(kind: DeviceKind, modifier: Modifier) {
+fun DevicePicture(kind: DeviceKind, modifier: Modifier) {
     Canvas(modifier) {
         when (kind) {
             DeviceKind.Tv, DeviceKind.Desktop -> {

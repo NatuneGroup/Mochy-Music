@@ -22,7 +22,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFontFamilyResolver
-import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
@@ -33,13 +32,15 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
-import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.welcome_words
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import org.jetbrains.compose.resources.stringArrayResource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.ceil
 
-internal object WelcomeColors {
+object WelcomeColors {
     val Page = Color(0xFF1C1C1C)
     val Dot = Color(0xFF2F2F2F)
     val Outline = Color(0xFF343434)
@@ -47,7 +48,7 @@ internal object WelcomeColors {
 
 // the dot grid, drawn as one batch of points that never changes
 @Composable
-internal fun WelcomeDots(spacing: Dp, modifier: Modifier = Modifier) {
+fun WelcomeDots(spacing: Dp, modifier: Modifier = Modifier) {
     Spacer(
         modifier
             .fillMaxSize()
@@ -76,8 +77,8 @@ internal fun WelcomeDots(spacing: Dp, modifier: Modifier = Modifier) {
 
 // rows of giant outlined welcomes in twenty languages, each row drifting the other way to the one above
 @Composable
-internal fun WelcomeWords(seconds: FloatState, fontSize: Dp, firstRowTop: Dp, modifier: Modifier = Modifier) {
-    val words = stringArrayResource(R.array.welcome_words).toList()
+fun WelcomeWords(seconds: FloatState, fontSize: Dp, firstRowTop: Dp, modifier: Modifier = Modifier) {
+    val words = stringArrayResource(Res.array.welcome_words).toList()
     val density = LocalDensity.current
     val resolver = LocalFontFamilyResolver.current
     val family = InterFontFamily
