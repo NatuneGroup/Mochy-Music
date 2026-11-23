@@ -5,7 +5,6 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.nio.ShortBuffer
 import kotlin.math.PI
 import kotlin.math.exp
 import kotlin.math.sin
@@ -109,7 +108,7 @@ class LyricsAutoSyncTest {
         val chunk = 4_096 * 2
         while (at < pcm.size) {
             val count = minOf(chunk, pcm.size - at)
-            analyzer.feed(ShortBuffer.wrap(pcm, at, count), 2, 44_100, presentationUs = at / 2 * 1_000_000L / 44_100)
+            analyzer.feed(pcm.copyOfRange(at, at + count), 2, 44_100, presentationUs = at / 2 * 1_000_000L / 44_100)
             at += count
         }
         val heard = analyzer.finish()

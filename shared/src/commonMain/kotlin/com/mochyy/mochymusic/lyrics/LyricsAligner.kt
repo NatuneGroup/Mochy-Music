@@ -25,7 +25,7 @@ import kotlin.math.sqrt
  *    whether the timing drifts across the song (lyrics timed to a slightly faster or slower
  *    version), which no single offset can fix.
  */
-internal object LyricsAligner {
+object LyricsAligner {
 
     class Alignment(
         /** Added to the playback position, the way the song's lyrics offset is. */
@@ -184,8 +184,7 @@ internal object LyricsAligner {
         var inVowel = false
         for (ch in text) {
             when {
-                Character.UnicodeScript.of(ch.code).let { it == Character.UnicodeScript.HAN || it == Character.UnicodeScript.HIRAGANA ||
-                    it == Character.UnicodeScript.KATAKANA || it == Character.UnicodeScript.HANGUL } -> {
+                isCjk(ch) -> {
                     count++
                     inVowel = false
                 }
@@ -384,6 +383,12 @@ internal object LyricsAligner {
     private const val MaxLineMs = 7_000L
     /** How many frames a line timed by line trails off over at its guessed end: 200 ms. */
     private const val FadeFrames = 20
+
+    /** Han, kana or hangul, the scripts sung one syllable per character. */
+    private fun isCjk(ch: Char): Boolean =
+        ch in '\u3040'..'\u30FF' || ch in '\u3400'..'\u4DBF' || ch in '\u4E00'..'\u9FFF' ||
+            ch in '\uF900'..'\uFAFF' || ch in '\uAC00'..'\uD7AF' || ch in '\u1100'..'\u11FF' ||
+            ch in '\u3130'..'\u318F' || ch in '\uFF66'..'\uFF9D'
 
     private val Vowels = "aeiouyàáâãäåæèéêëìíîïòóôõöøùúûüýÿąęėīįōőūűų"
 }

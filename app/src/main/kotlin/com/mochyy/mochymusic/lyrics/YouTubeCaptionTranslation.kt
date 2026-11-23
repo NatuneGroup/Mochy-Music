@@ -76,7 +76,11 @@ object YouTubeCaptionTranslation {
             ?: request.matchAudio?.invoke(videoId)
             ?: return null
         val translationCues = VideoCaptionSource.cues(captions, translationTrack) ?: return null
-        val translated = CaptionAligner.assignCues(request.lines, map, translationCues)
+        val translated = CaptionAligner.assignCues(
+            request.lines,
+            map,
+            translationCues.map { LyricsCaptionCue(it.startMs, it.endMs, it.text) },
+        )
         val wanted = request.lines.count { !it.isBackground && it.text.isNotBlank() }
         // half the song left untranslated reads worse than a machine translation of all of it
         return translated.takeIf { lines -> lines.count { it != null } * 2 >= wanted }

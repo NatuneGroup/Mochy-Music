@@ -5,7 +5,6 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.nio.ShortBuffer
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.sin
@@ -35,12 +34,13 @@ class AudioMatcherTest {
         var at = 0
         while (at < samples.size) {
             val end = minOf(samples.size, at + 4_096)
-            val block = ShortBuffer.allocate((end - at) * 2)
+            val block = ShortArray((end - at) * 2)
+            var k = 0
             for (i in at until end) {
                 val value = (samples[i] * gain * 20_000).toInt().coerceIn(-32_768, 32_767).toShort()
-                block.put(value).put(value)
+                block[k++] = value
+                block[k++] = value
             }
-            block.flip()
             printer.feed(block, 2, rate, at * 1_000_000L / rate)
             at = end
         }

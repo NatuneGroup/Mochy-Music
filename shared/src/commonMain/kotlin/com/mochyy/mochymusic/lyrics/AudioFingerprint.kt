@@ -2,7 +2,6 @@
 
 package com.mochyy.mochymusic.lyrics
 
-import java.nio.ShortBuffer
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -10,7 +9,7 @@ import kotlin.math.pow
 import kotlin.math.roundToInt
 
 // a recording boiled down to one 32-bit print every 32 ms, which survives a different codec, volume or mix of the same master
-internal class AudioPrints(val prints: IntArray, val loud: BooleanArray, val originMs: Long) {
+class AudioPrints(val prints: IntArray, val loud: BooleanArray, val originMs: Long) {
     val size: Int get() = prints.size
 
     fun timeMs(frame: Int): Long = originMs + frame * FrameMs
@@ -24,7 +23,7 @@ internal class AudioPrints(val prints: IntArray, val loud: BooleanArray, val ori
 }
 
 // turns pcm into prints: for each pair of neighbouring pitch bands, whether the lower one gained on the upper since the moment before
-internal class AudioPrinter {
+class AudioPrinter {
     private var resampler: StereoResampler? = null
     private var originMs: Long? = null
     private val window = FloatArray(AudioPrints.FrameSize)
@@ -40,7 +39,7 @@ internal class AudioPrinter {
     private var energies = FloatArray(8_192)
     private var count = 0
 
-    fun feed(pcm: ShortBuffer, channels: Int, sampleRate: Int, presentationUs: Long) {
+    fun feed(pcm: ShortArray, channels: Int, sampleRate: Int, presentationUs: Long) {
         if (originMs == null) originMs = presentationUs / 1000
         val current = resampler?.takeIf { it.inputRate == sampleRate }
             ?: StereoResampler(sampleRate, AudioPrints.SampleRate, CutoffHz).also { resampler = it }
@@ -88,7 +87,7 @@ internal class AudioPrinter {
                 if (now - before > 0f) print = print or (1 shl bit)
             }
         }
-        System.arraycopy(bands, 0, previousBands, 0, BandCount)
+        bands.copyInto(previousBands, 0, 0, BandCount)
         hasPrevious = true
         if (count == prints.size) {
             prints = prints.copyOf(count * 2)
@@ -119,7 +118,7 @@ internal class AudioPrinter {
 }
 
 // finds where each stretch of a song is in its music video by their prints, which a chorus heard twice can't fool
-internal object AudioMatcher {
+object AudioMatcher {
 
     fun match(song: AudioPrints, video: AudioPrints): SongVideoMap? {
         val index = indexOf(video)
@@ -196,7 +195,7 @@ internal object AudioMatcher {
         for (frame in from until to) {
             val videoFrame = frame + offset
             if (!song.loud[frame] || videoFrame !in 0 until video.size) continue
-            errors += Integer.bitCount(song.prints[frame] xor video.prints[videoFrame])
+            errors += (song.prints[frame] xor video.prints[videoFrame]).countOneBits()
             compared++
         }
         return if (compared < (to - from) / 4) Float.MAX_VALUE else errors.toFloat() / compared
@@ -259,7 +258,7 @@ internal object AudioMatcher {
         fun errorsAt(frame: Int, offset: Int): Int {
             val videoFrame = frame + offset
             if (!song.loud[frame] || videoFrame !in 0 until video.size) return 16
-            return Integer.bitCount(song.prints[frame] xor video.prints[videoFrame])
+            return (song.prints[frame] xor video.prints[videoFrame]).countOneBits()
         }
         // errors if the cut were at each frame: the earlier shift before it, the later one after
         var cost = (from until to).sumOf { errorsAt(it, after) }

@@ -1,6 +1,5 @@
 package com.mochyy.mochymusic.lyrics
 
-import com.music.innertube.CaptionCue
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -37,8 +36,8 @@ class CaptionAlignerTest {
         texts.mapIndexed { i, text -> LyricsEntry(startMs + i * gapMs, text) }
 
     // auto captions the way youtube sends them: a word at a time, a few words missed or misheard
-    private fun autoCaptions(lines: List<LyricsEntry>, deltaAt: (Long) -> Long, random: Random): List<CaptionCue> {
-        val cues = ArrayList<CaptionCue>()
+    private fun autoCaptions(lines: List<LyricsEntry>, deltaAt: (Long) -> Long, random: Random): List<LyricsCaptionCue> {
+        val cues = ArrayList<LyricsCaptionCue>()
         for (line in lines) {
             val words = line.text.split(" ")
             var t = line.time + deltaAt(line.time) + random.nextLong(-150, 150)
@@ -48,7 +47,7 @@ class CaptionAlignerTest {
                     1 -> word.reversed()
                     else -> word
                 }
-                if (heard != null) cues += CaptionCue(t, t + 280, heard)
+                if (heard != null) cues += LyricsCaptionCue(t, t + 280, heard)
                 t += 300
             }
         }
@@ -122,7 +121,7 @@ class CaptionAlignerTest {
         // captions written in hiragana where the lyrics use katakana, which should still match
         val cues = lines.flatMap { line ->
             val start = line.time - 3_000L
-            line.text.replace("フェンス", "ふぇんす").chunked(4).mapIndexed { k, chunk -> CaptionCue(start + k * 400, start + k * 400 + 380, chunk) }
+            line.text.replace("フェンス", "ふぇんす").chunked(4).mapIndexed { k, chunk -> LyricsCaptionCue(start + k * 400, start + k * 400 + 380, chunk) }
         }
         val alignment = sure(CaptionAligner.align(lines, cues))
         assertTrue(abs(alignment.map.runs[0].deltaMs + 3_000L) <= 400)
@@ -140,7 +139,7 @@ class CaptionAlignerTest {
         val lines = lyrics(englishLines)
         val alignment = sure(CaptionAligner.align(lines, autoCaptions(lines, { 8_000L }, Random(5))))
         // an uploaded translation track: one cue per sung line, on the video's timing
-        val translation = lines.mapIndexed { i, line -> CaptionCue(line.time + 8_000L, line.time + 8_000L + 3_500L, "line $i") }
+        val translation = lines.mapIndexed { i, line -> LyricsCaptionCue(line.time + 8_000L, line.time + 8_000L + 3_500L, "line $i") }
         val assigned = CaptionAligner.assignCues(lines, alignment.map, translation)
         assigned.forEachIndexed { i, text -> assertEquals("line $i", text) }
     }
