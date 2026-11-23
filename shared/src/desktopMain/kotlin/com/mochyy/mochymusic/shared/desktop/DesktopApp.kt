@@ -25,7 +25,6 @@ import com.mochyy.mochymusic.shared.playback.LocalPlayerConnection
 import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.shared.resources.app_name
 import com.mochyy.mochymusic.shared.resources.playback_failed
-import com.mochyy.mochymusic.shared.ui.shell.StandaloneMusicApp
 import com.mochyy.mochymusic.shared.ui.theme.StandaloneMochyTheme
 import com.mochyy.mochymusic.utils.LocalAppPreferences
 import com.mochyy.mochymusic.utils.PreferencesCache
@@ -94,13 +93,12 @@ private fun runDesktopWindow(font: FontFamily) = application {
             com.mochyy.mochymusic.ui.component.LocalSubSettingsChrome provides com.mochyy.mochymusic.ui.component.PlainSubSettingsChrome,
         ) {
             StandaloneMochyTheme(font, desktopPlaybackPreferences) {
-                StandaloneMusicApp(
-                    search,
-                    providers,
-                    desktopPlaybackPreferences,
-                    desktopLibrary,
+                DesktopMusicApp(
+                    source = search,
+                    lyricsProviders = providers,
+                    settings = desktopPlaybackPreferences,
+                    library = desktopLibrary,
                     queue = queue,
-                    settingsContent = { settings, codecBadge -> DesktopSettingsScreen(settings, codecBadge) },
                 )
             }
         }
