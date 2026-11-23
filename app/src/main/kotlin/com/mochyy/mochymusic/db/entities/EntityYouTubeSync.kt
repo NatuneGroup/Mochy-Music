@@ -9,16 +9,14 @@ import kotlinx.coroutines.launch
 // The entities live in shared/; the likes and library changes that also go to YouTube stay here,
 // because the YouTube client is JVM-only.
 
+// Pure local state update: callers sync to YouTube through SyncUtils.likeSong so retries,
+// offline queueing, YouTubeLikesMemory and import-exclusion rules stay consistent (no double-firing).
 fun SongEntity.toggleLike() = copy(
     liked = !liked,
     likedDate = if (!liked) nowLocal() else null,
     inLibrary = if (!liked) inLibrary ?: nowLocal() else inLibrary,
     addedByLike = if (!liked && inLibrary == null) true else addedByLike,
-).also {
-    CoroutineScope(Dispatchers.IO).launch {
-        YouTube.likeVideo(id, !liked)
-    }
-}
+)
 
 // byLike is for the youtube sync, where a liked song lands in the library on its own
 fun SongEntity.toggleLibrary(syncToYouTube: Boolean = true, byLike: Boolean = false) = copy(

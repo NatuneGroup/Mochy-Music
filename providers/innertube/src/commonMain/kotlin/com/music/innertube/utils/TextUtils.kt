@@ -3,12 +3,12 @@ package com.music.innertube.utils
 // The text helpers of Utils.kt that need no JVM, kept in common code so every platform parses the same way.
 
 fun parseCookieString(cookie: String): Map<String, String> =
-    cookie.split("; ")
-        .filter { it.isNotEmpty() }
+    cookie.split(';')
         .mapNotNull { part ->
-            val splitIndex = part.indexOf('=')
-            if (splitIndex == -1) null
-            else part.substring(0, splitIndex) to part.substring(splitIndex + 1)
+            val trimmed = part.trim()
+            val splitIndex = trimmed.indexOf('=')
+            if (splitIndex <= 0) null
+            else trimmed.substring(0, splitIndex).trim() to trimmed.substring(splitIndex + 1).trim()
         }
         .toMap()
 

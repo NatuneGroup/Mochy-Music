@@ -38,6 +38,6 @@ internal fun PlayerStyleContent(
         PlayerStyle.METROLIST_VINTAGE -> MetrolistPlayerStyle(actions, modifier, preview, vintage = true)
         PlayerStyle.MODULE -> ModulePlayerStyle(actions, modifier, preview)
         // the flagship family is drawn by the flagship player itself (StyleFamily.Flagship)
-        PlayerStyle.FLAGSHIP, PlayerStyle.CLASSIC, PlayerStyle.TURNTABLE -> Unit
+        PlayerStyle.FLAGSHIP, PlayerStyle.TURNTABLE -> Unit
     }
 }
