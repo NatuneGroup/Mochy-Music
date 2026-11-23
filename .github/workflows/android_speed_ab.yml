@@ -190,7 +190,10 @@ jobs:
           # booted in this step, not its own: the runner removes processes a finished step left behind,
           # which killed the emulator (cleanly, no OOM) at the first adb command of every earlier run
           SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
-          setsid nohup "$SDK/emulator/emulator" -avd ab -no-window -gpu swiftshader_indirect -no-snapshot \
+          # -gpu guest renders inside the emulator: every earlier run lost the emulator, silently, right after
+          # Mochy drew its first screen, which is the host-side swiftshader_indirect renderer falling over on
+          # the app's blur shaders. Guest rendering is slower but the same for every build compared
+          setsid nohup "$SDK/emulator/emulator" -avd ab -no-window -gpu guest -no-snapshot \
             -no-boot-anim -no-audio -accel on > emulator.log 2>&1 &
           "$SDK/platform-tools/adb" wait-for-device
           deadline=$((SECONDS + 600))
