@@ -90,6 +90,7 @@ app/persistent-debug.keystore
 *.py
 !scripts/*.py
 !tools/stage/*.py
+!.github/scripts/*.py
 .env
 output-metadata.json
 vcs.xml
