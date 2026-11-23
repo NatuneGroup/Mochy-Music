@@ -64,8 +64,6 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONArray
-import org.json.JSONObject
 import timber.log.Timber
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -129,6 +127,9 @@ class ModuleRegistry @Inject constructor(
 ) {
     // the same file the switches always lived in, so nobody's choices are lost
     private val prefs = context.getSharedPreferences("source_modules", Context.MODE_PRIVATE)
+    private val moduleStore: ModuleStore = SharedPreferencesModuleStore(prefs)
+    private val settings = ModulePreferences(moduleStore)
+    private val saved = SavedModuleLists(moduleStore)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val looks = ModuleLooks(context)
     private val http by lazy { OkHttpModuleHttp(client) }
@@ -158,8 +159,8 @@ class ModuleRegistry @Inject constructor(
         // how this phone compiles a look's shaders and loads its fonts, in place before the first refresh publishes one
         SkinPlatforms.install(AndroidSkinPlatform())
         // the module player picked last time, kept here beside the switches
-        ActiveSkin.restorePick(prefs.getString(PlayerPickKey, null).orEmpty())
-        ActiveSkin.onPick = { key -> prefs.edit { putString(PlayerPickKey, key) } }
+        ActiveSkin.restorePick(settings.playerPick())
+        ActiveSkin.onPick = { key -> settings.setPlayerPick(key) }
         // lyrics modules have to be in the lyrics sources before the first song asks for lyrics
         scope.launch { refresh() }
     }
@@ -169,11 +170,11 @@ class ModuleRegistry @Inject constructor(
     fun all(): List<MochyModule> = modules.map { it.first }
 
     // youtube starts on, modules start off until they're turned on (or signed in to)
-    fun isEnabled(id: String): Boolean = prefs.getBoolean("enabled_$id", id == SourceModules.YouTubeId)
+    fun isEnabled(id: String): Boolean = settings.isEnabled(id, fallback = id == SourceModules.YouTubeId)
 
     fun setEnabled(id: String, on: Boolean) {
         val module = module(id)
-        prefs.edit { putBoolean("enabled_$id", on) }
+        settings.setEnabled(id, on)
         // a look turned on goes to the top of the looks, so what it brings shows over the others straight away, its first player included
         if (on && module != null && (module as? SkinSource)?.skin?.players?.isNotEmpty() == true) ActiveSkin.pick("$id/")
         if (on && module != null && restyles(module)) raise(id) else refresh()
@@ -188,13 +189,11 @@ class ModuleRegistry @Inject constructor(
 
     fun picks(id: String): Map<String, String> {
         val module = module(id) ?: return emptyMap()
-        return module.choices.mapNotNull { choice ->
-            prefs.getString("pick_${id}_${choice.id}", null)?.let { choice.id to it }
-        }.toMap()
+        return settings.picks(id, module.choices.map { it.id })
     }
 
     fun setPick(id: String, choiceId: String, optionId: String) {
-        prefs.edit { putString("pick_${id}_$choiceId", optionId) }
+        settings.setPick(id, choiceId, optionId)
         refresh()
     }
 
@@ -203,7 +202,7 @@ class ModuleRegistry @Inject constructor(
 
     private fun valuesFor(module: MochyModule): Map<String, String> {
         val fields = runCatching { (module as? ModuleFields)?.fields }.getOrNull() ?: return emptyMap()
-        return fields.associate { field -> field.id to (prefs.getString("field_${module.info.id}_${field.id}", null) ?: field.default) }
+        return settings.fieldValues(module.info.id, fields.associate { it.id to it.default })
     }
 
     // the module hears every value before its first call, so a song asked for straight after a start already gets them
@@ -215,23 +214,19 @@ class ModuleRegistry @Inject constructor(
     /** keeps one of a module's settings; a look that's on changes over to what the new value brings on the refresh */
     fun setField(id: String, fieldId: String, value: String) {
         val module = module(id) ?: return
-        prefs.edit { putString("field_${id}_$fieldId", value) }
+        settings.setField(id, fieldId, value)
         handValues(module)
         refresh()
     }
 
-    // the order modules are listed and asked in: what was dragged on the modules page, else the provider order the songs already use
-    private fun savedOrder(): List<String> =
-        (prefs.getString(ModuleOrderKey, null) ?: prefs.getString("provider_order", null)).orEmpty().split(',').filter { it.isNotBlank() }
-
     /** a new order for the modules listed; the ones it leaves out keep their places after them */
     fun setOrder(ids: List<String>) {
-        prefs.edit { putString(ModuleOrderKey, (ids + savedOrder()).distinct().joinToString(",")) }
+        settings.setOrder(ids)
         refresh()
     }
 
     fun refresh() {
-        val order = savedOrder()
+        val order = settings.order()
         val list = modules.map { (module, origin) ->
             val id = module.info.id
             ModuleEntry(
@@ -242,9 +237,9 @@ class ModuleRegistry @Inject constructor(
                 account = module.accountState(),
                 fields = runCatching { (module as? ModuleFields)?.fields }.getOrNull().orEmpty(),
                 values = valuesFor(module),
-                addedAt = prefs.getLong("added_$id", 0L).takeIf { it > 0L },
+                addedAt = settings.addedAt(id),
                 // copies from before this was kept count from when they were first added
-                installedAt = prefs.getLong("installed_$id", 0L).takeIf { it > 0L } ?: prefs.getLong("added_$id", 0L).takeIf { it > 0L },
+                installedAt = settings.installedAt(id),
                 source = updates.source(id),
                 update = updates.update(id),
                 checkedAt = updates.checkedAt(id),
@@ -475,16 +470,9 @@ class ModuleRegistry @Inject constructor(
         }
         val id = module.info.id
         synchronized(this) {
-            if (base != null) {
-                val saved = savedWebModules().filter { it.optString("base") != base }
-                prefs.edit { putString(WebModulesKey, JSONArray(saved + JSONObject().put("base", base).put("manifest", ready.manifestText)).toString()) }
-            } else {
-                val saved = savedLocalModules().filter { it.optString("id") != id }
-                val entry = JSONObject().put("id", id).put("file", ready.from).put("manifest", ready.manifestText)
-                prefs.edit { putString(LocalModulesKey, JSONArray(saved + entry).toString()) }
-            }
-            if (!prefs.contains("added_$id")) prefs.edit { putLong("added_$id", System.currentTimeMillis()) }
-            prefs.edit { putLong("installed_$id", System.currentTimeMillis()) }
+            if (base != null) saved.addWeb(base, ready.manifestText) else saved.addLocal(id, ready.from, ready.manifestText)
+            settings.markAdded(id, System.currentTimeMillis())
+            settings.markInstalled(id, System.currentTimeMillis())
             module.attach(hostFor(module))
             handValues(module)
             loaded = modules.filter { it.first.info.id != id } + (module to origin)
@@ -501,13 +489,11 @@ class ModuleRegistry @Inject constructor(
         val fresh = installed.module
         val id = fresh.info.id
         synchronized(this) {
-            val saved = savedCodeModules().filter { it.optString("id") != id }
-            val entry = JSONObject().put("id", id).put("folder", installed.folder).put("file", ready.from)
-            prefs.edit { putString(CodeModulesKey, JSONArray(saved + entry).toString()) }
+            saved.addCode(id, installed.folder, ready.from)
             // the old copy's folder goes on the next start, its code may still be finishing a call
             (module(id) as? BridgedModule)?.close()
-            if (!prefs.contains("added_$id")) prefs.edit { putLong("added_$id", System.currentTimeMillis()) }
-            prefs.edit { putLong("installed_$id", System.currentTimeMillis()) }
+            settings.markAdded(id, System.currentTimeMillis())
+            settings.markInstalled(id, System.currentTimeMillis())
             fresh.attach(hostFor(fresh))
             handValues(fresh)
             loaded = modules.filter { it.first.info.id != id } + (fresh to ModuleOrigin.Code(ready.from))
@@ -548,7 +534,7 @@ class ModuleRegistry @Inject constructor(
     fun remove(id: String) {
         val (module, origin) = modules.firstOrNull { it.first.info.id == id } ?: return
         if (origin !is ModuleOrigin.Web && origin !is ModuleOrigin.File && origin !is ModuleOrigin.Code) return
-        val codeFolder = savedCodeModules().firstOrNull { it.optString("id") == id }?.optString("folder")
+        val codeFolder = saved.code().firstOrNull { it.id == id }?.folder
         scope.launch {
             SkinFiles.delete(context, id)
             folderFor(id).deleteRecursively()
@@ -558,34 +544,21 @@ class ModuleRegistry @Inject constructor(
         (module as? BridgedModule)?.close()
         updates.forget(id)
         synchronized(this) {
-            prefs.edit {
-                when (origin) {
-                    is ModuleOrigin.Web -> putString(WebModulesKey, JSONArray(savedWebModules().filter { it.optString("base") != origin.base }).toString())
-                    is ModuleOrigin.Code -> putString(CodeModulesKey, JSONArray(savedCodeModules().filter { it.optString("id") != id }).toString())
-                    else -> putString(LocalModulesKey, JSONArray(savedLocalModules().filter { it.optString("id") != id }).toString())
-                }
-                remove("enabled_$id")
-                remove("added_$id")
-                remove("installed_$id")
-                module.choices.forEach { remove("pick_${id}_${it.id}") }
-                runCatching { (module as? ModuleFields)?.fields }.getOrNull().orEmpty().forEach { remove("field_${id}_${it.id}") }
+            when (origin) {
+                is ModuleOrigin.Web -> saved.removeWeb(origin.base)
+                is ModuleOrigin.Code -> saved.removeCode(id)
+                else -> saved.removeLocal(id)
             }
+            settings.forget(
+                id,
+                choiceIds = module.choices.map { it.id },
+                fieldIds = runCatching { (module as? ModuleFields)?.fields }.getOrNull().orEmpty().map { it.id },
+            )
             context.getSharedPreferences("module_$id", Context.MODE_PRIVATE).edit { clear() }
             loaded = modules.filter { it.first.info.id != id }
         }
         refresh()
     }
-
-    private fun savedWebModules(): List<JSONObject> = savedList(WebModulesKey)
-
-    private fun savedLocalModules(): List<JSONObject> = savedList(LocalModulesKey)
-
-    private fun savedCodeModules(): List<JSONObject> = savedList(CodeModulesKey)
-
-    private fun savedList(key: String): List<JSONObject> = runCatching {
-        val array = JSONArray(prefs.getString(key, "[]"))
-        (0 until array.length()).map { array.getJSONObject(it) }
-    }.getOrDefault(emptyList())
 
     // ---- loading --------------------------------------------------------------------------------
 
@@ -593,22 +566,22 @@ class ModuleRegistry @Inject constructor(
         val builtIn = (listOf<MochyModule>(AppleMusicModule(), MonochromeModule(), JioSaavnModule()) +
             NatuneSource.entries.map(::NatuneInstanceModule)).map { it to ModuleOrigin.BuiltIn }
         val apps = discover()
-        val savedCode = savedCodeModules()
-        CodeModules.tidy(context, savedCode.map { it.optString("folder") }.toSet())
-        val code = savedCode.mapNotNull { saved ->
-            CodeModules.load(context, saved.optString("folder"))?.let { it.module to ModuleOrigin.Code(saved.optString("file")) }
+        val savedCode = saved.code()
+        CodeModules.tidy(context, savedCode.map { it.folder }.toSet())
+        val code = savedCode.mapNotNull { row ->
+            CodeModules.load(context, row.folder)?.let { it.module to ModuleOrigin.Code(row.file) }
         }
         // sites that got in as modules before they were turned away; they never played a song, so they go
-        val (sites, kept) = savedWebModules().partition { WebModuleManifest.isWebsite(it.optString("manifest")) }
-        if (sites.isNotEmpty()) prefs.edit { putString(WebModulesKey, JSONArray(kept).toString()) }
-        val web = kept.mapNotNull { saved ->
-            val base = saved.optString("base").takeIf { it.isNotBlank() } ?: return@mapNotNull null
-            val manifest = WebModuleManifest.parse(saved.optString("manifest")) ?: return@mapNotNull null
+        val (sites, kept) = saved.web().partition { WebModuleManifest.isWebsite(it.manifest) }
+        if (sites.isNotEmpty()) saved.retainWeb { !WebModuleManifest.isWebsite(it.manifest) }
+        val web = kept.mapNotNull { row ->
+            val base = row.base.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            val manifest = WebModuleManifest.parse(row.manifest) ?: return@mapNotNull null
             WebModule(base, manifest, context.resources, filesFor(WebModuleManifest.idFor(base, manifest))) to ModuleOrigin.Web(base)
         }
-        val local = savedLocalModules().mapNotNull { saved ->
-            val manifest = WebModuleManifest.parse(saved.optString("manifest")) ?: return@mapNotNull null
-            LocalModule(manifest, filesFor(LocalModule.idFor(manifest))) to ModuleOrigin.File(saved.optString("file"))
+        val local = saved.local().mapNotNull { row ->
+            val manifest = WebModuleManifest.parse(row.manifest) ?: return@mapNotNull null
+            LocalModule(manifest, filesFor(LocalModule.idFor(manifest))) to ModuleOrigin.File(row.file)
         }
         // a module app or a zip's code replaces the built-in module with its id, so a module can be updated on its own
         val replacing = (apps + code).map { it.first.info.id }.toSet()
@@ -629,12 +602,10 @@ class ModuleRegistry @Inject constructor(
 
     /** monochrome used to be built into playback with its own switch; it carries over, once */
     private fun migrateMonochromeSwitch() {
-        if (prefs.getBoolean("migrated_monochrome", false)) return
+        if (moduleStore.boolean("migrated_monochrome")) return
         val wasOn = runCatching { context.dataStore.get(EnableMonochromeBackendKey, false) }.getOrDefault(false)
-        prefs.edit {
-            if (wasOn) putBoolean("enabled_${MonochromeModule.Id}", true)
-            putBoolean("migrated_monochrome", true)
-        }
+        if (wasOn) moduleStore.putBoolean("enabled_${MonochromeModule.Id}", true)
+        moduleStore.putBoolean("migrated_monochrome", true)
     }
 
     private fun hostFor(module: MochyModule) = object : ModuleHost {
@@ -698,11 +669,6 @@ class ModuleRegistry @Inject constructor(
 
     companion object {
         private const val Tag = "ModuleRegistry"
-        private const val WebModulesKey = "web_modules"
-        private const val LocalModulesKey = "local_modules"
-        private const val CodeModulesKey = "code_modules"
-        private const val ModuleOrderKey = "module_order"
-        private const val PlayerPickKey = "player_pick"
         // a zip is only searched this far for its manifest, and a manifest bigger than this isn't one
         private const val MaxZipEntries = 200
         private const val MaxManifestBytes = 256 * 1024
