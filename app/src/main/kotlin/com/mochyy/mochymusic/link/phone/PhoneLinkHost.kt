@@ -347,7 +347,7 @@ class PhoneLinkHost @Inject constructor(
         // a device still on the old protocol sends its key in a header; told to update rather than turned away as unpaired, which made it forget this phone
         if (request.header(LinkWire.OldKeyHeader) != null) return LinkResponse.status(426, "update mochy on that device")
         // the call must be signed by a paired device's key; the key itself is never in the call
-        val from = verifier.verify(request) { id -> _devices.value.firstOrNull { it.id == id }?.key }
+        val from = verifier.verify(request, keyOf = { id -> _devices.value.firstOrNull { it.id == id }?.key })
         val device = from?.let { id -> _devices.value.firstOrNull { it.id == id } }
             ?: return LinkResponse.status(401, "not paired")
         seen(device)

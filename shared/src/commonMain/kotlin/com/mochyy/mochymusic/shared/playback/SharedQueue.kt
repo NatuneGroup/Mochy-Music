@@ -120,6 +120,8 @@ internal class SharedQueue(
     fun close() {
         jobs.forEach { it.cancel() }
         jobs.clear()
+        pendingStartSeek?.cancel()
+        pendingStartSeek = null
         unbind?.invoke()
         unbind = null
         player.preloadNext(null)
@@ -144,10 +146,8 @@ internal class SharedQueue(
 
     /** Plays [song] now, taking it out of Up next if it was there. */
     fun play(song: SongItem) {
-        pendingStartSeek?.cancel()
-        pendingStartSeek = null
         replace(mutableUpcoming.value.filterNot { it.id == song.id })
-        player.play(song)
+        startSong(song)
     }
 
     /**
@@ -159,11 +159,9 @@ internal class SharedQueue(
         if (items.isEmpty()) return
         val start = startIndex.coerceIn(items.indices)
         val first = items[start]
-        pendingStartSeek?.cancel()
-        pendingStartSeek = null
         items.subList(0, start).forEach(history::started)
         replace(items.subList(start + 1, items.size))
-        player.play(first)
+        startSong(first)
         if (startPositionMs > 0L) {
             // the platform players open the stream in the background and drop a seek sent before
             // that, so the start position is applied once this song has actually loaded
@@ -186,7 +184,10 @@ internal class SharedQueue(
     }
 
     fun playNext() {
-        mutableUpcoming.value.firstOrNull()?.let(::play)
+        val upcoming = mutableUpcoming.value
+        val next = upcoming.firstOrNull() ?: return
+        replace(upcoming.drop(1))
+        startSong(next)
     }
 
     fun playPrevious() {
@@ -208,7 +209,13 @@ internal class SharedQueue(
         }
         // the song being left goes back to the front of Up next, so Next returns to it
         replace(listOf(current) + mutableUpcoming.value.filterNot { it.id == current.id || it.id == previous.id })
-        player.play(previous)
+        startSong(previous)
+    }
+
+    private fun startSong(song: SongItem) {
+        pendingStartSeek?.cancel()
+        pendingStartSeek = null
+        player.play(song)
     }
 
     private class PreloadTarget(val go: Boolean, val next: SongItem?)

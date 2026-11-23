@@ -86,7 +86,9 @@ class MusicImportService @Inject constructor(
         synchronized(resyncQueue) {
             if (resyncing) {
                 resyncQueue.addAll(requests)
-                _progress.update { it.copy(resync = it.resync?.copy(playlists = it.resync.playlists + requests.size)) }
+                _progress.update { progress ->
+                    progress.copy(resync = progress.resync?.let { it.copy(playlists = it.playlists + requests.size) })
+                }
                 return true
             }
             if (isRunning) return false

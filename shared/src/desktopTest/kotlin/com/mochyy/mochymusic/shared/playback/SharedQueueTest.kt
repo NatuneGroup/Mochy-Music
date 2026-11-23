@@ -7,11 +7,14 @@ import com.mochyy.mochymusic.shared.library.LibraryDatabase
 import com.mochyy.mochymusic.shared.library.LocalLibrary
 import com.mochyy.mochymusic.shared.settings.PlaybackPreferences
 import com.music.innertube.models.SongItem
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -46,7 +49,9 @@ class SharedQueueTest {
         override fun release() {}
     }
 
-    private fun withQueue(block: suspend (SharedQueue, FakePlayer, QueueTransport, suspend (() -> Unit) -> Unit) -> Unit) {
+    private fun withQueue(
+        block: suspend (SharedQueue, FakePlayer, QueueTransport, QueuePlayerConnection, suspend (() -> Unit) -> Unit) -> Unit,
+    ) {
         val directory = createTempDirectory("mochy-queue").toFile()
         val executor = Executors.newSingleThreadExecutor()
         val main = executor.asCoroutineDispatcher()
@@ -68,10 +73,11 @@ class SharedQueueTest {
                 val player = FakePlayer()
                 val transport = QueueTransport()
                 val queue = SharedQueue(player, settings, LocalLibrary(database.tracks()), transport, scope)
+                val connection = QueuePlayerConnection(player, queue, scope)
                 // the queue is confined to its one thread, as it is to the main thread in the apps
                 val onQueueThread: suspend (() -> Unit) -> Unit = { action -> withContext(main) { action() } }
                 onQueueThread { queue.start() }
-                withTimeout(10_000) { block(queue, player, transport, onQueueThread) }
+                withTimeout(10_000) { block(queue, player, transport, connection, onQueueThread) }
                 onQueueThread { queue.close() }
             }
         } finally {
@@ -92,7 +98,7 @@ class SharedQueueTest {
     }
 
     @Test
-    fun aColdStartRestoresUpNextAndMovesOnWhenASongEnds() = withQueue { queue, player, _, onQueueThread ->
+    fun aColdStartRestoresUpNextAndMovesOnWhenASongEnds() = withQueue { queue, player, _, _, onQueueThread ->
         queue.ready.first { it }
         assertEquals(listOf("b", "c"), queue.upcoming.value.map { it.id })
 
@@ -104,9 +110,47 @@ class SharedQueueTest {
     }
 
     @Test
-    fun theSystemNextControlPlaysTheHeadOfUpNext() = withQueue { _, player, transport, onQueueThread ->
+    fun theSystemNextControlPlaysTheHeadOfUpNext() = withQueue { _, player, transport, _, onQueueThread ->
         transport.canGoNext.first { it }
         onQueueThread { transport.next() }
         player.played.first { it == listOf("b") }
+    }
+
+    @Test
+    fun nextKeepsTheSecondOccurrenceOfARepeatedSong() = withQueue { queue, player, _, _, onQueueThread ->
+        queue.ready.first { it }
+        onQueueThread {
+            queue.playList(listOf(song("a"), song("b"), song("b"), song("c")), startIndex = 0, startPositionMs = 0L)
+            queue.playNext()
+            assertEquals(listOf("b", "c"), queue.upcoming.value.map { it.id })
+            queue.playNext()
+            assertEquals(listOf("a", "b", "b"), player.played.value)
+            assertEquals(listOf("c"), queue.upcoming.value.map { it.id })
+        }
+    }
+
+    @Test
+    fun aSlowQueueCannotInterruptANewerSongSelection() = withQueue { queue, player, _, connection, onQueueThread ->
+        queue.ready.first { it }
+        val reading = CompletableDeferred<Unit>()
+        val cancelled = CompletableDeferred<Unit>()
+        val slowQueue = object : Queue {
+            override suspend fun getInitialStatus(): Queue.Status {
+                reading.complete(Unit)
+                return try {
+                    awaitCancellation()
+                } catch (_: CancellationException) {
+                    cancelled.complete(Unit)
+                    Queue.Status(null, listOf(song("old")))
+                }
+            }
+        }
+        onQueueThread { connection.playQueue(slowQueue) }
+        reading.await()
+
+        onQueueThread { connection.play(song("new")) }
+        cancelled.await()
+
+        onQueueThread { assertEquals(listOf("new"), player.played.value) }
     }
 }

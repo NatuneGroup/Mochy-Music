@@ -28,13 +28,15 @@ import org.koin.dsl.module
  */
 fun loadAndroidKoin(app: Application) {
     loadKoinModules(
-        module {
-            single<Context> { app }
-            single<ArtistPageSource> { AndroidArtistPageSource }
-            single<DevSpaceRepository> { AppDevSpaceRepository }
-            viewModelOf(::ArtistSimilarViewModel)
-        },
-        onlineAndroidModule,
+        listOf(
+            module {
+                single<Context> { app }
+                single<ArtistPageSource> { AndroidArtistPageSource }
+                single<DevSpaceRepository> { AppDevSpaceRepository }
+                viewModelOf(::ArtistSimilarViewModel)
+            },
+            onlineAndroidModule,
+        ),
     )
     loadKoinModules(libraryAndroidModule(app))
     // onboarding's view model needs the application Context, so it is passed in rather than looked up

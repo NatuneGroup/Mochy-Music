@@ -140,7 +140,7 @@ private class AndroidImportPlatform(
 
     override fun bringBackLikes() = youTubeSync.bringBackLikes()
 
-    override fun clearYouTubeMessage() = youTubeSync.clearYouTubeMessage()
+    override fun clearYouTubeMessage() = youTubeSync.clearMessage()
 
     override suspend fun signOut() = App.forgetAccount(context)
 

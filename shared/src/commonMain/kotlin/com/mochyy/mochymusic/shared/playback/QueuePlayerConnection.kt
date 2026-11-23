@@ -8,6 +8,8 @@ package com.mochyy.mochymusic.shared.playback
 import com.music.innertube.models.SongItem
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -20,6 +22,8 @@ internal class QueuePlayerConnection(
     private val queue: SharedQueue,
     private val scope: CoroutineScope,
 ) : PlaybackConnection {
+    private var pendingQueue: Job? = null
+
     override val state: StateFlow<PlayerState> get() = player.state
 
     override val nowPlaying: StateFlow<SongItem?> = player.state
@@ -51,7 +55,10 @@ internal class QueuePlayerConnection(
             )
         }.stateIn(scope, SharingStarted.WhileSubscribed(5_000L), PlaybackQueueState())
 
-    override fun play(song: SongItem) = queue.play(song)
+    override fun play(song: SongItem) {
+        pendingQueue?.cancel()
+        queue.play(song)
+    }
 
     override fun togglePlayPause() = player.togglePlayPause()
 
@@ -62,7 +69,8 @@ internal class QueuePlayerConnection(
     override fun skipToPrevious() = queue.playPrevious()
 
     override fun playQueue(queue: Queue) {
-        scope.launch {
+        pendingQueue?.cancel()
+        pendingQueue = scope.launch {
             val status = try {
                 queue.getInitialStatus()
             } catch (cancelled: CancellationException) {
@@ -70,6 +78,7 @@ internal class QueuePlayerConnection(
             } catch (_: Exception) {
                 return@launch
             }
+            ensureActive()
             // the chosen song plays now from the queue's start position; the songs after it stay in
             // order as Up next and the ones before it are what Previous walks back through (jarvis on #102)
             this@QueuePlayerConnection.queue.playList(status.items, status.mediaItemIndex, status.position)
@@ -91,7 +100,7 @@ internal class QueuePlayerConnection(
     }
 
     override fun playQueueItem(queueId: String) {
-        queue.upcoming.value.firstOrNull { it.id == queueId }?.let(queue::play)
+        queue.upcoming.value.firstOrNull { it.id == queueId }?.let(::play)
     }
 
     override fun playQueueItemNext(queueId: String) {
