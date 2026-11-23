@@ -106,6 +106,9 @@ kotlin {
             implementation(libs.activity)
             // the moved cover components read colours with the same androidx.palette the app uses
             implementation(libs.palette)
+            // sharing the lyrics area: the same kuromoji IPADIC and tinypinyin the app shipped
+            implementation(libs.kuromoji.ipadic)
+            implementation(libs.tinypinyin)
         }
         getByName("desktopMain").dependencies {
             implementation(compose.desktop.common)
@@ -122,6 +125,8 @@ kotlin {
             // Linux media session (MPRIS over the session D-Bus); loaded only on Linux, failures are ignored
             implementation(libs.dbus.java.core)
             implementation(libs.dbus.java.transport.native.unixsocket)
+            // the moved Japanese readings: the same kuromoji IPADIC tables Android ships
+            implementation(libs.kuromoji.ipadic)
             // decoding: JavaCV's FFmpeg grabber without the rest of JavaCV's camera and vision stack
             implementation("org.bytedeco:javacv:${libs.versions.javacpp.get()}") { isTransitive = false }
             implementation(libs.javacpp)

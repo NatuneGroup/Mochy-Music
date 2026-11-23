@@ -2,17 +2,15 @@
 
 package com.mochyy.mochymusic.lyrics
 
-import android.text.format.DateUtils
-import com.atilika.kuromoji.ipadic.Token
-import com.atilika.kuromoji.ipadic.Tokenizer
-import com.github.promeg.pinyinhelper.Pinyin
-import com.mochyy.mochymusic.BuildConfig
 import com.mochyy.mochymusic.db.entities.LyricsEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
-import java.text.Normalizer
-import java.util.Locale
+import kotlin.concurrent.Volatile
+
+/** The same values Android's DateUtils gives these two units. */
+private const val MinuteMs = 60_000L
+private const val SecondMs = 1_000L
 
 @Suppress("RegExpRedundantEscape")
 object LyricsUtils {
@@ -328,27 +326,13 @@ object LyricsUtils {
         "Ѓ", "ѓ", "Ѕ", "ѕ", "Ќ", "ќ"
     )
 
-    // built on demand and dropped on memory trims so the japanese ipadic tables (~20 mb) don't stay pinned in ram
-    @Volatile
-    private var kuromojiInstance: Tokenizer? = null
-    private val kuromojiLock = Any()
-
-    private val kuromojiTokenizer: Tokenizer
-        get() = kuromojiInstance ?: synchronized(kuromojiLock) {
-            kuromojiInstance ?: Tokenizer().also { kuromojiInstance = it }
-        }
-
-    fun releaseKuromoji() {
-        synchronized(kuromojiLock) { kuromojiInstance = null }
-    }
+    // the platform's dictionary, built on demand and dropped on memory trims so the japanese ipadic
+    // tables (~20 mb) don't stay pinned in ram; the actual owns the instance
+    fun releaseKuromoji() = releaseJapaneseTokenizer()
 
     private val KanaRun = Regex("[ぁ-ゖァ-ヺーｦ-ﾟ\\u3099\\u309A]+")
 
-    private fun tokenizeJapanese(text: String): List<Token>? = if (BuildConfig.COMPACT_APK) {
-        JapaneseLanguagePackManager.tokenizerOrNull()?.tokenize(text)
-    } else {
-        kuromojiTokenizer.tokenize(text)
-    }
+    private fun tokenizeJapanese(text: String): List<JapaneseToken>? = tokenizeJapaneseText(text)
 
     private val HEX_ENTITY_REGEX = "&#x([0-9a-fA-F]+);".toRegex()
     private val DEC_ENTITY_REGEX = "&#(\\d+);".toRegex()
@@ -358,13 +342,13 @@ object LyricsUtils {
             .replace(HEX_ENTITY_REGEX) { match ->
                 match.groupValues[1].toIntOrNull(16)
                     ?.takeIf { it in 0..0x10FFFF }
-                    ?.let { String(Character.toChars(it)) }
+                    ?.let(::codePointToString)
                     ?: match.value
             }
             .replace(DEC_ENTITY_REGEX) { match ->
                 match.groupValues[1].toIntOrNull()
                     ?.takeIf { it in 0..0x10FFFF }
-                    ?.let { String(Character.toChars(it)) }
+                    ?.let(::codePointToString)
                     ?: match.value
             }
             .replace("&apos;", "'")
@@ -436,14 +420,12 @@ object LyricsUtils {
     }
 
     // the last few songs' parsed lines, never handed out themselves, since each caller fills its own reading flows
-    private val parsedCache = object : LinkedHashMap<String, List<LyricsEntry>>(8, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<LyricsEntry>>?) = size > 4
-    }
+    private val parsedCache = LyricsLru<String, List<LyricsEntry>>(4)
 
     // same as parseLyrics, but the card, the page and the styles stop re-parsing one song on the main thread
     fun parseLyricsCached(lyrics: String): List<LyricsEntry> {
-        val template = synchronized(parsedCache) { parsedCache[lyrics] }
-            ?: parseLyrics(lyrics).also { parsed -> synchronized(parsedCache) { parsedCache[lyrics] = parsed } }
+        val template = lyricsLocked(parsedCache) { parsedCache.get(lyrics) }
+            ?: parseLyrics(lyrics).also { parsed -> lyricsLocked(parsedCache) { parsedCache.put(lyrics, parsed) } }
         return template.map { entry ->
             entry.copy(
                 romanizedTextFlow = MutableStateFlow(null),
@@ -461,8 +443,8 @@ object LyricsUtils {
     // parse in the background as soon as a song's lyrics land, so opening the player finds them ready, wraps and all
     fun warmParsedLyrics(lyrics: String?) {
         if (lyrics.isNullOrBlank() || lyrics == LyricsEntity.LYRICS_NOT_FOUND) return
-        val parsed = synchronized(parsedCache) { parsedCache[lyrics] }
-            ?: runCatching { parseLyrics(lyrics) }.getOrNull()?.also { synchronized(parsedCache) { parsedCache[lyrics] = it } }
+        val parsed = lyricsLocked(parsedCache) { parsedCache.get(lyrics) }
+            ?: runCatching { parseLyrics(lyrics) }.getOrNull()?.also { lyricsLocked(parsedCache) { parsedCache.put(lyrics, it) } }
             ?: return
         lineWarmer?.invoke(parsed)
     }
@@ -579,7 +561,7 @@ object LyricsUtils {
                 val centiseconds = matchResult.groupValues[3].toLongOrNull() ?: 0L
 
                 val millisPart = if (matchResult.groupValues[3].length == 3) centiseconds else centiseconds * 10
-                val lineTimeMs = minutes * DateUtils.MINUTE_IN_MILLIS + seconds * DateUtils.SECOND_IN_MILLIS + millisPart
+                val lineTimeMs = minutes * MinuteMs + seconds * SecondMs + millisPart
 
                 var content = matchResult.groupValues[4].trimStart()
 
@@ -622,7 +604,7 @@ object LyricsUtils {
      * now needs the line to actually look syllable-split: most double-spaced groups have to be
      * made of several pieces. Real text with an odd double space has mostly single-word groups.
      */
-    internal fun repairRichSyncPlainText(text: String): String {
+    fun repairRichSyncPlainText(text: String): String {
         val compacted = text.replace(Regex("[\\t\\u00A0]+"), " ").trim()
         if (compacted.isBlank()) return compacted
         if (!Regex(" {2,}").containsMatchIn(compacted)) {
@@ -775,7 +757,7 @@ object LyricsUtils {
                 if (milString.length == 2) {
                     mil *= 10
                 }
-                val time = min * DateUtils.MINUTE_IN_MILLIS + sec * DateUtils.SECOND_IN_MILLIS + mil
+                val time = min * MinuteMs + sec * SecondMs + mil
                 LyricsEntry(time, text, words, agent = agent, isBackground = isBackground)
             }.toList()
     }
@@ -1112,7 +1094,8 @@ object LyricsUtils {
             // Pinyin is per character, so each Han character is its own ruby.
             text.mapIndexedNotNull { index, ch ->
                 if (ch !in '一'..'鿿') return@mapIndexedNotNull null
-                RubyToken(index, index + 1, Pinyin.toPinyin(ch).lowercase(Locale.getDefault()))
+                val pinyin = hanziPinyin(ch)?.lowercase() ?: return@mapIndexedNotNull null
+                RubyToken(index, index + 1, pinyin)
             }.takeIf { it.isNotEmpty() }
         }
 
@@ -1129,7 +1112,7 @@ object LyricsUtils {
         if (lyricsScript(rawLyrics) != Script.LATIN) return null
         val tokens = rawLyrics
             .replace(MarkupRegex, " ")
-            .lowercase(Locale.ROOT)
+            .lowercase()
             .split(NonWordRegex)
             .map { it.trim('\'', '’') }
             .filter { it.isNotEmpty() }
@@ -1252,7 +1235,7 @@ object LyricsUtils {
     }
 
     private fun kanaToRomaji(kana: String): String = katakanaToRomaji(
-        Normalizer.normalize(kana, Normalizer.Form.NFKC).map {
+        normalizeNfkc(kana).map {
             if (it in 'ぁ'..'ゖ') (it.code + ('ァ' - 'ぁ')).toChar() else it
         }.joinToString(""),
     )
@@ -1355,8 +1338,8 @@ object LyricsUtils {
         if (text.isEmpty()) return@withContext ""
         val builder = StringBuilder(text.length * 2)
         for (ch in text) {
-            if (ch in '\u4E00'..'\u9FFF') {
-                val py = Pinyin.toPinyin(ch).lowercase(Locale.getDefault())
+            val py = if (ch in '\u4E00'..'\u9FFF') hanziPinyin(ch)?.lowercase() else null
+            if (py != null) {
                 builder.append(py).append(' ')
             } else {
                 builder.append(ch)
@@ -1742,3 +1725,12 @@ object LyricsUtils {
         return "АаЕеЄєИиІіЇїОоУуЮюЯяЫыЭэ".contains(char)
     }
 }
+
+/** The one-character string [code] stands for, a surrogate pair above the basic plane; Character.toChars in common code. */
+private fun codePointToString(code: Int): String =
+    if (code <= 0xFFFF) {
+        code.toChar().toString()
+    } else {
+        val offset = code - 0x10000
+        charArrayOf((0xD800 + (offset shr 10)).toChar(), (0xDC00 + (offset and 0x3FF)).toChar()).concatToString()
+    }
