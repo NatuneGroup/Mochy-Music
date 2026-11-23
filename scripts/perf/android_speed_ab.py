@@ -346,6 +346,8 @@ def traced_round(pkg: str, component: str, taps: dict, out: Path) -> Path | None
         scroll_profile()
     tap(taps["settings"])
     time.sleep(SETTLE_AFTER_TAP)
+    if taps["scroll_list"]:
+        scroll_profile()
     tap(taps["appearance"])
     time.sleep(SETTLE_AFTER_TAP)
     if pid.isdigit():
@@ -463,12 +465,19 @@ def measure(label: str, folder: Path, out_root: Path, runs: int) -> dict:
         nodes = ui_nodes(out / "2-settings.xml")
     screenshot(out / "2-settings.png")
     appearance = find(nodes, "Appearance")
+    # on a shorter screen Appearance sits below the fold of the settings list: one fixed drag, also
+    # done (unmeasured) in every round before the Appearance tap
+    scroll_list = appearance is None
+    if scroll_list:
+        scroll_profile()
+        nodes = ui_nodes(out / "2-settings-scrolled.xml")
+        appearance = find(nodes, "Appearance")
     if appearance is None:
         raise RuntimeError(f"{label}: no Appearance row in Settings, see {out}/2-settings.png")
     tap(appearance)
     time.sleep(SETTLE_AFTER_TAP + 1)
     screenshot(out / "3-appearance.png")
-    taps = {"tab": settings, "settings": open_settings or settings, "appearance": appearance}
+    taps = {"tab": settings, "settings": open_settings or settings, "appearance": appearance, "scroll_list": scroll_list}
     result["taps"] = taps
     force_stop(pkg)
 
@@ -492,7 +501,10 @@ def measure(label: str, folder: Path, out_root: Path, runs: int) -> dict:
         # uiautomator dumps don't land inside the measured window
         time.sleep(SETTLE_AFTER_TAP)
         s = gfx_read(pkg)
-        s["screen_seen"] = wait_for_label("Appearance", timeout=SETTLE_AFTER_TAP + 2)
+        # a row only the settings list has, near its top, so it is on screen before any scrolling
+        s["screen_seen"] = wait_for_label("Audio Lab", timeout=SETTLE_AFTER_TAP + 2)
+        if taps["scroll_list"]:
+            scroll_profile()
         gfx_reset(pkg)
         tap(taps["appearance"])
         time.sleep(SETTLE_AFTER_TAP)
