@@ -154,7 +154,6 @@ import com.mochyy.mochymusic.ui.launch.ReportLaunchHomeComposed
 import com.mochyy.mochymusic.ui.component.HomeSectionTitle
 import com.mochyy.mochymusic.ui.component.HomeTrackRow
 import com.mochyy.mochymusic.ui.component.HomeVideoCard
-import com.mochyy.mochymusic.utils.FeedVideoKind
 import com.mochyy.mochymusic.utils.HomeVideo
 import com.mochyy.mochymusic.utils.rememberEnumPreference
 import com.mochyy.mochymusic.viewmodels.HomeCategory
@@ -190,23 +189,6 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.mochyy.mochymusic.ui.component.navigateToTab
-
-sealed class HomeSection(val id: String) {
-    data object RecentlyPlayed : HomeSection("recently_played")
-    data object MostPlayed : HomeSection("most_played")
-    data object History : HomeSection("history")
-    data object DontForgetTheseSongs : HomeSection("dont_forget_these_songs")
-    data object AccountPlaylists : HomeSection("account_playlists")
-    data object Pinned : HomeSection("pinned")
-    data object FromTheCommunity : HomeSection("from_the_community")
-    data object ArtistList : HomeSection("artist_list")
-    data object AllTimeHits : HomeSection("all_time_hits")
-    data object LiveShows : HomeSection("live_shows")
-    data object MusicVideos : HomeSection("music_videos")
-    data class Category(val categoryId: String) : HomeSection("category_$categoryId")
-
-    data class HomePageSection(val index: Int, val title: String) : HomeSection("home_page_section_${index}_$title")
-}
 
 /** a Home row that fades and slides up the first time it scrolls into view */
 private fun LazyListScope.homeItem(
@@ -1168,52 +1150,30 @@ fun HomeScreen(
 
     val homeSections by remember {
         derivedStateOf {
-            val list = mutableListOf<HomeSection>()
-
             // the recommendation rows are dealt out between Home's own rows, the way Apple Music
             // and Spotify mix "because you like" shelves in with your history
-            val categories = homeCategories.orEmpty()
-            var nextCategory = 0
-            fun addCategories(count: Int = 1) = repeat(count) {
-                categories.getOrNull(nextCategory)?.let {
-                    list.add(HomeSection.Category(it.id))
-                    nextCategory++
-                }
-            }
-
-            if (recentlyPlayed?.isNotEmpty() == true) list.add(HomeSection.RecentlyPlayed)
-            if (pinnedItems.isNotEmpty()) list.add(HomeSection.Pinned)
-            if (mostPlayedSongsForHome?.isNotEmpty() == true) list.add(HomeSection.MostPlayed)
-            addCategories()
-            if (communityPlaylists?.isNotEmpty() == true) list.add(HomeSection.FromTheCommunity)
-            if (recentHistorySongs?.isNotEmpty() == true) list.add(HomeSection.History)
-            addCategories()
-            // the two video banners sit apart, so the big frames break the feed up instead of piling up
-            if (liveRow?.isNotEmpty() == true) list.add(HomeSection.LiveShows)
-            addCategories()
-            if (artistListItems?.isNotEmpty() == true) list.add(HomeSection.ArtistList)
-            addCategories()
-            if (accountPlaylists?.isNotEmpty() == true || localPlaylists?.isNotEmpty() == true) list.add(HomeSection.AccountPlaylists)
-            addCategories()
-            if (forgottenFavorites?.isNotEmpty() == true) list.add(HomeSection.DontForgetTheseSongs)
-            addCategories()
-            if (musicVideoRow?.isNotEmpty() == true) list.add(HomeSection.MusicVideos)
-            addCategories(categories.size)
-
-            // youtube's live and video shelves sit in the rows above, and its speed dial behind the hero when there is one
-            val homePageSections = homePage?.sections.orEmpty()
-                .mapIndexed { index, section -> index to section }
-                .filter { (index, section) ->
-                    feedVideoKinds[index] != FeedVideoKind.Live && feedVideoKinds[index] != FeedVideoKind.MusicVideos &&
-                        !(section.isSpeedDial && homeStyle == HomeStyle.MOCHYY)
-                }
-            homePageSections.firstOrNull()?.let { (index, section) -> list.add(HomeSection.HomePageSection(index, section.title)) }
-            if (allTimeHits?.isNotEmpty() == true) list.add(HomeSection.AllTimeHits)
-            homePageSections.drop(1).forEach { (index, section) ->
-                list.add(HomeSection.HomePageSection(index, section.title))
-            }
-
-            list
+            homeFeedSections(
+                HomeFeedSignals(
+                    categoryIds = homeCategories.orEmpty().map { it.id },
+                    recentlyPlayed = recentlyPlayed?.isNotEmpty() == true,
+                    pinned = pinnedItems.isNotEmpty(),
+                    mostPlayed = mostPlayedSongsForHome?.isNotEmpty() == true,
+                    communityPlaylists = communityPlaylists?.isNotEmpty() == true,
+                    recentHistory = recentHistorySongs?.isNotEmpty() == true,
+                    // the two video banners sit apart, so the big frames break the feed up instead of piling up
+                    liveShows = liveRow?.isNotEmpty() == true,
+                    artistList = artistListItems?.isNotEmpty() == true,
+                    accountPlaylists = accountPlaylists?.isNotEmpty() == true || localPlaylists?.isNotEmpty() == true,
+                    forgottenFavorites = forgottenFavorites?.isNotEmpty() == true,
+                    musicVideos = musicVideoRow?.isNotEmpty() == true,
+                    homePageSections = homePage?.sections.orEmpty().mapIndexed { index, section ->
+                        HomePageShelf(index = index, title = section.title, isSpeedDial = section.isSpeedDial)
+                    },
+                    feedVideoKinds = feedVideoKinds,
+                    allTimeHits = allTimeHits?.isNotEmpty() == true,
+                    speedDialBehindHero = homeStyle == HomeStyle.MOCHYY,
+                )
+            )
         }
     }
 
