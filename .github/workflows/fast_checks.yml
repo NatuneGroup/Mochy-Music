@@ -35,9 +35,10 @@ jobs:
       - run: chmod +x gradlew
       - name: Compile
         run: ./gradlew --console=plain :app:compileArm64FossDebugKotlin :desktopApp:compileKotlinJvm :shared:compileCommonMainKotlinMetadata --warning-mode summary
-      # app/src/test is otherwise never run; the CrossMix package's tests reuse the compile above
-      - name: CrossMix and updater app unit tests
-        run: ./gradlew --console=plain :app:testArm64FossDebugUnitTest --tests 'com.mochyy.mochymusic.crossmix.*' --tests 'com.mochyy.mochymusic.core.updater.*' --warning-mode summary
+      # app/src/test is otherwise never run; the CrossMix package's tests and the shared-resource
+      # reader cache reuse the compile above
+      - name: CrossMix, updater and shared-resource app unit tests
+        run: ./gradlew --console=plain :app:testArm64FossDebugUnitTest --tests 'com.mochyy.mochymusic.crossmix.*' --tests 'com.mochyy.mochymusic.core.updater.*' --tests 'com.mochyy.mochymusic.resources.*' --warning-mode summary
       - name: Database schema
         run: |
           git add --intent-to-add app/schemas

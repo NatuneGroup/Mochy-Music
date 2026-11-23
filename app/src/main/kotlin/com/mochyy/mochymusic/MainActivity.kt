@@ -142,6 +142,9 @@ import com.music.innertube.YouTube
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.WatchEndpoint
 import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.resources.CachingResourceReader
+import com.mochyy.mochymusic.resources.SharedResourceCache
+import org.jetbrains.compose.resources.LocalResourceReader
 import com.mochyy.mochymusic.constants.AppBarHeight
 import com.mochyy.mochymusic.constants.DarkModeKey
 import com.mochyy.mochymusic.ui.utils.defaultMotionEnter
@@ -436,7 +439,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
-    @OptIn(ExperimentalMaterial3Api::class)
+    @OptIn(ExperimentalMaterial3Api::class, org.jetbrains.compose.resources.ExperimentalResourceApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen().handOffToLaunchIntro { introPlays }
         super.onCreate(savedInstanceState)
@@ -500,10 +503,15 @@ class MainActivity : ComponentActivity() {
             lifecycle,
         )
         setContent(parent = motionRecomposer) {
+            // Compose's Android resource reader inflates the shared .cvr from its start on every string;
+            // this reader serves the bytes SharedResourceCache already decompressed, so composition doesn't
+            val platformReader = LocalResourceReader.current
+            val sharedReader = remember(platformReader) { CachingResourceReader(platformReader, SharedResourceCache.bytes) }
             // the one settings store (sealed by the vault) for every shared screen, and the toast a held settings row shows
             CompositionLocalProvider(
                 com.mochyy.mochymusic.utils.LocalAppPreferences provides dataStore,
                 com.mochyy.mochymusic.ui.component.LocalSettingsDetail provides ShowSettingsDetail,
+                LocalResourceReader provides sharedReader,
             ) {
                 // the UI scale is applied once here, at the root: every dp and sp in the app grows or shrinks with it
                 val (uiScale) = rememberPreference(com.mochyy.mochymusic.constants.UiScalePercentKey, defaultValue = 100)
