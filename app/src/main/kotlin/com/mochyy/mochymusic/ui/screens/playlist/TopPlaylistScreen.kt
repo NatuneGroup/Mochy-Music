@@ -74,7 +74,7 @@ import com.mochyy.mochymusic.viewmodels.TopPlaylistViewModel
 fun TopPlaylistScreen(
     navController: NavController,
     @Suppress("UNUSED_PARAMETER") scrollBehavior: TopAppBarScrollBehavior,
-    viewModel: TopPlaylistViewModel = hiltViewModel(),
+    viewModel: TopPlaylistViewModel = koinViewModel(),
 ) {
     val context = LocalContext.current
     val menuState = LocalMenuState.current

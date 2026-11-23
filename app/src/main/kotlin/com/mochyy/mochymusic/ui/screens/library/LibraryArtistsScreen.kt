@@ -32,7 +32,7 @@ fun LibraryArtistsScreen(
         LibraryArtistsPage(navController)
         return
     }
-    val viewModel: LibraryHomeViewModel = hiltViewModel()
+    val viewModel: LibraryHomeViewModel = koinViewModel()
     val artists by (shelf?.let(viewModel::shelf)?.artists ?: viewModel.artists).collectAsStateWithLifecycle()
     val menuState = LocalMenuState.current
     val coroutineScope = rememberCoroutineScope()

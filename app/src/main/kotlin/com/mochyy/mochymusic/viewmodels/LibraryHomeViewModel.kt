@@ -27,8 +27,6 @@ import com.mochyy.mochymusic.utils.ArtistImageResolver
 import com.mochyy.mochymusic.utils.dataStore
 import com.music.innertube.YouTube
 import com.music.innertube.models.YTItem
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -46,7 +44,6 @@ import java.time.Duration
 import java.text.Collator
 import java.time.LocalDateTime
 import java.util.Locale
-import javax.inject.Inject
 import com.mochyy.mochymusic.db.nowLocal
 import kotlinx.datetime.toJavaLocalDateTime
 
@@ -59,11 +56,9 @@ import kotlinx.datetime.toJavaLocalDateTime
  * carousel, which is exactly wrong here: the Library screen's Pinned section is only supposed to
  * show what was actually pinned, and hides entirely when that's empty.
  */
-@HiltViewModel
 class LibraryHomeViewModel
-@Inject
 constructor(
-    @ApplicationContext private val context: Context,
+    private val context: Context,
     private val database: MusicDatabase,
     private val importService: MusicImportService,
     private val cachedSongs: CachedSongs,

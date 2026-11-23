@@ -76,7 +76,7 @@ fun LocalSearchScreen(
     onDismiss: () -> Unit,
     isFromCache: Boolean = false,
     pureBlack: Boolean,
-    viewModel: LocalSearchViewModel = hiltViewModel(),
+    viewModel: LocalSearchViewModel = koinViewModel(),
 ) {
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current

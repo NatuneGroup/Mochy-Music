@@ -65,7 +65,7 @@ internal fun rememberPageSubject(name: String, entry: NavBackStackEntry): PageSu
 
 @Composable
 private fun localPlaylist(args: Map<String, String>): PageSubject {
-    val viewModel: LocalPlaylistViewModel = hiltViewModel()
+    val viewModel: LocalPlaylistViewModel = koinViewModel()
     val playlist by viewModel.playlist.collectAsState()
     val rows by viewModel.playlistSongs.collectAsState()
     val songs = rememberMetadata(rows) { list -> list.map { it.song.toMediaMetadata() } }

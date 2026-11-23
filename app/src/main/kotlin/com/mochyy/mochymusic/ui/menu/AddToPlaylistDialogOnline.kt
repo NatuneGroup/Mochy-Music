@@ -80,7 +80,7 @@ fun AddToPlaylistDialogOnline(
     onDismiss: () -> Unit,
     onProgressStart: (Boolean) -> Unit,
     onPercentageChange: (Int) -> Unit,
-    viewModel: PlaylistsViewModel = hiltViewModel()
+    viewModel: PlaylistsViewModel = koinViewModel()
 ) {
     val database = LocalDatabase.current
     val syncUtils = LocalSyncUtils.current

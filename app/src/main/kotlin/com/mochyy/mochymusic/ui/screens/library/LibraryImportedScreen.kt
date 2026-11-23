@@ -33,7 +33,7 @@ fun LibraryImportedScreen(
     modifier: Modifier = Modifier,
     pureBlack: Boolean = false,
 ) {
-    val viewModel: LibraryImportedViewModel = hiltViewModel()
+    val viewModel: LibraryImportedViewModel = koinViewModel()
     val songs by viewModel.songs.collectAsState()
     val playerConnection = LocalPlayerConnection.current ?: return
     val menuState = LocalMenuState.current

@@ -197,7 +197,7 @@ fun AddToPlaylistDialog(
     initialTextFieldValue: String? = null,
     onGetSong: suspend (Playlist) -> List<String>,
     onDismiss: () -> Unit,
-    viewModel: PlaylistsViewModel = hiltViewModel(),
+    viewModel: PlaylistsViewModel = koinViewModel(),
     topSongId: String? = null,
     topSongArtworkUrl: String? = null,
 ) {

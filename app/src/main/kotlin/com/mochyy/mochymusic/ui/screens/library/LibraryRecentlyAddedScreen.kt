@@ -132,7 +132,7 @@ fun LibraryRecentlyAddedScreen(
     @Suppress("UNUSED_PARAMETER") pureBlack: Boolean = false,
     shelf: LibraryShelfKind? = null,
 ) {
-    val viewModel: LibraryHomeViewModel = hiltViewModel()
+    val viewModel: LibraryHomeViewModel = koinViewModel()
     // with the lifecycle: the Cached shelf looks at the cache every couple of seconds while watched
     val songs by (shelf?.let(viewModel::shelf)?.songs ?: viewModel.songs).collectAsStateWithLifecycle()
     val playerConnection = LocalPlayerConnection.current ?: return

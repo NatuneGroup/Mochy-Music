@@ -126,7 +126,7 @@ import kotlinx.coroutines.withContext
 fun AutoPlaylistScreen(
     navController: NavController,
     scrollBehavior: TopAppBarScrollBehavior,
-    viewModel: AutoPlaylistViewModel = hiltViewModel(),
+    viewModel: AutoPlaylistViewModel = koinViewModel(),
 ) {
     val context = LocalContext.current
     val menuState = LocalMenuState.current

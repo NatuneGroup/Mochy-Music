@@ -55,7 +55,7 @@ import com.mochyy.mochymusic.viewmodels.ArtistSongsViewModel
 fun ArtistSongsScreen(
     navController: NavController,
     @Suppress("UNUSED_PARAMETER") scrollBehavior: TopAppBarScrollBehavior,
-    viewModel: ArtistSongsViewModel = hiltViewModel(),
+    viewModel: ArtistSongsViewModel = koinViewModel(),
 ) {
     val menuState = LocalMenuState.current
     val haptic = LocalHapticFeedback.current

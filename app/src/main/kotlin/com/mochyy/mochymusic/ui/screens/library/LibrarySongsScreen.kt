@@ -105,7 +105,7 @@ fun LibrarySongsScreen(
     @Suppress("UNUSED_PARAMETER") modifier: Modifier = Modifier,
     @Suppress("UNUSED_PARAMETER") pureBlack: Boolean = false,
 ) {
-    val viewModel: LibraryHomeViewModel = hiltViewModel()
+    val viewModel: LibraryHomeViewModel = koinViewModel()
     val songs by viewModel.songs.collectAsState()
     val playerConnection = LocalPlayerConnection.current ?: return
     val menuState = LocalMenuState.current

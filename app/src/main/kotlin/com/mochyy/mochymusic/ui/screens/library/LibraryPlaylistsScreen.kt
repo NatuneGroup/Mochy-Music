@@ -36,7 +36,7 @@ fun LibraryPlaylistsScreen(
         LibraryPlaylistsPage(navController)
         return
     }
-    val viewModel: LibraryHomeViewModel = hiltViewModel()
+    val viewModel: LibraryHomeViewModel = koinViewModel()
     val all by (shelf?.let(viewModel::shelf)?.playlists ?: viewModel.playlists).collectAsStateWithLifecycle()
     val playlistSources by viewModel.playlistSources.collectAsState()
     val playlists = remember(all, playlistSources, source) {

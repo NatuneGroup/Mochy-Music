@@ -126,7 +126,7 @@ fun SongMenu(
     val scope = rememberCoroutineScope()
     var refetchIconDegree by remember { mutableFloatStateOf(0f) }
 
-    val cacheViewModel = hiltViewModel<CachePlaylistViewModel>()
+    val cacheViewModel = koinViewModel<CachePlaylistViewModel>()
 
     val rotationAnimation by animateFloatAsState(
         targetValue = refetchIconDegree,

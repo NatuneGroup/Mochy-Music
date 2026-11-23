@@ -50,7 +50,7 @@ import com.mochyy.mochymusic.viewmodels.LocalGenreViewModel
 
 @Composable
 fun LibraryGenreScreen(navController: NavController) {
-    val viewModel: LocalGenreViewModel = hiltViewModel()
+    val viewModel: LocalGenreViewModel = koinViewModel()
     val loaded by viewModel.songs.collectAsState()
     val songs = loaded.orEmpty()
     val playerConnection = LocalPlayerConnection.current ?: return

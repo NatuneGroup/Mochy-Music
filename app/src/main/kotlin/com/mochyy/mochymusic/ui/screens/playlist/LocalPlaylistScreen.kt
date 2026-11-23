@@ -162,7 +162,7 @@ private val YouTubeChannelRegex = Regex("music\\.youtube\\.com/channel/([A-Za-z0
 fun LocalPlaylistScreen(
     navController: NavController,
     scrollBehavior: TopAppBarScrollBehavior,
-    viewModel: LocalPlaylistViewModel = hiltViewModel(),
+    viewModel: LocalPlaylistViewModel = koinViewModel(),
 ) {
     val context = LocalContext.current
     val menuState = LocalMenuState.current

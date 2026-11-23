@@ -75,7 +75,7 @@ import com.mochyy.mochymusic.viewmodels.CachePlaylistViewModel
 fun CachePlaylistScreen(
     navController: NavController,
     @Suppress("UNUSED_PARAMETER") scrollBehavior: TopAppBarScrollBehavior,
-    viewModel: CachePlaylistViewModel = hiltViewModel(),
+    viewModel: CachePlaylistViewModel = koinViewModel(),
 ) {
     val context = LocalContext.current
     val menuState = LocalMenuState.current

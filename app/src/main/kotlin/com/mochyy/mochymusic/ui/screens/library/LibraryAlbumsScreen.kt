@@ -53,7 +53,7 @@ private fun ImportedAlbumsScreen(
     modifier: Modifier,
     pureBlack: Boolean,
 ) {
-    val viewModel: LibraryImportedViewModel = hiltViewModel()
+    val viewModel: LibraryImportedViewModel = koinViewModel()
     val albums by viewModel.albums.collectAsState()
     val entries = remember(albums) { albums.toGridEntries() }
 
@@ -88,7 +88,7 @@ private fun ShelfAlbumsScreen(
     modifier: Modifier,
     pureBlack: Boolean,
 ) {
-    val viewModel: LibraryHomeViewModel = hiltViewModel()
+    val viewModel: LibraryHomeViewModel = koinViewModel()
     // with the lifecycle: the Cached shelf looks at the cache every couple of seconds while watched
     val albums by viewModel.shelf(shelf).albums.collectAsStateWithLifecycle()
     val playerConnection = LocalPlayerConnection.current ?: return
