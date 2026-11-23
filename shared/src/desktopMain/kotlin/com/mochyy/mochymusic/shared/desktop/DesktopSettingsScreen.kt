@@ -113,7 +113,7 @@ internal fun DesktopSettingsScreen(
 // the shared picker asks for this: same list as the lyrics menu, names from the app's strings
 @Composable
 private fun desktopTranslationTargets(): List<Pair<String, String>> =
-    desktopTranslationTargetIds
+    com.mochyy.mochymusic.shared.lyrics.translationTargetIds
         .map { (code, name) -> code to stringResource(name) }
         .sortedBy { it.second }
 

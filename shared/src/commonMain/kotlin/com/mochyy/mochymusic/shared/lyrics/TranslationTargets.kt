@@ -1,4 +1,4 @@
-package com.mochyy.mochymusic.shared.desktop
+package com.mochyy.mochymusic.shared.lyrics
 
 import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.shared.resources.ps_lang_af
@@ -107,10 +107,9 @@ import com.mochyy.mochymusic.shared.resources.ps_lang_yo
 import com.mochyy.mochymusic.shared.resources.ps_lang_zu
 import org.jetbrains.compose.resources.StringResource
 
-// The languages the Android lyrics menu offers (app/.../ui/player/menu/LyricsToolSheets.kt), for
-// desktop's own picker: same codes and the same app strings, so a target saved on one platform
-// reads the same on the other.
-internal val desktopTranslationTargetIds: List<Pair<String, StringResource>> = listOf(
+// every language lyrics can be translated into, by code, in the order the lists start from; the
+// Android lyrics menu and the desktop settings picker both read this one list
+val translationTargetIds: List<Pair<String, StringResource>> = listOf(
     "af" to Res.string.ps_lang_af,
     "sq" to Res.string.ps_lang_sq,
     "am" to Res.string.ps_lang_am,
