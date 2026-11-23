@@ -332,6 +332,9 @@ def traced_round(pkg: str, component: str, taps: dict, out: Path) -> Path | None
     t = time.time()
     cold_start(component)
     time.sleep(SETTLE_AFTER_START)
+    if taps["settings"] != taps["tab"]:
+        tap(taps["tab"])
+        time.sleep(SETTLE_AFTER_TAP)
     tap(taps["settings"])
     time.sleep(SETTLE_AFTER_TAP)
     tap(taps["appearance"])
@@ -439,15 +442,22 @@ def measure(label: str, folder: Path, out_root: Path, runs: int) -> dict:
         raise RuntimeError(f"{label}: no Settings tab on screen ({reason}), see {out}/1-home.png and app.log")
     tap(settings)
     time.sleep(SETTLE_AFTER_TAP + 1)
+    nodes = ui_nodes(out / "2-settings-tab.xml")
+    # the Settings tab opens on the profile page; the settings list itself is behind its "Open settings"
+    # row, so that row is the tap measured as "Settings" and the tab itself is only the way there
+    open_settings = find(nodes, "Open settings")
+    if open_settings is not None:
+        tap(open_settings)
+        time.sleep(SETTLE_AFTER_TAP + 1)
+        nodes = ui_nodes(out / "2-settings.xml")
     screenshot(out / "2-settings.png")
-    nodes = ui_nodes(out / "2-settings.xml")
     appearance = find(nodes, "Appearance")
     if appearance is None:
         raise RuntimeError(f"{label}: no Appearance row in Settings, see {out}/2-settings.png")
     tap(appearance)
     time.sleep(SETTLE_AFTER_TAP + 1)
     screenshot(out / "3-appearance.png")
-    taps = {"settings": settings, "appearance": appearance}
+    taps = {"tab": settings, "settings": open_settings or settings, "appearance": appearance}
     result["taps"] = taps
     force_stop(pkg)
 
@@ -460,12 +470,20 @@ def measure(label: str, folder: Path, out_root: Path, runs: int) -> dict:
         time.sleep(1.5)
         start = cold_start(component)
         time.sleep(SETTLE_AFTER_START)
+        if taps["settings"] != taps["tab"]:
+            # onto the profile page first, unmeasured: the open being timed is the settings list's
+            tap(taps["tab"])
+            time.sleep(SETTLE_AFTER_TAP)
         gfx_reset(pkg)
         tap(taps["settings"])
+        # the frames have to be drawn before gfxinfo can report them; the marker check comes after, so its
+        # uiautomator dumps don't land inside the measured window
+        time.sleep(SETTLE_AFTER_TAP)
         s = gfx_read(pkg)
         s["screen_seen"] = wait_for_label("Appearance", timeout=SETTLE_AFTER_TAP + 2)
         gfx_reset(pkg)
         tap(taps["appearance"])
+        time.sleep(SETTLE_AFTER_TAP)
         a = gfx_read(pkg)
         a["screen_seen"] = wait_for_label("Accent colour", timeout=SETTLE_AFTER_TAP + 2, save=out / "5-appearance.xml")
         if i == runs + 1:
