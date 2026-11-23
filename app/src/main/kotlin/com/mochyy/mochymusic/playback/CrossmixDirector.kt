@@ -138,7 +138,11 @@ class CrossmixDirector(
     fun schedule() {
         if (running != null) return
         val player = host.currentPlayer
-        val item = player.currentMediaItem ?: return cancelPending()
+        val item = player.currentMediaItem ?: run {
+            // the queue was cleared: nothing playing, so no song needs analysing
+            analyses.keepOnly(emptyList())
+            return cancelPending()
+        }
         host.crossmixBlocker()?.let { reason ->
             report(reason)
             // not mixing: no song needs analysing
@@ -202,6 +206,7 @@ class CrossmixDirector(
     }
 
     fun release() {
+        analyses.keepOnly(emptyList())
         cancelPending()
         running?.let { abortRunning("service released") }
     }
