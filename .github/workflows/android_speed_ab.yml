@@ -181,11 +181,16 @@ jobs:
           # the same fixed hardware for every commit
           printf 'hw.cpu.ncore=4\nhw.ramSize=4096\n' >> "$ANDROID_AVD_HOME/ab.avd/config.ini"
 
-      - name: Boot the emulator
+      - name: Measure
+        env:
+          REFS: ${{ needs.refs.outputs.matrix }}
+          RUNS: ${{ github.event_name == 'workflow_dispatch' && inputs.runs || '10' }}
         run: |
           set -euo pipefail
+          # booted in this step, not its own: the runner removes processes a finished step left behind,
+          # which killed the emulator (cleanly, no OOM) at the first adb command of every earlier run
           SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
-          "$SDK/emulator/emulator" -avd ab -no-window -gpu swiftshader_indirect -no-snapshot \
+          setsid nohup "$SDK/emulator/emulator" -avd ab -no-window -gpu swiftshader_indirect -no-snapshot \
             -no-boot-anim -no-audio -accel on > emulator.log 2>&1 &
           "$SDK/platform-tools/adb" wait-for-device
           deadline=$((SECONDS + 600))
@@ -202,12 +207,6 @@ jobs:
           "$SDK/platform-tools/adb" shell settings put system screen_off_timeout 1800000
           "$SDK/platform-tools/adb" shell svc power stayon true
 
-      - name: Measure
-        env:
-          REFS: ${{ needs.refs.outputs.matrix }}
-          RUNS: ${{ github.event_name == 'workflow_dispatch' && inputs.runs || '10' }}
-        run: |
-          set -euo pipefail
           python3 -m venv /tmp/tp && /tmp/tp/bin/pip install -q perfetto || true
           SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           export ADB="$SDK/platform-tools/adb"
