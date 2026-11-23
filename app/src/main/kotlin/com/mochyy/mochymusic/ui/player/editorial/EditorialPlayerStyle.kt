@@ -361,23 +361,23 @@ private fun EditorialArtwork(
         }
     }
     val scale by animateFloatAsState(if (playing) 1f else 0.94f, tween(400), label = "editorialPauseScale")
-    val path = remember(from, target, progress.value) {
-        if (progress.value >= 0.999f || from === target) {
-            target.toPath()
-        } else {
-            // a pair of shapes with different curve counts can't be morphed; the artwork then
-            // simply takes the next shape, rather than the player crashing on the track change
-            runCatching { Morph(from, target).asCubics(progress.value).toPath() }.getOrElse { target.toPath() }
-        }
-    }
+    val targetShape = remember(target) { EditorialShape(target.toPath()) }
+    // built once per song change, not once per frame; a pair of shapes with different curve counts
+    // can't be morphed, and the artwork then simply takes the next shape instead of crashing
+    val morph = remember(from, target) { if (from === target) null else runCatching { Morph(from, target) }.getOrNull() }
     Box(
         modifier
             .aspectRatio(1f)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
-            }
-            .clip(EditorialShape(path)),
+                // the morph's progress is read here, while drawing, so its 700 ms re-draw the cut-out
+                // without recomposing the artwork and its image on every frame
+                val p = progress.value
+                shape = if (morph == null || p >= 0.999f) targetShape
+                else runCatching { EditorialShape(morph.asCubics(p).toPath()) }.getOrElse { targetShape }
+                clip = true
+            },
     ) {
         // a song without a cover keeps the cut-out, holding the field's own tint
         Box(Modifier.fillMaxSize().background(accent.copy(alpha = 0.12f)))
