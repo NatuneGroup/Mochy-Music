@@ -50,7 +50,7 @@ class ManifestSettingsTest {
     private val files = File("/files/liquid-glass")
 
     private fun skin(files: File? = this.files) =
-        SkinParser.parse("local.liquid-glass", "Liquid Glass", glassy.player, glassy.font, glassy.pages, files, null, glassy.actions, glassy.glass)
+        SkinParser.parse("local.liquid-glass", "Liquid Glass", glassy.player, glassy.font, glassy.pages, files?.let(::AndroidModuleFiles), null, glassy.actions, glassy.glass)
 
     @Test
     fun settingsBecomeFieldsOfTheRightKind() {
@@ -134,7 +134,7 @@ class ManifestSettingsTest {
     fun picturesResolveNextToTheManifestOrInTheZip() {
         assertEquals("https://example.com/liquid/icon.png", resolveModuleArt(glassy.icon, null, "https://example.com/liquid"))
         assertEquals("https://example.com/banner.webp", resolveModuleArt(glassy.banner, null, "https://example.com/liquid"))
-        assertEquals(File(files, "icon.png").path, resolveModuleArt(glassy.icon, files, null))
+        assertEquals(File(files, "icon.png").path, resolveModuleArt(glassy.icon, AndroidModuleFiles(files), null))
         assertEquals(null, resolveModuleArt("../secret.png", files, null))
     }
 }

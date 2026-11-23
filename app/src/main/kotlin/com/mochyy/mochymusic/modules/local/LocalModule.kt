@@ -15,14 +15,18 @@ import com.mochyy.mochymusic.modules.skin.SkinGlass
 import com.mochyy.mochymusic.modules.skin.SkinParser
 import com.mochyy.mochymusic.modules.skin.SkinSource
 import com.mochyy.mochymusic.modules.skin.appliedLook
+import com.mochyy.mochymusic.modules.web.AndroidModuleFiles
 import com.mochyy.mochymusic.modules.web.FieldRange
 import com.mochyy.mochymusic.modules.web.FieldRanges
 import com.mochyy.mochymusic.modules.web.ManifestSettings
+import com.mochyy.mochymusic.modules.web.ModuleFiles
 import com.mochyy.mochymusic.modules.web.WebModuleManifest
 import com.mochyy.mochymusic.modules.web.resolveModuleArt
 import java.io.File
 
 internal class LocalModule(private val manifest: WebModuleManifest, files: File?) : LookModule, ModuleArt, ModuleFields, SkinSource, FieldRanges {
+
+    private val moduleFiles: ModuleFiles? = files?.let(::AndroidModuleFiles)
 
     override val info = ModuleInfo(
         id = idFor(manifest),
@@ -32,11 +36,11 @@ internal class LocalModule(private val manifest: WebModuleManifest, files: File?
         author = manifest.author,
     )
 
-    override val skin: ModuleSkin? = SkinParser.parse(info.id, info.name, manifest.player, manifest.font, manifest.pages, files, base = null, manifest.actions, manifest.glass, manifest.players, manifest.bar, manifest.mini)
+    override val skin: ModuleSkin? = SkinParser.parse(info.id, info.name, manifest.player, manifest.font, manifest.pages, moduleFiles, base = null, manifest.actions, manifest.glass, manifest.players, manifest.bar, manifest.mini)
 
-    override val icon: String? = resolveModuleArt(manifest.icon, files, base = null)
+    override val icon: String? = resolveModuleArt(manifest.icon, moduleFiles, base = null)
 
-    override val banner: String? = resolveModuleArt(manifest.banner, files, base = null)
+    override val banner: String? = resolveModuleArt(manifest.banner, moduleFiles, base = null)
 
     private val settings = ManifestSettings(manifest)
 

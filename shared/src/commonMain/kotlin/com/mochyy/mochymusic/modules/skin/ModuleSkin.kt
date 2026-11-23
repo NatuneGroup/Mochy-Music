@@ -8,8 +8,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import com.mochyy.mochymusic.constants.PlayerBackgroundStyle
+import com.mochyy.mochymusic.modules.web.ModuleFiles
+import com.mochyy.mochymusic.modules.web.moduleFile
 import com.mochyy.mochymusic.modules.web.resolveModulePath
-import java.io.File
 
 @Immutable
 class ModuleSkin(
@@ -19,7 +20,7 @@ class ModuleSkin(
     val players: List<SkinPlayer>,
     val font: SkinFont?,
     val pages: List<SkinPage>,
-    private val files: File?,
+    private val files: ModuleFiles?,
     private val base: String?,
     val actions: List<SkinAction> = emptyList(),
     val glass: SkinGlass? = null,
@@ -39,8 +40,8 @@ class ModuleSkin(
     /** a picture or font a skin names: a link as it is, a path from the module's zip, or a path next to a link module's manifest */
     fun resolve(path: String?): Any? = resolveModulePath(path, files, base)
 
-    /** a font or shader file, which only a zip can carry */
-    fun fontFile(path: String?): File? = (resolve(path) as? File)
+    /** a font or shader file the module brought, which only a zip can carry; the platform says what a file is */
+    fun assetFile(path: String?): Any? = moduleFile(path, files)
 
     /** every shader file the players, their sub-styles, their lyrics and the nav bar draw with, so they compile off the main thread with the glass */
     val playerShaders: Set<String> by lazy {

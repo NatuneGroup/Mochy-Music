@@ -19,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import java.io.File
 
 /** a module that can bring a skin: its own players, a font, a glass, a nav bar, pages */
 internal interface SkinSource {
@@ -250,7 +251,7 @@ object ActiveSkin {
     private fun compilePlayer(skin: ModuleSkin, problem: (String) -> Unit): Map<String, SkinProgram> {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || skin.playerShaders.isEmpty()) return emptyMap()
         return skin.playerShaders.mapNotNull { name ->
-            val file = skin.fontFile(name)?.takeIf { it.isFile && it.length() <= MaxShaderBytes }
+            val file = (skin.assetFile(name) as? File)?.takeIf { it.isFile && it.length() <= MaxShaderBytes }
             if (file == null) {
                 problem("its shader $name isn't in the module, or is bigger than ${MaxShaderBytes / 1024} KB")
                 return@mapNotNull null
@@ -276,7 +277,7 @@ object ActiveSkin {
     private fun compile(skin: ModuleSkin, look: SkinGlass): Compiled {
         // runtime shaders are android 13+, older phones keep mochy's frost and that's not a fault of the module's
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return Compiled(null, null)
-        val file = skin.fontFile(look.shader)?.takeIf { it.isFile } ?: return Compiled(null, "its shader file ${look.shader} isn't in the module")
+        val file = (skin.assetFile(look.shader) as? File)?.takeIf { it.isFile } ?: return Compiled(null, "its shader file ${look.shader} isn't in the module")
         if (file.length() > MaxShaderBytes) return Compiled(null, "its shader is bigger than ${MaxShaderBytes / 1024} KB")
         val key = "${file.path}:${file.lastModified()}:${file.length()}"
         if (key == shaderKey && shader != null) return Compiled(shader, null, shaderDrawsPill)
@@ -297,8 +298,8 @@ object ActiveSkin {
     }
 
     private fun fontFamily(skin: ModuleSkin, font: SkinFont): FontFamily? {
-        val regular = skin.fontFile(font.regular)?.takeIf { it.isFile } ?: return null
-        val bold = skin.fontFile(font.bold)?.takeIf { it.isFile }
+        val regular = (skin.assetFile(font.regular) as? File)?.takeIf { it.isFile } ?: return null
+        val bold = (skin.assetFile(font.bold) as? File)?.takeIf { it.isFile }
         return fontFamilyFromFiles(regular, bold)
     }
 

@@ -27,8 +27,8 @@ internal fun shaderUniforms(element: JsonElement?, reserved: Set<String>): Map<S
         .take(MaxUniforms)
         .toMap()
 
-/** one of the style's tones by name, "$key" for a colour from a setting, or a fixed "#RRGGBB" */
-internal fun skinColor(raw: String?): SkinColor? = when (raw?.trim()?.lowercase()) {
+/** one of the style's tones by name, "$key" for a colour from a setting, or a fixed "#RRGGBB"; public because the app's nav bar and player resolve a setting's colour with it */
+fun skinColor(raw: String?): SkinColor? = when (raw?.trim()?.lowercase()) {
     null, "" -> null
     "ink", "text" -> SkinColor.Ink
     "inksoft", "textsoft" -> SkinColor.InkSoft
