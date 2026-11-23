@@ -38,6 +38,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.mochyy.mochymusic.constants.DefaultOpenTabKey
 import com.mochyy.mochymusic.shared.library.LocalLibrary
 import com.mochyy.mochymusic.shared.lyrics.LyricsProvider
@@ -54,6 +57,7 @@ import com.mochyy.mochymusic.shared.resources.library_update_failed
 import com.mochyy.mochymusic.shared.resources.recently_played
 import com.mochyy.mochymusic.shared.resources.recently_played_empty
 import com.mochyy.mochymusic.shared.resources.shell_credit
+import com.mochyy.mochymusic.shared.resources.stats
 import com.mochyy.mochymusic.shared.resources.your_library
 import com.mochyy.mochymusic.shared.settings.PlaybackPreferences
 import com.mochyy.mochymusic.shared.ui.player.MiniPlayerBar
@@ -65,6 +69,8 @@ import com.mochyy.mochymusic.shared.ui.settings.SharedSettingsScreen
 import com.mochyy.mochymusic.shared.ui.settings.codecBadgePrefs
 import com.mochyy.mochymusic.shared.ui.shell.MochyShell
 import com.mochyy.mochymusic.shared.ui.shell.ShellTab
+import com.mochyy.mochymusic.shared.resources.play
+import com.mochyy.mochymusic.ui.screens.recap.StatsScreen
 import com.music.innertube.models.SongItem
 import com.mochyy.mochymusic.utils.rememberPreference
 import kotlinx.coroutines.launch
@@ -133,12 +139,10 @@ internal fun IosMusicApp(
                     showPlayer = true
                 },
             )
-            ShellTab.Home -> IosSongsPage(
-                title = stringResource(Res.string.recently_played),
-                emptyMessage = stringResource(Res.string.recently_played_empty),
-                songs = recent,
-                credit = stringResource(Res.string.shell_credit),
+            ShellTab.Home -> IosHomeTab(
+                recent = recent,
                 onPlay = queue::play,
+                onPlayAll = { songs -> playAll(songs, queue) },
             )
             ShellTab.Library -> IosSongsPage(
                 title = stringResource(Res.string.your_library),
@@ -146,6 +150,7 @@ internal fun IosMusicApp(
                 songs = saved,
                 updateFailed = libraryUpdateFailed,
                 onPlay = queue::play,
+                onPlayAll = { playAll(saved, queue) },
                 onRemove = { setSaved(it, false) },
             )
             ShellTab.Settings -> settingsContent(settings, codecBadge)
@@ -166,6 +171,7 @@ internal fun IosMusicApp(
                 showSampleRate = codecPrefs.showSampleRate,
                 isSaved = saved.any { it.id == playback.song?.id },
                 onSave = { song, save -> setSaved(song, save) },
+                onAddToQueue = { song -> queue.add(song) },
                 onTogglePlay = player::togglePlayPause,
                 onSeek = player::seekTo,
                 onNext = queue::playNext,
@@ -175,6 +181,47 @@ internal fun IosMusicApp(
             )
         }
     }
+}
+
+/** Plays a list from its first song, with the rest behind it in Up next, as Android's play-all does. */
+private fun playAll(songs: List<SongItem>, queue: SharedQueue) {
+    val first = songs.firstOrNull() ?: return
+    queue.replace(songs.drop(1))
+    queue.play(first)
+}
+
+/**
+ * The Home tab: the recently played list, and the recap it can open. The recap lives in a small
+ * navigation graph of its own, so its back gesture returns to the list instead of leaving the tab.
+ */
+@Composable
+private fun IosHomeTab(
+    recent: List<SongItem>,
+    onPlay: (SongItem) -> Unit,
+    onPlayAll: (List<SongItem>) -> Unit,
+) {
+    val navController = rememberNavController()
+    NavHost(navController = navController, startDestination = HomeRoutes.Home, modifier = Modifier.fillMaxSize()) {
+        composable(HomeRoutes.Home) {
+            IosSongsPage(
+                title = stringResource(Res.string.recently_played),
+                emptyMessage = stringResource(Res.string.recently_played_empty),
+                songs = recent,
+                credit = stringResource(Res.string.shell_credit),
+                onPlay = onPlay,
+                onPlayAll = onPlayAll,
+                onOpenStats = { navController.navigate(HomeRoutes.Stats) },
+            )
+        }
+        composable(HomeRoutes.Stats) {
+            StatsScreen(navController = navController)
+        }
+    }
+}
+
+private object HomeRoutes {
+    const val Home = "home"
+    const val Stats = "stats"
 }
 
 /** The tab to open with; an unknown value (an old build's) opens Home, as the enum default did. */
@@ -198,6 +245,8 @@ internal fun IosSongsPage(
     onRemove: ((SongItem) -> Unit)? = null,
     credit: String? = null,
     updateFailed: Boolean = false,
+    onPlayAll: ((List<SongItem>) -> Unit)? = null,
+    onOpenStats: (() -> Unit)? = null,
 ) {
     var filter by remember(title) { mutableStateOf("") }
     val visible = remember(songs, filter) {
@@ -213,11 +262,24 @@ internal fun IosSongsPage(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         item {
-            Text(
-                title,
-                style = MaterialTheme.typography.displaySmall,
-                modifier = Modifier.padding(vertical = 24.dp),
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.displaySmall,
+                    modifier = Modifier.weight(1f).padding(vertical = 24.dp),
+                )
+                if (onOpenStats != null) {
+                    // the recap is one tap from the list
+                    TextButton(onClick = onOpenStats) {
+                        Text(stringResource(Res.string.stats))
+                    }
+                }
+                if (onPlayAll != null && visible.isNotEmpty()) {
+                    TextButton(onClick = { onPlayAll(visible) }) {
+                        Text(stringResource(Res.string.play))
+                    }
+                }
+            }
         }
         item {
             Row(

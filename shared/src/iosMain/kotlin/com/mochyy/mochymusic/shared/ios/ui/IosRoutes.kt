@@ -76,4 +76,5 @@ internal object IosRoutes {
     val AccountSwitcher = AccountSwitcherRoute
     val AccountImport = AccountImportRoutePattern
     val DevPlayground = DevPlaygroundRoute
+    const val DeveloperSpace = "developer_space?person={person}"
 }

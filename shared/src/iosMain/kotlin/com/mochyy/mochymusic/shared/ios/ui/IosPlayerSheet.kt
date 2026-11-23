@@ -55,6 +55,7 @@ import com.mochyy.mochymusic.shared.lyrics.PlayerLyrics
 import com.mochyy.mochymusic.shared.lyrics.findPlayerLyrics
 import com.mochyy.mochymusic.shared.playback.PlayerState
 import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.add_to_queue
 import com.mochyy.mochymusic.shared.resources.library_remove
 import com.mochyy.mochymusic.shared.resources.library_save
 import com.mochyy.mochymusic.shared.resources.lyrics
@@ -75,6 +76,7 @@ import com.mochyy.mochymusic.shared.resources.queue_loading
 import com.mochyy.mochymusic.shared.resources.queue_write_failed
 import com.mochyy.mochymusic.shared.resources.remove_from_queue
 import com.mochyy.mochymusic.shared.resources.skip_next
+import com.mochyy.mochymusic.shared.resources.skip_previous
 import com.mochyy.mochymusic.shared.resources.previous
 import com.mochyy.mochymusic.shared.ui.player.StreamFormatBadge
 import com.mochyy.mochymusic.shared.ui.player.streamBadgeText
@@ -97,6 +99,7 @@ internal fun IosPlayerSheet(
     showSampleRate: Boolean,
     isSaved: Boolean,
     onSave: (SongItem, Boolean) -> Unit,
+    onAddToQueue: (SongItem) -> Unit,
     onTogglePlay: () -> Unit,
     onSeek: (Long) -> Unit,
     onNext: () -> Unit,
@@ -148,8 +151,13 @@ internal fun IosPlayerSheet(
                 }
             }
             item {
-                TextButton(onClick = { onSave(song, !isSaved) }) {
-                    Text(stringResource(if (isSaved) Res.string.library_remove else Res.string.library_save))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { onSave(song, !isSaved) }) {
+                        Text(stringResource(if (isSaved) Res.string.library_remove else Res.string.library_save))
+                    }
+                    TextButton(onClick = { onAddToQueue(song) }) {
+                        Text(stringResource(Res.string.add_to_queue))
+                    }
                 }
             }
             item { SeekRow(state, onSeek) }

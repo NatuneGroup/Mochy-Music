@@ -33,6 +33,9 @@ import com.mochyy.mochymusic.shared.resources.audiopass_hub_title
 import com.mochyy.mochymusic.shared.resources.car_settings_title
 import com.mochyy.mochymusic.shared.resources.cipher_settings_title
 import com.mochyy.mochymusic.shared.resources.customise_gesture
+import com.mochyy.mochymusic.shared.resources.dev_spaces_back_label
+import com.mochyy.mochymusic.shared.resources.person_dev
+import com.mochyy.mochymusic.shared.resources.shell_credit
 import com.mochyy.mochymusic.shared.resources.devices_title
 import com.mochyy.mochymusic.shared.resources.equalizer
 import com.mochyy.mochymusic.shared.resources.home
@@ -50,6 +53,8 @@ import com.mochyy.mochymusic.shared.resources.shell_coming_body
 import com.mochyy.mochymusic.shared.resources.shell_coming_title
 import com.mochyy.mochymusic.shared.resources.transition_title
 import com.mochyy.mochymusic.shared.resources.your_library
+import com.mochyy.mochymusic.ui.component.SettingsGroup
+import com.mochyy.mochymusic.ui.component.SettingsGroupStyle
 import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
 import com.mochyy.mochymusic.ui.screens.recap.StatsScreen
 import com.mochyy.mochymusic.ui.screens.settings.AppBehaviourSettingsScreen
@@ -61,8 +66,12 @@ import com.mochyy.mochymusic.ui.screens.settings.NowPlayingSettingsScreen
 import com.mochyy.mochymusic.ui.screens.settings.PlaybackSettingsScreen
 import com.mochyy.mochymusic.ui.screens.settings.SettingsListPlatform
 import com.mochyy.mochymusic.ui.screens.settings.StartTabChoice
+import com.mochyy.mochymusic.ui.screens.settings.devspace.DevPlaygroundScreen
+import com.mochyy.mochymusic.ui.screens.settings.devspace.DeveloperSpaceScreen
+import com.mochyy.mochymusic.ui.screens.settings.linkItem
 import com.mochyy.mochymusic.ui.screens.settings.storage.StorageScreen
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -88,6 +97,22 @@ private fun NavGraphBuilder.iosSettingsGraph(navController: NavHostController) {
             platform = SettingsListPlatform(),
             // the avatar opens the recap, the one shared "you" page iOS has
             onProfileClick = { navController.navigate(IosRoutes.Stats) },
+            // the list's tips slot carries the one shared "about" page iOS can run: Mochy's developers,
+            // their numbers and the playground
+            recommendations = { open ->
+                SettingsGroup(
+                    style = SettingsGroupStyle.Grouped,
+                    items = listOf(
+                        linkItem(
+                            key = "Dev Spaces",
+                            title = stringResource(Res.string.dev_spaces_back_label),
+                            description = stringResource(Res.string.shell_credit),
+                            icon = painterResource(Res.drawable.person_dev),
+                            onClick = { open(IosRoutes.DeveloperSpace) },
+                        ),
+                    ),
+                )
+            },
         )
     }
 
@@ -128,6 +153,19 @@ private fun NavGraphBuilder.iosSettingsGraph(navController: NavHostController) {
     composable(IosRoutes.Stats) {
         StatsScreen(navController = navController)
     }
+    composable(
+        route = IosRoutes.DeveloperSpace,
+        arguments = listOf(navArgument("person") { type = NavType.IntType; defaultValue = 0 }),
+    ) {
+        // the donate row is the app's sheet; iOS leaves it out and keeps the rest of the page.
+        // The route keeps its person argument so links from other screens resolve; iOS opens the
+        // first page, as it has no profile card to swipe from yet.
+        DeveloperSpaceScreen(navController = navController, onDonate = null)
+    }
+    composable(IosRoutes.DevPlayground) {
+        // the playground's own row into experimental settings is an app page; it is left out
+        DevPlaygroundScreen(navController = navController, experimentalSettingsEntry = {})
+    }
 
     // pages whose work is still :app's: the shared rows open them, so iOS keeps navigation working
     // and says where the page lives today
@@ -148,7 +186,6 @@ private fun NavGraphBuilder.iosSettingsGraph(navController: NavHostController) {
     unavailable(navController, IosRoutes.Modules, Res.string.settings_modules_category)
     unavailable(navController, IosRoutes.ModuleMonochrome, Res.string.settings_modules_category)
     unavailable(navController, IosRoutes.ModuleAppleMusic, Res.string.settings_modules_category)
-    unavailable(navController, IosRoutes.ModuleStore, Res.string.settings_modules_category)
     unavailable(navController, IosRoutes.SpotifyIntegration, Res.string.settings_modules_category)
     unavailable(navController, IosRoutes.DeviceIntegration, Res.string.devices_title)
     unavailable(navController, IosRoutes.AndroidAuto, Res.string.car_settings_title)
@@ -165,7 +202,13 @@ private fun NavGraphBuilder.iosSettingsGraph(navController: NavHostController) {
     unavailable(navController, IosRoutes.YouTubeSync, Res.string.import_sync_title)
     unavailable(navController, IosRoutes.YouTubeLogin, Res.string.import_sync_title)
     unavailable(navController, IosRoutes.AccountSwitcher, Res.string.import_sync_title)
-    // the two rows with arguments that the shared list or a page can open
+    // the rows with arguments that the shared list or a page can open
+    composable(
+        route = IosRoutes.ModuleStore,
+        arguments = listOf(navArgument("post") { type = NavType.StringType }),
+    ) {
+        IosUnavailablePage(navController, stringResource(Res.string.settings_modules_category))
+    }
     composable(
         route = IosRoutes.ScrobbleService,
         arguments = listOf(navArgument("site") { type = NavType.StringType }),

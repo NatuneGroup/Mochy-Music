@@ -8,6 +8,12 @@ import UIKit
 final class IosSystemMediaBridge {
     static let shared = IosSystemMediaBridge()
 
+    /// How far the lock screen's skip arrows move, the interval the shared player uses.
+    private static let skipIntervalSeconds: NSNumber = 15
+
+    /// What the lock screen currently shows, for the app delegate's background snapshot.
+    private(set) var isPlaying = false
+
     private let center = NotificationCenter.default
     private var observers: [NSObjectProtocol] = []
     private var artworkRequest: URLSessionDataTask?
@@ -50,7 +56,27 @@ final class IosSystemMediaBridge {
             self?.post("remoteSeek", payload: ["positionSeconds": event.positionTime])
             return .success
         }
-        setCommandsEnabled(playback: false)
+        // the arrows iOS shows beside the scrubber; the shared player moves by the same 15 seconds
+        commands.skipForwardCommand.preferredIntervals = [Self.skipIntervalSeconds]
+        commands.skipForwardCommand.addTarget { [weak self] _ in
+            self?.post("remoteSkipForward")
+            return .success
+        }
+        commands.skipBackwardCommand.preferredIntervals = [Self.skipIntervalSeconds]
+        commands.skipBackwardCommand.addTarget { [weak self] _ in
+            self?.post("remoteSkipBackward")
+            return .success
+        }
+        // saved / not saved, from the lock screen and CarPlay: the shared library answers
+        commands.likeCommand.addTarget { [weak self] _ in
+            self?.post("remoteLike")
+            return .success
+        }
+        commands.dislikeCommand.addTarget { [weak self] _ in
+            self?.post("remoteUnlike")
+            return .success
+        }
+        setCommandsEnabled(playback: false, liked: false)
     }
 
     private func observeBridgeEvents() {
@@ -65,6 +91,11 @@ final class IosSystemMediaBridge {
         observe("clearNowPlaying") { [weak self] _ in self?.clearNowPlaying() }
         observe("activateAudioSession") { [weak self] _ in self?.activateAudioSession() }
         observe("deactivateAudioSession") { [weak self] _ in self?.deactivateAudioSession() }
+        // Playback > Play alongside other apps, from the shared settings store
+        observe("audioSessionMix") { [weak self] notification in
+            guard let value = notification.object as? String else { return }
+            self?.applyAudioCategory(mixWithOthers: value == "true")
+        }
     }
 
     private func observeAudioSessionEvents() {
@@ -101,6 +132,8 @@ final class IosSystemMediaBridge {
         let canGoNext = payload["canGoNext"] as? Bool ?? false
         let canGoPrevious = payload["canGoPrevious"] as? Bool ?? false
         let playbackRate = payload["playbackRate"] as? Double ?? (isPlaying ? 1.0 : 0.0)
+        let isLiked = payload["isLiked"] as? Bool ?? false
+        self.isPlaying = isPlaying
 
         if title.isEmpty {
             clearNowPlaying()
@@ -115,11 +148,22 @@ final class IosSystemMediaBridge {
             MPNowPlayingInfoPropertyPlaybackRate: playbackRate,
             MPNowPlayingInfoPropertyDefaultPlaybackRate: 1.0,
         ]
-        if !album.isEmpty { info[MPMediaItemPropertyAlbumTitle] = album }
+        if !album.isEmpty {
+            info[MPMediaItemPropertyAlbumTitle] = album
+            // the car's lists show the album too, and album artist is what it groups by
+            info[MPMediaItemPropertyAlbumArtist] = artist
+        }
         if duration > 0 { info[MPMediaItemPropertyPlaybackDuration] = duration }
+        // audio, so the lock screen's scrubber is the audio one and likes make sense
+        info[MPNowPlayingInfoPropertyMediaType] = MPNowPlayingInfoMediaType.audio.rawValue
         if let artwork { info[MPMediaItemPropertyArtwork] = artwork }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
-        setCommandsEnabled(playback: available, canGoNext: canGoNext, canGoPrevious: canGoPrevious)
+        setCommandsEnabled(
+            playback: available,
+            liked: isLiked,
+            canGoNext: canGoNext,
+            canGoPrevious: canGoPrevious
+        )
     }
 
     private func updateArtwork(for urlString: String) {
@@ -145,23 +189,42 @@ final class IosSystemMediaBridge {
     }
 
     // Next and previous follow the phone queue state from the shared side, not just whether a song is loaded.
-    private func setCommandsEnabled(playback: Bool, canGoNext: Bool = false, canGoPrevious: Bool = false) {
+    private func setCommandsEnabled(
+        playback: Bool,
+        liked: Bool = false,
+        canGoNext: Bool = false,
+        canGoPrevious: Bool = false
+    ) {
         let commands = MPRemoteCommandCenter.shared()
         commands.playCommand.isEnabled = playback
         commands.pauseCommand.isEnabled = playback
         commands.togglePlayPauseCommand.isEnabled = playback
         commands.changePlaybackPositionCommand.isEnabled = playback
+        commands.skipForwardCommand.isEnabled = playback
+        commands.skipBackwardCommand.isEnabled = playback
+        commands.likeCommand.isEnabled = playback
+        commands.dislikeCommand.isEnabled = playback
+        // lit when the song is saved, so the car shows the same state the phone does
+        commands.likeCommand.isActive = liked
         commands.nextTrackCommand.isEnabled = canGoNext
         commands.previousTrackCommand.isEnabled = canGoPrevious
     }
 
     private func clearNowPlaying() {
+        isPlaying = false
         artworkRequest?.cancel()
         artworkRequest = nil
         artworkURL = nil
         artwork = nil
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
         setCommandsEnabled(playback: false)
+    }
+
+    // The category follows the shared "Play alongside other apps" switch: mixing leaves other audio
+    // playing, which is what the Android setting does with its audio focus change.
+    private func applyAudioCategory(mixWithOthers: Bool) {
+        let options: AVAudioSession.CategoryOptions = mixWithOthers ? [.mixWithOthers] : []
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: options)
     }
 
     private func activateAudioSession() {
