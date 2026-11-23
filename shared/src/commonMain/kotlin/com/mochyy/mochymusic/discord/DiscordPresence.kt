@@ -1,15 +1,19 @@
 // DiscordPresence.kt
+//
+// Keeps the Discord status in step with the player. MusicService reports what's playing through
+// [update]; this sends it to Discord when something people can see has changed, no faster than the
+// user's refresh interval, and takes it down when the music stops.
+//
+// The status itself, the gateway, the pictures' Discord names and the rate limits are the same on
+// every platform; the GIFs and uploads that need a bitmap engine come in through [DiscordPictures].
 
 package com.mochyy.mochymusic.discord
 
-import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
-import com.mochyy.mochymusic.utils.OfflineMode
-import com.mochyy.mochymusic.utils.dataStore
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
@@ -35,32 +39,29 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import timber.log.Timber
-import javax.inject.Inject
-import javax.inject.Singleton
+import kotlinx.serialization.json.put
+import kotlin.concurrent.Volatile
+import com.mochyy.mochymusic.db.nowEpochMillis
+import com.mochyy.mochymusic.utils.ioDispatcher
 
 /** How the Discord status is doing, for the line under the switch. */
 enum class PresenceConnection { Off, Idle, Connecting, Live, Retrying }
 
-/**
- * Keeps the Discord status in step with the player. MusicService reports what's playing through
- * [update]; this sends it to Discord when something people can see has changed, no faster than the
- * user's refresh interval, and takes it down when the music stops.
- */
 @OptIn(FlowPreview::class)
-@Singleton
-class DiscordPresence @Inject constructor(
-    @ApplicationContext private val context: Context,
+class DiscordPresence(
+    private val preferences: DataStore<Preferences>,
     private val auth: DiscordAuth,
+    private val pictures: DiscordPictures,
+    private val isOffline: () -> Boolean,
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + ioDispatcher)
     private val json = Json { ignoreUnknownKeys = true }
 
     private val _nowPlaying = MutableStateFlow<NowPlaying?>(null)
     /** what the player last reported, for the Discord page's preview */
     val nowPlaying: StateFlow<NowPlaying?> = _nowPlaying.asStateFlow()
 
-    val settings: StateFlow<PresenceSettings> = context.dataStore.data
+    val settings: StateFlow<PresenceSettings> = preferences.data
         .map(PresenceSettings::from)
         .stateIn(scope, SharingStarted.Eagerly, PresenceSettings())
 
@@ -82,19 +83,10 @@ class DiscordPresence @Inject constructor(
     private var lastPictureRetryAt = 0L
     private val recentSends = ArrayDeque<Long>()
 
-    /** Discord's asset address for each picture address, so each one is registered only once */
-    private val assetPaths = object : LinkedHashMap<String, String>(64, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>) = size > 256
-    }
-
-    /** picture addresses Discord wouldn't take, so they aren't offered again and again */
-    private val refusedUrls = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
-
-    private val spinning = SpinningArtwork(scope, onReady = ::nudge, loadLocal = { source, size -> loadLocalPicture(context, source, size) })
-    private val canvasGif = CanvasGif(context, onReady = ::nudge)
-
-    // covers of local songs and pictures the user picked, put on the web first
-    private val uploads = UploadedPictures(context, scope, onReady = ::nudge)
+    // Discord's asset address for each picture address, so each one is registered only once.
+    // Touched only from this class's own coroutines; the oldest entries fall out past the cap.
+    private val assetPaths = LinkedHashMap<String, String>()
+    private val refusedUrls = LinkedHashSet<String>()
 
     private data class Sent(val activity: PresenceActivity, val largeAsset: String?, val smallAsset: String?)
 
@@ -102,7 +94,7 @@ class DiscordPresence @Inject constructor(
         scope.launch { auth.forgetOldLogin() }
         scope.launch { follow() }
         scope.launch {
-            pendingSave.filterNotNull().collect { edited -> context.dataStore.edit { edited.writeTo(it) } }
+            pendingSave.filterNotNull().collect { edited -> preferences.edit { edited.writeTo(it) } }
         }
     }
 
@@ -129,7 +121,7 @@ class DiscordPresence @Inject constructor(
                     _connection.value = PresenceConnection.Off
                 }
                 // paused with "clear status when paused" on: down at once, and playing again brings it back
-                track == null || OfflineMode.isOn || (!track.isPlaying && settings.clearOnPause) -> {
+                track == null || isOffline() || (!track.isPlaying && settings.clearOnPause) -> {
                     hide()
                     _connection.value = PresenceConnection.Idle
                 }
@@ -145,7 +137,7 @@ class DiscordPresence @Inject constructor(
     private suspend fun show(track: NowPlaying, settings: PresenceSettings) {
         val pausedAt = if (track.isPlaying) null else track.readAtMs
         while (true) {
-            val now = System.currentTimeMillis()
+            val now = nowEpochMillis()
             if (pausedAt != null && now - pausedAt > KeepPausedMs) {
                 hide()
                 _connection.value = PresenceConnection.Idle
@@ -166,7 +158,7 @@ class DiscordPresence @Inject constructor(
         val payload = activity.toJson(auth.clientId, large, small)
         if (live.sendPresence(payload)) {
             lastSent = Sent(activity, large, small)
-            recentSends.addLast(System.currentTimeMillis())
+            recentSends.addLast(nowEpochMillis())
             _connection.value = PresenceConnection.Live
         }
     }
@@ -180,7 +172,7 @@ class DiscordPresence @Inject constructor(
         if (picturesChanged(activity, previous)) return true
         val missing = (activity.largeImage != null && previous.largeAsset == null) ||
             (activity.smallImage != null && previous.smallAsset == null)
-        val now = System.currentTimeMillis()
+        val now = nowEpochMillis()
         if (missing && now - lastPictureRetryAt > PictureRetryMs) {
             lastPictureRetryAt = now
             // a turn-down may have been a passing hiccup on Discord's side
@@ -196,7 +188,7 @@ class DiscordPresence @Inject constructor(
             if (picture !is PresencePicture.Spinning && picture !is PresencePicture.Local && picture !is PresencePicture.Canvas) return false
             // discord turned the better one down already: what it fell back to stays
             val best = candidatesFor(picture).firstOrNull { it !in refusedUrls } ?: return false
-            return synchronized(assetPaths) { assetPaths[best] } != sentAsset
+            return assetPaths[best] != sentAsset
         }
         return readyNow(activity.largeImage, previous.largeAsset) ||
             readyNow(activity.smallImage, previous.smallAsset)
@@ -207,7 +199,7 @@ class DiscordPresence @Inject constructor(
      * status updates (five in twenty seconds), which closes the connection when it's crossed.
      */
     private suspend fun waitForTurn(refreshSeconds: Int) {
-        val now = System.currentTimeMillis()
+        val now = nowEpochMillis()
         val sinceLast = recentSends.lastOrNull()?.let { now - it } ?: Long.MAX_VALUE
         val intervalWait = refreshSeconds * 1000L - sinceLast
         while (recentSends.isNotEmpty() && now - recentSends.first() > BurstWindowMs) recentSends.removeFirst()
@@ -219,7 +211,7 @@ class DiscordPresence @Inject constructor(
     /** A ready connection, making one if needed. Null while Discord can't be reached. */
     private suspend fun connect(): DiscordGateway? = gatewayLock.withLock {
         gateway?.takeIf { it.isReady }?.let { return@withLock it }
-        if (System.currentTimeMillis() < nextConnectAt) return@withLock null
+        if (nowEpochMillis() < nextConnectAt) return@withLock null
         val token = auth.accessToken() ?: return@withLock null
         _connection.value = if (connectFailures == 0) PresenceConnection.Connecting else PresenceConnection.Retrying
 
@@ -239,7 +231,7 @@ class DiscordPresence @Inject constructor(
             fresh
         } else {
             connectFailures++
-            nextConnectAt = System.currentTimeMillis() + backoffMs()
+            nextConnectAt = nowEpochMillis() + backoffMs()
             _connection.value = PresenceConnection.Retrying
             scope.launch {
                 delay(backoffMs())
@@ -258,10 +250,10 @@ class DiscordPresence @Inject constructor(
             // a connection we closed ourselves isn't news
             if (!wasCurrent) return@launch
             lastSent = null
-            Timber.tag(LogTag).d("gateway closed with $code, connecting again")
+            log("gateway closed with $code, connecting again")
             if (code == DiscordGateway.CloseAuthFailed) auth.renew(token)
             connectFailures++
-            nextConnectAt = System.currentTimeMillis() + backoffMs()
+            nextConnectAt = nowEpochMillis() + backoffMs()
             _connection.value = PresenceConnection.Retrying
             delay(backoffMs())
             nudge()
@@ -283,11 +275,9 @@ class DiscordPresence @Inject constructor(
         val large = candidatesFor(activity.largeImage)
         val small = candidatesFor(activity.smallImage)
         val missing = (large + small).distinct()
-            .filter { it !in refusedUrls && synchronized(assetPaths) { it !in assetPaths } }
+            .filter { it !in refusedUrls && it !in assetPaths }
         if (missing.isNotEmpty()) register(missing, token)
-        return synchronized(assetPaths) {
-            large.firstNotNullOfOrNull { assetPaths[it] } to small.firstNotNullOfOrNull { assetPaths[it] }
-        }
+        return large.firstNotNullOfOrNull { assetPaths[it] } to small.firstNotNullOfOrNull { assetPaths[it] }
     }
 
     /**
@@ -299,10 +289,10 @@ class DiscordPresence @Inject constructor(
         is PresencePicture.Web -> listOf(picture.url)
         is PresencePicture.Status -> listOf(PresenceImages.statusUrl(picture))
         PresencePicture.Logo -> listOf(PresenceImages.LogoUrl)
-        is PresencePicture.Spinning -> listOfNotNull(spinning.urlFor(picture.sourceUrl, picture.style), stillUrl(picture.sourceUrl))
-        is PresencePicture.Local -> listOfNotNull(uploads.urlFor(picture.sourceUrl))
+        is PresencePicture.Spinning -> listOfNotNull(pictures.spinningUrl(picture.sourceUrl, picture.style), stillUrl(picture.sourceUrl))
+        is PresencePicture.Local -> listOfNotNull(pictures.uploadedUrl(picture.sourceUrl))
         is PresencePicture.Canvas -> listOfNotNull(
-            canvasGif.urlFor(picture.title, picture.artist, picture.durationSec, picture.source, picture.fps, picture.size),
+            pictures.canvasUrl(picture.title, picture.artist, picture.durationSec, picture.source, picture.fps, picture.size),
             picture.fallback?.let(::stillUrl),
             PresenceImages.LogoUrl,
         )
@@ -310,7 +300,7 @@ class DiscordPresence @Inject constructor(
 
     // the still picture behind a spinning one: as it is from the web, uploaded first from the phone
     private fun stillUrl(source: String): String? =
-        if (PresenceImages.isWebImage(source)) source else uploads.urlFor(source)
+        if (PresenceImages.isWebImage(source)) source else pictures.uploadedUrl(source)
 
     private suspend fun register(urls: List<String>, token: String, renewed: Boolean = false) {
         val body = buildJsonObject { put("urls", buildJsonArray { urls.forEach { add(JsonPrimitive(it)) } }) }
@@ -319,7 +309,7 @@ class DiscordPresence @Inject constructor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Timber.tag(LogTag).d(e, "couldn't register pictures")
+            log("couldn't register pictures (${e.message})")
             return
         }
         if (reply.code == 401 && !renewed) {
@@ -327,28 +317,37 @@ class DiscordPresence @Inject constructor(
             return
         }
         if (!reply.ok) {
-            Timber.tag(LogTag).d("pictures turned down: HTTP ${reply.code} ${reply.body.take(200)}")
+            log("pictures turned down: HTTP ${reply.code} ${reply.body.take(200)}")
             return
         }
         val registered = runCatching { json.parseToJsonElement(reply.body).jsonArray }.getOrNull() ?: return
-        synchronized(assetPaths) {
-            urls.forEachIndexed { index, url ->
-                val path = registered.getOrNull(index)?.jsonObject?.get("external_asset_path")?.jsonPrimitive?.contentOrNull
-                if (path != null) assetPaths[url] = "mp:$path" else refusedUrls.add(url)
+        urls.forEachIndexed { index, url ->
+            val path = registered.getOrNull(index)?.jsonObject?.get("external_asset_path")?.jsonPrimitive?.contentOrNull
+            if (path != null) {
+                assetPaths[url] = "mp:$path"
+                // the same picture may have been refused on an earlier try
+                refusedUrls.remove(url)
+                while (assetPaths.size > AssetCacheSize) assetPaths.remove(assetPaths.keys.first())
+            } else {
+                refusedUrls.add(url)
             }
         }
     }
 
-    companion object {
-        private const val LogTag = "DiscordPresence"
+    private fun log(message: String) = println("DiscordPresence: $message")
 
+    private companion object {
         /** typing in a text box shouldn't send a status per letter */
-        private const val SettingsSettleMs = 600L
+        const val SettingsSettleMs = 600L
 
-        private const val KeepPausedMs = 10 * 60_000L
-        private const val PictureRetryMs = 60_000L
-        private const val BurstLimit = 5
-        private const val BurstWindowMs = 20_000L
-        private val Backoff = longArrayOf(2_000, 5_000, 15_000, 30_000, 60_000)
+        const val KeepPausedMs = 10 * 60_000L
+        const val PictureRetryMs = 60_000L
+        const val BurstLimit = 5
+        const val BurstWindowMs = 20_000L
+
+        /** how many picture addresses are remembered before the oldest is dropped */
+        const val AssetCacheSize = 256
+
+        val Backoff = longArrayOf(2_000, 5_000, 15_000, 30_000, 60_000)
     }
 }
