@@ -16,6 +16,7 @@ import androidx.room.migration.AutoMigrationSpec
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
+import com.mochyy.mochymusic.constants.ArtistSongSortType
 import com.mochyy.mochymusic.db.daos.SpeedDialDao
 import com.mochyy.mochymusic.db.entities.AlbumArtistMap
 import com.mochyy.mochymusic.db.entities.AlbumEntity
@@ -37,6 +38,7 @@ import com.mochyy.mochymusic.db.entities.RecognitionHistory
 import com.mochyy.mochymusic.db.entities.RelatedSongMap
 import com.mochyy.mochymusic.db.entities.SearchHistory
 import com.mochyy.mochymusic.db.entities.SetVideoIdEntity
+import com.mochyy.mochymusic.db.entities.Song
 import com.mochyy.mochymusic.db.entities.SongAlbumMap
 import com.mochyy.mochymusic.db.entities.SongArtistMap
 import com.mochyy.mochymusic.db.entities.SongEdit
@@ -50,6 +52,7 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.util.Date
+import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.toKotlinLocalDateTime
 
 class MusicDatabase(
@@ -72,6 +75,7 @@ class MusicDatabase(
     // suspend versions of the blocking queries, for callers already in a coroutine
     override val suspendingDao: SuspendingDao
         get() = delegate.suspendingDao
+
 
     /**
      * Pins [item], evicting the oldest pin first if that would push the count past
