@@ -36,4 +36,30 @@
     <string name="library_save">Save to library</string>
     <string name="library_remove">Remove from library</string>
     <string name="library_update_failed">Couldn’t update your library</string>
+
+    <!-- the desktop window: tray menu, window menu and its settings page -->
+    <string name="desktop_window_settings">Desktop window</string>
+    <string name="desktop_window_settings_desc">Tray, close button and where the window opens</string>
+    <string name="desktop_close_to_tray">Close to tray</string>
+    <string name="desktop_close_to_tray_desc">The close button hides Mochy to the tray instead of quitting; quit from the tray menu</string>
+    <string name="desktop_start_minimized">Start in the tray</string>
+    <string name="desktop_start_minimized_desc">Open without a window; the tray icon brings it back</string>
+    <string name="desktop_tray_icon">Tray icon</string>
+    <string name="desktop_tray_icon_desc">Show Mochy in the system tray while it runs</string>
+    <string name="desktop_remember_window">Remember the window</string>
+    <string name="desktop_remember_window_desc">Open at the last size and place, maximised the way it was left</string>
+    <string name="desktop_open_folder">Mochy’s folder</string>
+    <string name="desktop_open_folder_desc">Settings, databases and the caches this window keeps</string>
+    <string name="desktop_show_window">Show Mochy</string>
+    <string name="desktop_hide_window">Hide Mochy</string>
+    <string name="desktop_quit">Quit Mochy</string>
+    <string name="desktop_menu_playback">Playback</string>
+    <string name="desktop_menu_play_pause">Play / pause</string>
+    <string name="desktop_menu_view">View</string>
+    <string name="desktop_menu_window">Window</string>
+    <string name="desktop_menu_help">Help</string>
+    <string name="desktop_menu_about">About Mochy</string>
+    <string name="desktop_shortcuts">Keyboard shortcuts</string>
+    <string name="desktop_shortcuts_body">Ctrl/⌘ + P plays or pauses, Ctrl/⌘ + ← and → change song, Ctrl/⌘ + S opens settings. The media keys on the keyboard work too.</string>
+    <string name="desktop_tray_tooltip">Mochy</string>
 </resources>

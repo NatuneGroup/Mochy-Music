@@ -42,18 +42,7 @@ internal fun configureDesktopImageLoader() {
     }
 }
 
-// ~/.cache on Linux and the platform equivalents elsewhere; null when the folder can't be made,
-// so a read-only home falls back to the memory cache instead of crashing at start-up
-private fun desktopImageCacheDirectory(): File? {
-    val home = File(System.getProperty("user.home"))
-    val os = System.getProperty("os.name").lowercase()
-    val cache = when {
-        os.startsWith("mac") -> home.resolve("Library/Caches")
-        os.startsWith("windows") ->
-            System.getenv("LOCALAPPDATA")?.takeUnless(String::isBlank)?.let(::File) ?: home.resolve("AppData/Local")
-        else -> System.getenv("XDG_CACHE_HOME")?.takeUnless(String::isBlank)?.let(::File)?.takeIf(File::isAbsolute)
-            ?: home.resolve(".cache")
-    }
-    val directory = cache.resolve("Mochy/image_cache")
-    return directory.takeIf { it.isDirectory || it.mkdirs() }
-}
+// the one image cache folder DesktopPaths names, so the storage page measures what coil writes; null
+// when the folder can't be made, so a read-only home falls back to the memory cache instead of crashing
+private fun desktopImageCacheDirectory(): File? =
+    DesktopPaths.images.takeIf { it.isDirectory || it.mkdirs() }

@@ -6,6 +6,8 @@ package com.mochyy.mochymusic.shared.desktop
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -35,6 +37,7 @@ internal fun DesktopMusicApp(
     settings: PlaybackPreferences,
     library: LocalLibrary,
     queue: SharedQueue,
+    commands: DesktopShellCommands,
     modifier: Modifier = Modifier,
 ) {
     // the one seam shared screens use; runDesktopApp provides the desktop player above this
@@ -55,6 +58,21 @@ internal fun DesktopMusicApp(
             "SEARCH" -> DesktopRoutes.Search
             "LIBRARY" -> DesktopRoutes.Library
             else -> DesktopRoutes.Home
+        }
+    }
+    // the window shell (menu bar, tray, keyboard) asks the page graph to open things through here
+    LaunchedEffect(navController) {
+        commands.openSettings = {
+            navController.navigate(DesktopRoutes.Settings) { launchSingleTop = true }
+        }
+        commands.openNowPlaying = {
+            navController.navigate(DesktopRoutes.NowPlaying) { launchSingleTop = true }
+        }
+    }
+    DisposableEffect(navController) {
+        onDispose {
+            commands.openSettings = {}
+            commands.openNowPlaying = {}
         }
     }
 
