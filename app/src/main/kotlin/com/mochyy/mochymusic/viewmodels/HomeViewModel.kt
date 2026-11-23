@@ -14,7 +14,6 @@ import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
 import kotlinx.coroutines.flow.combine
 import com.music.innertube.models.WatchEndpoint
-import com.music.innertube.models.BrowseEndpoint
 import com.music.innertube.models.YTItem
 import com.music.innertube.models.filterExplicit
 import com.music.innertube.models.filterVideoSongs
@@ -85,17 +84,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class DailyDiscoverItem(
-    val seed: Song,
-    val recommendation: YTItem,
-    val relatedEndpoint: BrowseEndpoint?
-)
-
-@kotlinx.serialization.Serializable
-data class CommunityPlaylistItem(
-    val playlist: PlaylistItem,
-    val songs: List<SongItem>
-)
+// DailyDiscoverItem, CommunityPlaylistItem and StarterSong live in shared's HomeFeedLogic.kt,
+// in this same package, so every caller (Home's cards, the feed cache) reads one definition.
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -158,43 +148,25 @@ class HomeViewModel @Inject constructor(
 
     /** YouTube's own all-video shelves in the feed, by section index */
     val feedVideoKinds: StateFlow<Map<Int, FeedVideoKind>> = homePage
-        .map { page ->
-            page?.sections.orEmpty()
-                .mapIndexedNotNull { index, section ->
-                    ArtistVideos.feedShelfKind(section.title, section.items)?.let { index to it }
-                }
-                .toMap()
-        }
+        .map { HomeFeedLogic.feedVideoKinds(it) }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     // the feed's other all-video shelves, already turned into banners: cleaning each title builds a regex, which hitched the frame the row scrolled in
     val feedVideoRows: StateFlow<Map<Int, List<HomeVideo>>> = homePage
-        .map { page ->
-            page?.sections.orEmpty()
-                .mapIndexedNotNull { index, section ->
-                    if (ArtistVideos.feedShelfKind(section.title, section.items) != FeedVideoKind.Other) return@mapIndexedNotNull null
-                    index to section.items.filterIsInstance<SongItem>().map(ArtistVideos::feedVideo)
-                }
-                .toMap()
-        }
+        .map { HomeFeedLogic.feedVideoRows(it) }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     // YouTube's "Live performances" and "Music videos for you" fold into Home's rows of the same
     // name, so each shows once
     val liveRow: StateFlow<List<HomeVideo>?> = combine(liveShows, homePage, feedVideoKinds) { own, page, kinds ->
-        ArtistVideos.merge(own, feedVideos(page, kinds, FeedVideoKind.Live))
+        HomeFeedLogic.mergeVideoRow(own, page, kinds, FeedVideoKind.Live)
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val musicVideoRow: StateFlow<List<HomeVideo>?> = combine(musicVideos, homePage, feedVideoKinds) { own, page, kinds ->
-        ArtistVideos.merge(own, feedVideos(page, kinds, FeedVideoKind.MusicVideos))
+        HomeFeedLogic.mergeVideoRow(own, page, kinds, FeedVideoKind.MusicVideos)
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, null)
-
-    private fun feedVideos(page: HomePage?, kinds: Map<Int, FeedVideoKind>, kind: FeedVideoKind): List<HomeVideo> =
-        page?.sections.orEmpty().flatMapIndexed { index, section ->
-            if (kinds[index] == kind) section.items.filterIsInstance<SongItem>().map(ArtistVideos::feedVideo) else emptyList()
-        }
 
     // one fetch per artist page per load, shared by every row that reads one
     private val artistPages = ConcurrentHashMap<String, Deferred<ArtistPage?>>()
@@ -238,82 +210,7 @@ class HomeViewModel @Inject constructor(
             keepListening,
             quickPicks
         ) { pinned, fromYouTube, keepListening, quick ->
-            val filled = (pinned + fromYouTube).distinctBy { it.id }.toMutableList()
-            val targetSize = 27
-
-            if (filled.size < targetSize) {
-
-                keepListening?.let { k ->
-                    val needed = targetSize - filled.size
-                    val available = k.filter { item ->
-                        filled.none { p -> p.id == item.id }
-                    }.mapNotNull { item ->
-                        when (item) {
-                            is Song -> SongItem(
-                                id = item.id,
-                                title = item.title,
-                                artists = item.artists.map { Artist(name = it.name, id = it.id) },
-                                thumbnail = item.thumbnailUrl ?: "",
-                                explicit = false
-                            )
-                            is Album -> AlbumItem(
-                                browseId = item.id,
-                                playlistId = item.album.playlistId ?: "",
-                                title = item.title,
-                                artists = item.artists.map { Artist(name = it.name, id = it.id) },
-                                year = item.album.year,
-                                thumbnail = item.thumbnailUrl ?: ""
-                            )
-                            is com.mochyy.mochymusic.db.entities.Playlist -> com.music.innertube.models.PlaylistItem(
-                                id = item.id,
-                                title = item.title,
-                                author = Artist(name = "Local Playlist", id = null),
-                                songCountText = item.songCount.toString() + " songs",
-                                thumbnail = item.thumbnails.firstOrNull() ?: "",
-                                playEndpoint = null,
-                                shuffleEndpoint = null,
-                                radioEndpoint = null
-                            )
-                            else -> null
-                        }
-                    }
-                    filled.addAll(available.take(needed))
-                }
-            }
-
-            if (filled.size < targetSize) {
-
-                quick?.let { q ->
-                    val needed = targetSize - filled.size
-                    val available = q.filter { item ->
-                        filled.none { p -> p.id == item.id }
-                    }.mapNotNull { item ->
-                        when (item) {
-                            is Song -> SongItem(
-                                id = item.id,
-                                title = item.title,
-                                artists = item.artists.map { Artist(name = it.name, id = it.id) },
-                                thumbnail = item.thumbnailUrl ?: "",
-                                explicit = false
-                            )
-                            is com.mochyy.mochymusic.db.entities.Playlist -> com.music.innertube.models.PlaylistItem(
-                                id = item.id,
-                                title = item.title,
-                                author = Artist(name = "Local Playlist", id = null),
-                                songCountText = item.songCount.toString() + " songs",
-                                thumbnail = item.thumbnails.firstOrNull() ?: "",
-                                playEndpoint = null,
-                                shuffleEndpoint = null,
-                                radioEndpoint = null
-                            )
-                            else -> null
-                        }
-                    }
-                    filled.addAll(available.take(needed))
-                }
-            }
-
-            filled
+            HomeFeedLogic.speedDial(pinned, fromYouTube, keepListening, quick)
         }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), emptyList())
 
     val accountName = MutableStateFlow("Guest")
@@ -1298,10 +1195,3 @@ class HomeViewModel @Inject constructor(
         null
     }
 }
-
-/** a song by one of the artists picked in onboarding, put forward on a new install's hero */
-data class StarterSong(
-    val song: SongItem,
-    val artistName: String,
-    val artistThumbnail: String?,
-)
