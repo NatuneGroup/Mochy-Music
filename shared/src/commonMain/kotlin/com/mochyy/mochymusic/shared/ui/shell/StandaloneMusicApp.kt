@@ -105,6 +105,9 @@ internal fun StandaloneMusicApp(
     library: LocalLibrary,
     modifier: Modifier = Modifier,
     queue: SharedQueue,
+    // the Settings tab. Desktop hands in its own pages and navigation; iOS keeps the single shared list
+    settingsContent: @Composable (PlaybackPreferences, CodecBadgeWriter) -> Unit =
+        { preferences, badgeWriter -> SharedSettingsScreen(preferences, badgeWriter) },
 ) {
     val playback by player.state.collectAsState()
     // Up next lives in the app's SharedQueue, not here, so CarPlay and the media controls share it
@@ -166,7 +169,7 @@ internal fun StandaloneMusicApp(
                 onRemove = { setSaved(it, false) },
                 updateFailed = libraryUpdateFailed,
             )
-            ShellTab.Settings -> SharedSettingsScreen(settings, codecBadge)
+            ShellTab.Settings -> settingsContent(settings, codecBadge)
         }
         true
     }

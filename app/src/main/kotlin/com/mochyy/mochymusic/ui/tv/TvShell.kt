@@ -154,6 +154,8 @@ internal fun TvShell(
             LocalGlassState provides glassState,
             LocalPlayerAwareWindowInsets provides WindowInsets(0, 0, 0, 0),
             com.mochyy.mochymusic.ui.component.LocalSubSettingsChrome provides com.mochyy.mochymusic.ui.component.AppSubSettingsChrome,
+            // the dev spaces people's photos are app drawables, so Android loads them (Coil) and hands them over
+            com.mochyy.mochymusic.ui.screens.settings.devspace.LocalDevPictures provides com.mochyy.mochymusic.ui.screens.settings.devspace.AppDevPictures,
             LocalDownloadUtil provides downloadUtil,
             LocalSyncUtils provides syncUtils,
             LocalShimmerTheme provides ShimmerTheme,

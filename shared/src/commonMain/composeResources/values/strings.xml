@@ -6,6 +6,8 @@
     <string name="settings_default_accent">Default gray</string>
     <string name="settings_pure_black">Pure black</string>
     <string name="settings_player_display">Player display</string>
+    <string name="settings_page_playback_desc">Queue, skips and background playback</string>
+    <string name="settings_page_ai_translator_desc">The service that translates your lyrics</string>
     <string name="search_hint">Search songs</string>
     <string name="search_failed">Couldn’t search. Check your connection and try again.</string>
     <string name="playback_failed">Couldn’t play this song</string>

@@ -343,11 +343,13 @@ fun AccountImportScreen(
                     }
 
                     is AccountImportState.Choosing -> {
-                        if (current.pickingFor != null) {
+                        // read once: Choosing now comes from shared, where a property can't be smart cast
+                        val pickingFor = current.pickingFor
+                        if (pickingFor != null) {
                             PickForResyncContent(
                                 service = service,
                                 state = current,
-                                name = current.pickingFor,
+                                name = pickingFor,
                                 onPick = viewModel::pickForResync,
                                 onPasteLink = { askingForLink = true },
                             )

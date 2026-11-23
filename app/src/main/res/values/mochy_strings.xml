@@ -754,9 +754,12 @@
     <string name="crash_share_logs">Share Logs</string>
     <string name="copy_logs">Copy Logs</string>
     <string name="crash_share_title">Share crash report</string>
+    <string name="crash_share_row_desc">Attach the newest saved crash report to a message. Nothing leaves your phone until you choose where to send it.</string>
     <string name="crash_report_subject">mochy Crash Report</string>
     <string name="crash_close">Close</string>
     <string name="crash_no_log">No crash log available</string>
+    <string name="crash_preview_title">Check before sharing</string>
+    <string name="crash_preview_desc">Account names, tokens, keys, links and file locations are replaced with [redacted]. This is exactly what will be shared.</string>
 
     <!-- Theme Palette Names -->
     <string name="palette_dynamic">Dynamic</string>

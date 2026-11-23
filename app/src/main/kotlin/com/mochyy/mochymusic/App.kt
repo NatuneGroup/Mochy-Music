@@ -32,6 +32,7 @@ import com.mochyy.mochymusic.i18n.AppLanguage
 import com.mochyy.mochymusic.lyrics.JapaneseLanguagePackManager
 import com.mochyy.mochymusic.extensions.toEnum
 import com.mochyy.mochymusic.utils.CrashHandler
+import com.mochyy.mochymusic.utils.CrashLogTree
 import com.mochyy.mochymusic.utils.PreferencesCache
 import com.mochyy.mochymusic.utils.cipher.CipherDeobfuscator
 import com.mochyy.mochymusic.utils.dataStore
@@ -74,6 +75,8 @@ class App : Application(), SingletonImageLoader.Factory {
     lateinit var phoneLink: dagger.Lazy<com.mochyy.mochymusic.link.phone.PhoneLinkHost>
 
     override fun onCreate() {
+        // first, so a crash in the restore below or in hilt's own onCreate still leaves a report
+        CrashHandler.install(this)
         // before super, because that's where hilt builds the database and the player caches
         com.mochyy.mochymusic.importer.transfer.TransferRestore.applyPending(this)
         // the folders a move to another drive left behind, cleared once nothing has them open
@@ -83,7 +86,6 @@ class App : Application(), SingletonImageLoader.Factory {
         AppLanguage.initialize(this)
         // the shared font state starts on the system font until it has the app's own inter
         com.mochyy.mochymusic.ui.theme.AppFont.inter = com.mochyy.mochymusic.ui.theme.AndroidInter
-        CrashHandler.install(this)
 
         // share one okhttp connection pool and dispatcher between innertube, coil, and the rest of the app
         YouTube.configureSharedPool(AppProxy.connectionPool, AppProxy.dispatcher)
@@ -92,10 +94,14 @@ class App : Application(), SingletonImageLoader.Factory {
         if (BuildConfig.DEBUG || BuildConfig.BUILD_TYPE == "fast") {
             Timber.plant(Timber.DebugTree())
         }
+        // every build keeps the last 4000 log lines for the crash report; release has no other tree
+        Timber.plant(CrashLogTree())
 
         PreferencesCache.start(dataStore, applicationScope)
         // shared ViewModels: Hilt's database and the sealed store, never a second of either
         com.mochyy.mochymusic.di.startMochyKoin(database = { internalDatabase }, preferences = { dataStore })
+        // and the artist pages, which only Android can read through innertube's YouTube facade
+        com.mochyy.mochymusic.di.loadAndroidKoin()
         if (BuildConfig.COMPACT_APK) {
             JapaneseLanguagePackManager.initialize(this)
             ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {

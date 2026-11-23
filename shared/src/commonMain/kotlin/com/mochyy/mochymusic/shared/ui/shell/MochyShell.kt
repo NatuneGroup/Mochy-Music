@@ -4,6 +4,8 @@
 
 package com.mochyy.mochymusic.shared.ui.shell
 
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -88,11 +90,17 @@ fun MochyShell(
     content: @Composable (ShellTab) -> Boolean = { false },
 ) {
     var selected by rememberSaveable { mutableStateOf(initialTab) }
+    val currentContent by rememberUpdatedState(content)
+    // the rail and the bar layouts each place the screen somewhere else; movable content carries the
+    // screen, with its own state and back stack (Settings' NavHost), from one to the other when the
+    // window crosses RailBreakpoint, instead of dropping it and starting the tab over
+    val screen = remember {
+        movableContentOf { m: Modifier ->
+            Box(m) { if (!currentContent(selected)) ComingSoon(selected) }
+        }
+    }
     BoxWithConstraints(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         val wide = maxWidth >= RailBreakpoint
-        val screen: @Composable (Modifier) -> Unit = { m ->
-            Box(m) { if (!content(selected)) ComingSoon(selected) }
-        }
         if (wide) {
             Column(Modifier.fillMaxSize()) {
                 Row(Modifier.fillMaxWidth().weight(1f)) {

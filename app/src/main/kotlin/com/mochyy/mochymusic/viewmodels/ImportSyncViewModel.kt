@@ -31,13 +31,6 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
-sealed interface PendingImport {
-    data object Idle : PendingImport
-    data class Loading(val label: String) : PendingImport
-    data class Ready(val parsed: ParsedImport, val sourceLabel: String) : PendingImport
-    data class Failed(val message: String) : PendingImport
-}
-
 @HiltViewModel
 class ImportSyncViewModel @Inject constructor(
     @ApplicationContext private val context: Context,

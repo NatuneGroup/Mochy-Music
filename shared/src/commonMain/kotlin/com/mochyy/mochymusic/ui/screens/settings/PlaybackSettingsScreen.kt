@@ -109,6 +109,7 @@ import com.mochyy.mochymusic.shared.resources.cached
 import com.mochyy.mochymusic.shared.resources.clear_all
 import com.mochyy.mochymusic.shared.resources.download
 import com.mochyy.mochymusic.shared.resources.graphic_eq
+import com.mochyy.mochymusic.shared.resources.material_rounded_graphic_eq
 import com.mochyy.mochymusic.shared.resources.linear_scale
 import com.mochyy.mochymusic.shared.resources.lock
 import com.mochyy.mochymusic.shared.resources.lyrics
@@ -448,7 +449,7 @@ private fun relatedItems(navController: NavController): List<SettingsItem> = lis
         key = "Audio Pass output usb dac",
         title = stringResource(Res.string.audiopass_hub_title),
         description = stringResource(Res.string.settings_audio_pass_desc),
-        icon = painterResource(Res.drawable.graphic_eq),
+        icon = painterResource(Res.drawable.material_rounded_graphic_eq),
         onClick = { navController.navigate("audio_pass") },
     ),
 )
