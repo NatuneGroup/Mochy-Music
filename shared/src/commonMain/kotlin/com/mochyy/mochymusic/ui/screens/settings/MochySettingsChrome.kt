@@ -110,7 +110,7 @@ private object PlainSettingsListGlass : SettingsListGlass
 
 /** Rows that only Android can open. Desktop and iOS pass their own (all off) so nothing points nowhere. */
 @Immutable
-class SettingsListPlatform(
+data class SettingsListPlatform(
     val audioLab: Boolean = false,
     val customisation: Boolean = false,
     val modules: Boolean = false,

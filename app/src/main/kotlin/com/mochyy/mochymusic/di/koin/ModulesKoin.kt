@@ -20,7 +20,8 @@ import org.koin.dsl.module
  */
 fun modulesKoinModule(context: Context): Module {
     val application = context.applicationContext
-    val graph = EntryPointAccessors.fromApplication(application, ModulesGraphEntryPoint::class.java)
+    // looked up on first use, when a screen asks for the view model, not while the app is starting
+    val graph by lazy { EntryPointAccessors.fromApplication(application, ModulesGraphEntryPoint::class.java) }
     return module {
         single { graph.sourceModules() }
         single { graph.moduleRegistry() }
