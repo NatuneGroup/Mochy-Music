@@ -7,6 +7,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.PlayerMessage
 import com.mochyy.mochymusic.constants.SponsorBlockCategoriesKey
+import com.mochyy.mochymusic.constants.SponsorBlockDefaultCategories
 import com.mochyy.mochymusic.constants.SponsorBlockEnabledKey
 import com.mochyy.mochymusic.utils.get
 import com.mochyy.mochymusic.utils.dataStore
@@ -25,9 +26,6 @@ import java.util.concurrent.TimeUnit
 
 /** The SponsorBlock categories Mochy knows, by their API names. All are looked up; the user picks which to skip. */
 val SponsorBlockCategoryNames = listOf("music_offtopic", "sponsor", "selfpromo", "intro", "outro")
-
-/** Off-topic music is the one that matters for music; the rest are opt-in. */
-val SponsorBlockDefaultCategories = setOf("music_offtopic")
 
 private data class SponsorSegment(val category: String, val startMs: Long, val endMs: Long)
 
