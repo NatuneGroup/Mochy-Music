@@ -40,7 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import com.mochyy.mochymusic.LocalDatabase
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.db.entities.Playlist
@@ -197,7 +197,7 @@ fun AddToPlaylistDialog(
     initialTextFieldValue: String? = null,
     onGetSong: suspend (Playlist) -> List<String>,
     onDismiss: () -> Unit,
-    viewModel: PlaylistsViewModel = hiltViewModel(),
+    viewModel: PlaylistsViewModel = koinViewModel(),
     topSongId: String? = null,
     topSongArtworkUrl: String? = null,
 ) {

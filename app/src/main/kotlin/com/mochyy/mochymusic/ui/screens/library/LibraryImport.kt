@@ -209,6 +209,8 @@ private fun ProviderMarquee(modifier: Modifier = Modifier) {
 private fun ImportProgressBanner(progress: ImportProgress, onClick: () -> Unit) {
     val total = progress.totalTracks
     val done = minOf(progress.processedTracks, total)
+    val resync = progress.resync
+    val source = progress.source
     val fraction = animateFloatAsState(
         targetValue = if (total > 0) (done.toFloat() / total).coerceIn(0f, 1f) else 0f,
         animationSpec = tween(350),
@@ -241,13 +243,13 @@ private fun ImportProgressBanner(progress: ImportProgress, onClick: () -> Unit) 
         Spacer(Modifier.height(24.dp))
         Text(
             text = when {
-                progress.resync != null && total <= 0 ->
-                    stringResource(R.string.lib_import_checking_resync, progress.resync.playlistName)
-                progress.resync != null ->
-                    stringResource(R.string.lib_import_adding_resync, done, total, progress.resync.playlistName)
+                resync != null && total <= 0 ->
+                    stringResource(R.string.lib_import_checking_resync, resync.playlistName)
+                resync != null ->
+                    stringResource(R.string.lib_import_adding_resync, done, total, resync.playlistName)
                 total <= 0 -> stringResource(R.string.lib_import_getting_ready)
-                progress.source != null ->
-                    stringResource(R.string.lib_import_adding_from, done, total, progress.source.label)
+                source != null ->
+                    stringResource(R.string.lib_import_adding_from, done, total, source.label)
                 else -> stringResource(R.string.lib_import_adding, done, total)
             },
             color = SearchColors.Primary,

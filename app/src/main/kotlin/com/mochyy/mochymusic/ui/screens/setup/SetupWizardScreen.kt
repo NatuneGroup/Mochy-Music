@@ -39,6 +39,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.CrossmixMode
 import com.mochyy.mochymusic.constants.CrossmixModeKey
@@ -104,7 +105,8 @@ fun SetupWizardScreen(
     onDrag: (Float) -> Unit,
     onDragRelease: () -> Unit,
 ) {
-    val vm: OnboardingViewModel = hiltViewModel()
+    // Koin now (di/koin/OnboardingKoin.kt); TransferViewModel below is still Hilt until its owner moves it
+    val vm: OnboardingViewModel = koinViewModel()
     val scope = rememberCoroutineScope()
 
     val history = remember { mutableStateListOf(Step.Welcome) }
@@ -150,12 +152,12 @@ fun SetupWizardScreen(
     }
 
     // ---- previous data: a whole export from the old app or another phone ----
-    val transfer: TransferViewModel = hiltViewModel()
+    val transfer: TransferViewModel = org.koin.compose.viewmodel.koinViewModel()
     val importStep by transfer.import.collectAsState()
     val transferManifest by transfer.manifest.collectAsState()
     var waitingForPermission by remember { mutableStateOf<Uri?>(null) }
     fun startRestoring(uri: Uri) {
-        transfer.importFrom(uri)
+        transfer.importFrom(uri.toString())
         go(Step.Restoring)
     }
     // local songs come back through the phone's music library, so ask first; a no still imports everything else
@@ -168,11 +170,11 @@ fun SetupWizardScreen(
     val transferPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             scope.launch {
-                transfer.check(uri)
+                transfer.check(uri.toString())
                     .onSuccess { manifest ->
                         if (transfer.wantsAudioPermission(manifest)) {
                             waitingForPermission = uri
-                            audioPermission.launch(TransferViewModel.AudioPermission)
+                            audioPermission.launch(transfer.audioPermission)
                         } else {
                             startRestoring(uri)
                         }

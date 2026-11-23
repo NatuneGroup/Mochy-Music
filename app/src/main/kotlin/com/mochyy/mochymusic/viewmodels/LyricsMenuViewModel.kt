@@ -15,7 +15,6 @@ import com.mochyy.mochymusic.lyrics.LyricsResult
 import com.mochyy.mochymusic.lyrics.LyricsWithProvider
 import com.mochyy.mochymusic.models.MediaMetadata
 import com.mochyy.mochymusic.utils.NetworkConnectivityObserver
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,12 +23,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import javax.inject.Inject
 
-@HiltViewModel
-class LyricsMenuViewModel
-@Inject
-constructor(
+// Koin builds it (di/koin/PlayerTvKoin.kt): the player side still lives in :app
+class LyricsMenuViewModel(
     private val lyricsHelper: LyricsHelper,
     val database: MusicDatabase,
     private val networkConnectivity: NetworkConnectivityObserver,

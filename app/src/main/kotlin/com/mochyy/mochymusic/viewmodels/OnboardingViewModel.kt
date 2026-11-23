@@ -26,8 +26,6 @@ import com.mochyy.mochymusic.importer.account.AccountService
 import com.mochyy.mochymusic.importer.parseImportCsv
 import com.mochyy.mochymusic.ui.screens.setup.onboarding.BlurCapability
 import com.mochyy.mochymusic.utils.dataStore
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -39,12 +37,11 @@ import java.net.URL
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
-import javax.inject.Inject
 import kotlin.random.Random
 
-@HiltViewModel
-class OnboardingViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
+// Built by Koin (di/koin/OnboardingKoin.kt), not Hilt: the Context is the application's, the two importers come from Hilt
+class OnboardingViewModel(
+    private val context: Context,
     private val importService: MusicImportService,
     private val youTubeSync: YouTubeSyncManager,
 ) : ViewModel() {

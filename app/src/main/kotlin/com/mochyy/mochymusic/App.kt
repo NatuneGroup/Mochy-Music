@@ -101,7 +101,13 @@ class App : Application(), SingletonImageLoader.Factory {
         // shared ViewModels: Hilt's database and the sealed store, never a second of either
         com.mochyy.mochymusic.di.startMochyKoin(database = { internalDatabase }, preferences = { dataStore })
         // and the artist pages, which only Android can read through innertube's YouTube facade
-        com.mochyy.mochymusic.di.loadAndroidKoin()
+        com.mochyy.mochymusic.di.loadAndroidKoin(this)
+        // the modules view model, over Hilt's one module registry and catalog
+        com.mochyy.mochymusic.di.koin.loadModulesKoin(this)
+        // the Android side of the shared storage, backup and scrobbling pages
+        com.mochyy.mochymusic.di.koin.loadStorageKoin(this)
+        // the import and sync settings' platform half, over Hilt's own services
+        com.mochyy.mochymusic.di.koin.startImportSyncKoin(this)
         if (BuildConfig.COMPACT_APK) {
             JapaneseLanguagePackManager.initialize(this)
             ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {

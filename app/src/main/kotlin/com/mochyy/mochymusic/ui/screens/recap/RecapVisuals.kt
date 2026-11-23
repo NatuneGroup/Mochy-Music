@@ -131,42 +131,6 @@ internal fun rememberRecapTime(running: Boolean = true, held: () -> Boolean = { 
 }
 
 // ---------------------------------------------------------------------------------------------
-// Dot grid
-
-/** The square dot pattern behind the page header and the story: one tiled shader, one draw. */
-internal fun Modifier.recapDots(
-    color: () -> Color,
-    alpha: () -> Float = { 1f },
-    spacing: Dp = 17.dp,
-    radius: Dp = 1.3.dp,
-): Modifier = drawWithCache {
-    val step = spacing.toPx().roundToInt().coerceAtLeast(4)
-    val tile = ImageBitmap(step, step)
-    androidx.compose.ui.graphics.Canvas(tile).drawCircle(
-        Offset(step / 2f, step / 2f),
-        radius.toPx(),
-        Paint().apply {
-            this.color = Color.White
-            isAntiAlias = true
-        },
-    )
-    val brush = ShaderBrush(ImageShader(tile, TileMode.Repeated, TileMode.Repeated))
-    var lastColor = Color.Unspecified
-    var filter: ColorFilter? = null
-    // behind the content: over the giant words (drawn before this), under any children
-    onDrawBehind {
-        val a = alpha()
-        if (a <= 0.004f) return@onDrawBehind
-        val c = color()
-        if (c != lastColor) {
-            lastColor = c
-            filter = ColorFilter.tint(c, BlendMode.SrcIn)
-        }
-        drawRect(brush, alpha = a, colorFilter = filter)
-    }
-}
-
-// ---------------------------------------------------------------------------------------------
 // Giant words
 
 /** The text-plane font size: one size everywhere, so a column handed between screens matches. */

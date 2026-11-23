@@ -393,7 +393,7 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable("stats") {
-        com.mochyy.mochymusic.ui.screens.recap.StatsScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.recap.AndroidStatsScreen(navController = navController)
     }
 
     composable("cipher_settings") {
@@ -409,7 +409,7 @@ fun NavGraphBuilder.navigationBuilder(
         if (com.mochyy.mochymusic.ui.utils.isWideLayout()) {
             com.mochyy.mochymusic.ui.screens.settings.SettingsPanePlaceholder()
         } else {
-            com.mochyy.mochymusic.ui.screens.settings.MochySettingsScreen(navController = navController)
+            com.mochyy.mochymusic.ui.screens.settings.AndroidMochySettingsScreen(navController = navController)
         }
     }
 
@@ -455,7 +455,7 @@ fun NavGraphBuilder.navigationBuilder(
                         com.mochyy.mochymusic.scrobble.ScrobbleSite.LIBREFM -> com.mochyy.mochymusic.ui.screens.settings.integrations.ScrobbleBrand.LIBRE_FM
                     },
                     label = site.label,
-                    route = com.mochyy.mochymusic.ui.screens.settings.integrations.scrobbleServiceRoute(site),
+                    route = com.mochyy.mochymusic.ui.screens.settings.integrations.scrobbleServiceRoute(site.name),
                 )
             },
             routes = com.mochyy.mochymusic.ui.screens.settings.integrations.IntegrationRoutes(
@@ -483,7 +483,7 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.integrations.backup.BackupRoute) {
-        com.mochyy.mochymusic.ui.screens.settings.integrations.backup.BackupScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.integrations.backup.AndroidBackupScreen(navController = navController)
     }
 
     composable(
@@ -493,7 +493,7 @@ fun NavGraphBuilder.navigationBuilder(
         val site = com.mochyy.mochymusic.scrobble.ScrobbleSite.entries
             .find { it.name == entry.arguments?.getString("site") }
             ?: com.mochyy.mochymusic.scrobble.ScrobbleSite.LASTFM
-        com.mochyy.mochymusic.ui.screens.settings.integrations.ScrobbleServiceScreen(navController = navController, site = site)
+        com.mochyy.mochymusic.ui.screens.settings.integrations.AndroidScrobbleServiceScreen(navController = navController, site = site)
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.InternetSettingsRoute) {
@@ -545,7 +545,7 @@ fun NavGraphBuilder.navigationBuilder(
             experimentalSettingsEntry = {
                 com.mochyy.mochymusic.ui.screens.settings.CategoryBubble(
                     title = stringResource(R.string.dev_experimental_settings_bubble),
-                    iconRes = R.drawable.biotech,
+                    icon = painterResource(R.drawable.biotech),
                     onClick = { navController.navigate("experimental_settings") },
                 )
             },
@@ -553,7 +553,7 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.storage.StorageRoute) {
-        com.mochyy.mochymusic.ui.screens.settings.storage.StorageScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.storage.AndroidStorageScreen(navController = navController)
     }
 
     composable("experimental_settings") {
@@ -561,19 +561,19 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.importsync.ImportSyncRoute) {
-        com.mochyy.mochymusic.ui.screens.settings.importsync.ImportSyncScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.importsync.AndroidImportSyncScreen(navController = navController)
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.importsync.ImportProvidersRoute) {
-        com.mochyy.mochymusic.ui.screens.settings.importsync.ImportProvidersScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.importsync.AndroidImportProvidersScreen(navController = navController)
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.importsync.ImportTuneMyMusicRoute) {
-        com.mochyy.mochymusic.ui.screens.settings.importsync.TuneMyMusicImportScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.importsync.AndroidTuneMyMusicImportScreen(navController = navController)
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.importsync.ImportProgressRoute) {
-        com.mochyy.mochymusic.ui.screens.settings.importsync.ImportProgressScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.importsync.AndroidImportProgressScreen(navController = navController)
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.importsync.YouTubeSyncRoute) {
@@ -597,7 +597,7 @@ fun NavGraphBuilder.navigationBuilder(
             },
         ),
     ) {
-        com.mochyy.mochymusic.ui.screens.settings.importsync.AccountImportScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.importsync.AndroidAccountImportScreen(navController = navController)
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.importsync.YouTubeLoginRoute) {

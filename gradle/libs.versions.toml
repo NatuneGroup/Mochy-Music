@@ -58,6 +58,8 @@ ffmpegDesktop = "8.1.2-1.5.14"
 dbusJava = "5.1.1"
 tinypinyin = "2.0.3"
 protobuf = "4.33.5"
+# JmDNS: the desktop side of device discovery, the same library Metrolist uses
+jmdns = "3.6.5"
 protobufPlugin = "0.9.6"
 smoothCorner = "v1.0.0"
 lottie = "6.6.2"
@@ -140,6 +142,7 @@ mediarouter = { module = "androidx.mediarouter:mediarouter", version.ref = "medi
 cast-framework = { module = "com.google.android.gms:play-services-cast-framework", version.ref = "castFramework" }
 
 sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
+jmdns = { module = "org.jmdns:jmdns", version.ref = "jmdns" }
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }

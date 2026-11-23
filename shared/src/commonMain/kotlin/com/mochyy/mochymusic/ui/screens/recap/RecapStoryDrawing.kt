@@ -17,7 +17,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.ImageShader
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
@@ -26,7 +31,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import kotlin.math.floor
+import kotlin.math.roundToInt
 
 // The drawing pieces the story pages (and the page that hosts them) share: eases, the giant words'
 // state, the cover palette, odometer numbers and gradient text. The Android-only parts of the same
@@ -206,3 +214,36 @@ internal fun Modifier.gradientToWhite(colors: () -> List<Color>, whiteness: () -
             )
         },
     )
+
+/** The square dot pattern behind the page header and the story: one tiled shader, one draw. */
+fun Modifier.recapDots(
+    color: () -> Color,
+    alpha: () -> Float = { 1f },
+    spacing: Dp = 17.dp,
+    radius: Dp = 1.3.dp,
+): Modifier = drawWithCache {
+    val step = spacing.toPx().roundToInt().coerceAtLeast(4)
+    val tile = ImageBitmap(step, step)
+    androidx.compose.ui.graphics.Canvas(tile).drawCircle(
+        Offset(step / 2f, step / 2f),
+        radius.toPx(),
+        Paint().apply {
+            this.color = Color.White
+            isAntiAlias = true
+        },
+    )
+    val brush = ShaderBrush(ImageShader(tile, TileMode.Repeated, TileMode.Repeated))
+    var lastColor = Color.Unspecified
+    var filter: ColorFilter? = null
+    // behind the content: over the giant words (drawn before this), under any children
+    onDrawBehind {
+        val a = alpha()
+        if (a <= 0.004f) return@onDrawBehind
+        val c = color()
+        if (c != lastColor) {
+            lastColor = c
+            filter = ColorFilter.tint(c, BlendMode.SrcIn)
+        }
+        drawRect(brush, alpha = a, colorFilter = filter)
+    }
+}

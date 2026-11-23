@@ -52,7 +52,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEachReversed
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.navigation.NavController
 import com.mochyy.mochymusic.LocalDatabase
 import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
@@ -104,7 +104,7 @@ import com.music.innertube.models.AlbumItem
 fun AlbumScreen(
     navController: NavController,
     @Suppress("UNUSED_PARAMETER") scrollBehavior: TopAppBarScrollBehavior,
-    viewModel: AlbumViewModel = hiltViewModel(),
+    viewModel: AlbumViewModel = koinViewModel(),
 ) {
     val menuState = LocalMenuState.current
     val database = LocalDatabase.current

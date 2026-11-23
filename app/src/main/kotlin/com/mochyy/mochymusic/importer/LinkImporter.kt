@@ -19,8 +19,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
-class LinkImportException(message: String) : Exception(message)
-
 /** reads a public playlist or album from a share link without logging in, private playlists aren't reachable so those go through tunemymusic */
 object LinkImporter {
 

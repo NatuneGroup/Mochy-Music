@@ -19,7 +19,9 @@ import com.mochyy.mochymusic.shared.desktop.media.createSystemMediaSession
 import com.mochyy.mochymusic.shared.desktop.playback.DesktopPlayerController
 import com.mochyy.mochymusic.shared.lyrics.playerLyricsProviders
 import com.mochyy.mochymusic.shared.playback.QueueTransport
+import com.mochyy.mochymusic.shared.playback.QueuePlayerConnection
 import com.mochyy.mochymusic.shared.playback.SharedQueue
+import com.mochyy.mochymusic.shared.playback.LocalPlayerConnection
 import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.shared.resources.app_name
 import com.mochyy.mochymusic.shared.resources.playback_failed
@@ -36,6 +38,8 @@ import org.jetbrains.compose.resources.stringResource
 fun runDesktopApp(font: FontFamily) {
     // warm before the first frame, so rememberPreference starts on the saved value
     PreferencesCache.start(desktopPlaybackPreferences.store)
+    // covers get the same crossfade, memory share and size setting as Android, with a disk cache
+    configureDesktopImageLoader()
     // shared ViewModels get the store above and desktopDatabase; nothing opens either until one asks
     com.mochyy.mochymusic.di.startMochyKoin(database = { desktopDatabase }, preferences = { desktopPlaybackPreferences.store })
     // the app's font pick falls back to this inter (StandaloneMochyTheme hands it over too, as iOS does)
@@ -74,6 +78,8 @@ private fun runDesktopWindow(font: FontFamily) = application {
         queue.start()
         onDispose { queue.close() }
     }
+    // the shared screens' player: the same controller and Up next, behind the portable contract
+    val connection = remember(player, queue, queueScope) { QueuePlayerConnection(player, queue, queueScope) }
 
     Window(
         onCloseRequest = ::exitApplication,
@@ -82,6 +88,7 @@ private fun runDesktopWindow(font: FontFamily) = application {
     ) {
         CompositionLocalProvider(
             LocalAppPreferences provides desktopPlaybackPreferences.store,
+            LocalPlayerConnection provides connection,
             // settings sub-pages: nothing covers the bottom here, and their header is a plain tint
             com.mochyy.mochymusic.LocalPlayerAwareWindowInsets provides androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
             com.mochyy.mochymusic.ui.component.LocalSubSettingsChrome provides com.mochyy.mochymusic.ui.component.PlainSubSettingsChrome,
@@ -89,7 +96,6 @@ private fun runDesktopWindow(font: FontFamily) = application {
             StandaloneMochyTheme(font, desktopPlaybackPreferences) {
                 StandaloneMusicApp(
                     search,
-                    player,
                     providers,
                     desktopPlaybackPreferences,
                     desktopLibrary,

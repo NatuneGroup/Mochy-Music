@@ -599,7 +599,7 @@ internal fun rememberStyleLyrics(readings: Boolean): StyleLyrics {
         val metadata by connection.mediaMetadata.collectAsState()
         // The flagship's bottom card is what asks for a song's lyrics; a style has no card, so it
         // asks itself. Without this the words only came once the flagship had been shown.
-        val loader: com.mochyy.mochymusic.viewmodels.LyricsScreenViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel()
+        val loader: com.mochyy.mochymusic.viewmodels.LyricsScreenViewModel = org.koin.compose.viewmodel.koinViewModel()
         androidx.compose.runtime.LaunchedEffect(metadata?.id) {
             metadata?.let(loader::ensureLyricsLoaded)
         }

@@ -79,6 +79,8 @@ kotlin {
             // the YouTube Music models (songs, albums, artists) every platform's screens show
             api(project(":providers:innertube"))
             implementation(libs.coil)
+            // cover palette extraction on desktop and iOS (the same quantizer Metrolist uses); Android keeps androidx.palette
+            implementation(libs.materialKolor)
             implementation(libs.kotlinx.coroutines.core)
             api(libs.kotlinx.datetime)
             // Providers take an injected HttpClient; each platform picks the engine, timeouts and proxy.
@@ -102,11 +104,15 @@ kotlin {
             implementation(libs.ktor.client.okhttp)
             // BackPressHandler: the activity's own back handling, as the app has always used
             implementation(libs.activity)
+            // the moved cover components read colours with the same androidx.palette the app uses
+            implementation(libs.palette)
         }
         getByName("desktopMain").dependencies {
             implementation(compose.desktop.common)
             implementation(libs.sqlite.bundled)
             implementation(libs.ktor.client.okhttp)
+            // desktop device discovery, as Metrolist's desktop build does it
+            implementation(libs.jmdns)
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.json)
             implementation(libs.kotlinx.coroutines.swing)
