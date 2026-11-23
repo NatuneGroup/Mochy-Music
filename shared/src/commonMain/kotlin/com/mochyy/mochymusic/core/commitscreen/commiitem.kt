@@ -21,12 +21,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
+import org.jetbrains.compose.resources.painterResource
 
 @Composable
  fun CommitItem(
@@ -52,7 +52,7 @@ import com.mochyy.mochymusic.R
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                painter = painterResource(R.drawable.commit),
+                painter = painterResource(Res.drawable.commit),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier = Modifier.size(20.dp)

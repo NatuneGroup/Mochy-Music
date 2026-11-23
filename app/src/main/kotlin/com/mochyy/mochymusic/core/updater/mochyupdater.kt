@@ -1,7 +1,6 @@
 package com.mochyy.mochymusic.core.updater
 
 import android.content.Context
-import java.util.regex.Pattern
 
 // The update settings and helpers the version sheet and launch check share. The checking itself is
 // GithubUpdates.kt; the older full-screen updater that used to live here had no route left.
@@ -90,20 +89,4 @@ fun isNewerVersion(latestVersion: String, currentVersion: String): Boolean {
     return false
 }
 
-fun String.extractUrls(): List<Pair<IntRange, String>> {
-    val urlPattern = Pattern.compile(
-        "(?:^|[\\s])((https?://|www\\.|pic\\.)[\\w-]+(\\.[\\w-]+)+([/?].*)?)"
-    )
-    val matcher = urlPattern.matcher(this)
-    val urlList = mutableListOf<Pair<IntRange, String>>()
-
-    while (matcher.find()) {
-        val url = matcher.group(1)?.trim() ?: continue
-        val range = IntRange(matcher.start(1), matcher.end(1) - 1)
-
-        val fullUrl = if (url.startsWith("http")) url else "https://$url"
-        urlList.add(range to fullUrl)
-    }
-
-    return urlList
-}
+// extractUrls lives in :shared (core/updater/UrlDetection.kt), with the changelog screen that uses it.
