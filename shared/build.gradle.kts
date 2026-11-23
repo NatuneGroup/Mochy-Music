@@ -85,6 +85,8 @@ kotlin {
             // shared ViewModels and what they're given, the way Metrolist does it; api so the app and the
             // launchers start Koin and call koinViewModel without naming Koin again
             api(libs.cmp.lifecycle.viewmodel.savedstate)
+            // screens take androidx.navigation.NavController, as they do in the app
+            api(libs.cmp.navigation.compose)
             api(libs.koin.core)
             api(libs.koin.compose)
             api(libs.koin.compose.viewmodel)

@@ -26,15 +26,20 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.arrow_back
+import com.mochyy.mochymusic.shared.resources.back_button_desc
+import com.mochyy.mochymusic.shared.resources.history
+import com.mochyy.mochymusic.shared.resources.supplemental_coming_soon
+import com.mochyy.mochymusic.shared.resources.supplemental_coming_soon_detail
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,8 +64,8 @@ fun ComingSoonScreen(
         ) {
             IconButton(onClick = { navController.navigateUp() }) {
                 Icon(
-                    painter = painterResource(R.drawable.arrow_back),
-                    contentDescription = stringResource(R.string.back_button_desc),
+                    painter = painterResource(Res.drawable.arrow_back),
+                    contentDescription = stringResource(Res.string.back_button_desc),
                     tint = MaterialTheme.colorScheme.onBackground
                 )
             }
@@ -88,7 +93,7 @@ fun ComingSoonScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.history),
+                        painter = painterResource(Res.drawable.history),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(40.dp)
@@ -96,14 +101,14 @@ fun ComingSoonScreen(
                 }
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
-                    text = stringResource(R.string.supplemental_coming_soon),
+                    text = stringResource(Res.string.supplemental_coming_soon),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = stringResource(R.string.supplemental_coming_soon_detail, sectionTitle),
+                    text = stringResource(Res.string.supplemental_coming_soon_detail, sectionTitle),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                 )
