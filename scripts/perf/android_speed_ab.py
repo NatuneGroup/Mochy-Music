@@ -205,6 +205,12 @@ def find(nodes: list[dict], label: str, prefer_bottom: bool = False) -> tuple[in
     return hit["x"], hit["y"]
 
 
+def find_clear(nodes: list[dict], label: str, screen_h: int) -> tuple[int, int] | None:
+    """A row that is whole and above the bottom bars, so a tap on its centre lands on it."""
+    rows = [n for n in nodes if label in (n["text"], n["desc"]) and n["h"] >= 30 and n["y"] < screen_h * 0.85]
+    return (rows[0]["x"], rows[0]["y"]) if rows else None
+
+
 def tap(xy: tuple[int, int]) -> None:
     sh(f"input tap {xy[0]} {xy[1]}")
 
@@ -471,21 +477,20 @@ def measure(label: str, folder: Path, out_root: Path, runs: int) -> dict:
         scroll_profile()
         profile_scrolls += 1
         nodes = ui_nodes(out / "2-settings-tab.xml")
-        rows = [n for n in nodes if "Open settings" in (n["text"], n["desc"]) and n["h"] >= 30 and n["y"] < screen_h * 0.85]
-        open_settings = (rows[0]["x"], rows[0]["y"]) if rows else None
+        open_settings = find_clear(nodes, "Open settings", screen_h)
     if open_settings is not None:
         tap(open_settings)
         time.sleep(SETTLE_AFTER_TAP + 1)
         nodes = ui_nodes(out / "2-settings.xml")
     screenshot(out / "2-settings.png")
-    appearance = find(nodes, "Appearance")
+    appearance = find_clear(nodes, "Appearance", screen_h)
     # on a shorter screen Appearance sits below the fold of the settings list: one fixed drag, also
     # done (unmeasured) in every round before the Appearance tap
     scroll_list = appearance is None
     if scroll_list:
         scroll_profile()
         nodes = ui_nodes(out / "2-settings-scrolled.xml")
-        appearance = find(nodes, "Appearance")
+        appearance = find_clear(nodes, "Appearance", screen_h)
     if appearance is None:
         raise RuntimeError(f"{label}: no Appearance row in Settings, see {out}/2-settings.png")
     tap(appearance)
