@@ -94,7 +94,14 @@ jobs:
         run: |
           set -euo pipefail
           args=("assembleArm64${RELEASE_FLAVOUR}Release" "-Pmochy.compressNativeLibs=$COMPRESS_NATIVE_LIBS")
-          if [ -n "$VERSION_CODE" ]; then args+=("-Pmochy.versionCode=$VERSION_CODE"); fi
+          # every signed APK gets a code above the last one, a manual test build included: one left
+          # at the floor would refuse to install over a nightly ("downgrade"); same rule as release_version.py
+          if [ -z "$VERSION_CODE" ]; then
+            floor=$(sed -n 's/^ *val versionCodeFloor = \([0-9]*\).*/\1/p' app/build.gradle.kts)
+            test -n "$floor" || { echo "versionCodeFloor not found in app/build.gradle.kts"; exit 1; }
+            VERSION_CODE=$(( floor + $(date +%s) / 60 ))
+          fi
+          args+=("-Pmochy.versionCode=$VERSION_CODE")
           if [ -n "$VERSION_NAME" ]; then args+=("-Pmochy.versionName=$VERSION_NAME"); fi
           if [ "$NIGHTLY" = "true" ]; then args+=("-Pnightly=true"); fi
           ./gradlew --console=plain "${args[@]}" --warning-mode summary

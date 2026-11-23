@@ -1,6 +1,6 @@
 name: Build and publish a release
 
-# Called by nightly.yml (prerelease) and release.yml (stable): builds the signed Foss
+# Called by nightly.yml (prerelease) and release.yml (stable): builds the signed Foss and Gms
 # arm64 APK through _release-apk.yml, then publishes it as a GitHub release. The in-app
 # updater (core/updater/GithubUpdates.kt) reads these releases: Release sees the stable
 # ones, Nightly sees the prereleases too and takes the newest.
@@ -35,16 +35,20 @@ permissions:
 
 jobs:
   build:
+    # both flavours, so a Gms install (Cast) updates to Gms and a Foss one to Foss
+    strategy:
+      matrix:
+        flavour: [Foss, Gms]
     permissions:
       contents: read
     uses: ./.github/workflows/_release-apk.yml
     with:
-      flavour: Foss
+      flavour: ${{ matrix.flavour }}
       ref: ${{ inputs.commit_sha }}
       version_code: ${{ inputs.version_code }}
       version_name: ${{ inputs.version_name }}
       nightly: ${{ inputs.channel == 'nightly' }}
-      artifact_name: mochy-${{ inputs.channel }}-${{ inputs.version }}
+      artifact_name: mochy-${{ inputs.channel }}-${{ inputs.version }}-${{ matrix.flavour }}
     secrets: inherit
 
   publish:
@@ -56,8 +60,13 @@ jobs:
     steps:
       - uses: actions/download-artifact@v7
         with:
-          name: mochy-${{ inputs.channel }}-${{ inputs.version }}
-          path: built
+          name: mochy-${{ inputs.channel }}-${{ inputs.version }}-Foss
+          path: built/foss
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: mochy-${{ inputs.channel }}-${{ inputs.version }}-Gms
+          path: built/gms
 
       - name: Create the release
         env:
@@ -69,12 +78,16 @@ jobs:
           NOTES: ${{ inputs.notes }}
         run: |
           set -euo pipefail
-          apks=(built/*.apk)
-          [ "${#apks[@]}" -eq 1 ] && [ -f "${apks[0]}" ] || { echo "expected one APK, got: ${apks[*]}"; exit 1; }
           # the updater picks the asset named for the installed ABI and flavour
-          asset="mochy-${VERSION}-arm64-foss.apk"
-          mv "${apks[0]}" "$asset"
-          sha256sum "$asset" | tee "$asset.sha256"
+          assets=()
+          for flavour in foss gms; do
+            apks=(built/$flavour/*.apk)
+            [ "${#apks[@]}" -eq 1 ] && [ -f "${apks[0]}" ] || { echo "expected one $flavour APK, got: ${apks[*]}"; exit 1; }
+            asset="mochy-${VERSION}-arm64-${flavour}.apk"
+            mv "${apks[0]}" "$asset"
+            sha256sum "$asset" | tee "$asset.sha256"
+            assets+=("$asset" "$asset.sha256")
+          done
 
           {
             if [ "$CHANNEL" = nightly ]; then
@@ -85,7 +98,7 @@ jobs:
             echo
             echo "$NOTES"
             echo
-            echo "Signed arm64 Foss APK; it updates any earlier Mochy release from this repository."
+            echo "Signed arm64 APKs: foss, and gms (with Cast). Each updates an earlier Mochy release of the same kind from this repository."
             echo
             echo "Mochy is built on Mochy Music by realidkroo: https://github.com/realidkroo/mochy-music"
           } > notes.md
@@ -98,7 +111,7 @@ jobs:
           else
             flags+=(--latest)
           fi
-          gh release create "$TAG_NAME" "$asset" "$asset.sha256" \
+          gh release create "$TAG_NAME" "${assets[@]}" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$COMMIT_SHA" \
             --title "$title" \
