@@ -2,7 +2,7 @@
 
 package com.mochyy.mochymusic.backup
 
-import java.io.File
+import okio.Path
 
 /** the clouds a backup can go to, by the name saved with the account */
 enum class CloudKind(val label: String) {
@@ -25,9 +25,9 @@ data class CloudBackupFile(
 
 /** what every cloud does with backups, always inside mochy's own folder there */
 interface BackupCloud {
-    suspend fun upload(file: File, name: String, onProgress: (Float) -> Unit)
+    suspend fun upload(file: Path, name: String, onProgress: (Float) -> Unit)
     suspend fun list(): List<CloudBackupFile>
-    suspend fun download(backup: CloudBackupFile, into: File, onProgress: (Float) -> Unit)
+    suspend fun download(backup: CloudBackupFile, into: Path, onProgress: (Float) -> Unit)
     suspend fun delete(backup: CloudBackupFile)
 }
 

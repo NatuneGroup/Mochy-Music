@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
+import okio.Path.Companion.toPath
 import timber.log.Timber
 import java.io.File
 import java.io.IOException
@@ -80,7 +81,7 @@ class CloudBackupManager @Inject constructor(
         try {
             val account = accounts.current() ?: throw CloudException(CloudProblem.SignedOut)
             _step.value = CloudBackupStep.Downloading(0f)
-            cloudFor(account).download(backup, zip) { _step.value = CloudBackupStep.Downloading(whole(it)) }
+            cloudFor(account).download(backup, zip.absolutePath.toPath()) { _step.value = CloudBackupStep.Downloading(whole(it)) }
             _step.value = CloudBackupStep.Unpacking(0f)
             importer.stage(Uri.fromFile(zip)) { _step.value = CloudBackupStep.Unpacking(whole(it)) }.getOrThrow()
             _step.value = CloudBackupStep.Restored
@@ -110,7 +111,7 @@ class CloudBackupManager @Inject constructor(
             return CloudProblem.Offline
         }
         forgetOldLogin()
-        accounts.save(CloudAccount(kind = CloudKind.WebDav, name = url.host, serverUrl = url.toString(), username = username, password = password))
+        accounts.save(CloudAccount(kind = CloudKind.WebDav, name = WebDavCloud.hostOf(url), serverUrl = url, username = username, password = password))
         return null
     }
 
@@ -162,7 +163,7 @@ class CloudBackupManager @Inject constructor(
             exporter.exportBackup(zip) { _step.value = CloudBackupStep.Packing(whole(it)) }.getOrThrow()
             val cloud = cloudFor(account)
             _step.value = CloudBackupStep.Uploading(0f)
-            cloud.upload(zip, zip.name) { _step.value = CloudBackupStep.Uploading(whole(it)) }
+            cloud.upload(zip.absolutePath.toPath(), zip.name) { _step.value = CloudBackupStep.Uploading(whole(it)) }
             accounts.update { it.copy(lastBackupAt = packedAt, lastBackupBytes = zip.length(), lastProblem = null) }
             trimOld(cloud, keep = context.dataStore.data.first()[CloudBackupKeepKey] ?: CloudBackupSchedule.DefaultKeep)
             _step.value = if (automatic) CloudBackupStep.Idle else CloudBackupStep.BackedUp
@@ -210,8 +211,8 @@ class CloudBackupManager @Inject constructor(
     }
 
     private fun cloudFor(account: CloudAccount): BackupCloud = when (account.kind) {
-        CloudKind.Dropbox -> DropboxCloud(OAuthSession(OAuthApp.Dropbox, accounts))
-        CloudKind.OneDrive -> OneDriveCloud(OAuthSession(OAuthApp.OneDrive, accounts))
+        CloudKind.Dropbox -> DropboxCloud(OAuthSession(OAuthApp.Dropbox, CloudAppKeys.of(CloudKind.Dropbox), accounts))
+        CloudKind.OneDrive -> OneDriveCloud(OAuthSession(OAuthApp.OneDrive, CloudAppKeys.of(CloudKind.OneDrive), accounts))
         CloudKind.WebDav -> WebDavCloud(account)
     }
 
