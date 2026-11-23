@@ -73,16 +73,6 @@ import com.mochyy.mochymusic.ui.component.setAgslUniform
 enum class LyricsLineState { ACTIVE, UPCOMING, PAST, DEFAULT }
 
 /**
- * Which side of the screen a line sits on.
- *
- * Word-synced providers mark duet and call-and-response lines with `{agent:v1}` / `{agent:v2}`,
- * which LyricsUtils has always parsed into [com.mochyy.mochymusic.lyrics.LyricsEntry.agent]. Until
- * now only the three unused renderers (MetroLyrics, MochyLyrics, LyricsV2) did anything with it,
- * so in the live player every voice rendered flush left and duets were impossible to follow.
- */
-enum class LyricsAlignment { START, CENTER, END }
-
-/**
  * Side room for a lyric line.
  *
  * Sized for the *zoomed* line, not the resting one: the active line scales to 1.06 in a

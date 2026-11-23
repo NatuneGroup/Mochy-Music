@@ -1,6 +1,5 @@
 package com.mochyy.mochymusic.ui.player
 
-import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
@@ -25,24 +24,24 @@ import com.mochyy.mochymusic.constants.PlayerBackgroundStyle
 import kotlin.math.roundToInt
 
 // how strongly white soft-lights an upcoming line, the brightest resting one; the dimmer states keep their share of it
-internal const val SoftLightFill = 0.6f
+const val SoftLightFill = 0.6f
 
 // a copy this faint isn't drawn at all, so a settled line pays for one layer, not two
 private const val HiddenCopyAlpha = 0.002f
 
 // soft light only exists as a layer blend from android 10, older phones keep the plain dimmed lines
-internal val SoftLightSupported: Boolean
-    get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+// the actual check lives per platform: android reads its SDK level, the other targets always draw soft light
+expect val SoftLightSupported: Boolean
 
 // only the cover's own colours give soft light something to tint with, on black or grey it just turns the lines dim
-internal val PlayerBackgroundStyle.takesSoftLight: Boolean
+val PlayerBackgroundStyle.takesSoftLight: Boolean
     get() = this == PlayerBackgroundStyle.COVER_GRADIENT ||
         this == PlayerBackgroundStyle.APPLE_MUSIC ||
         this == PlayerBackgroundStyle.AMBIENT
 
 // the lyrics page blending straight onto the player's background; any layer between the lines and the background would blend them onto nothing, so each row draws the list's edge fade itself
 @Stable
-class LyricsBackdropBlend internal constructor(
+class LyricsBackdropBlend(
     private val topFadeEnd: Float,
     private val bottomFadeStart: Float,
     // reads whatever moves the rows (scroll, the stagger, the page growing in), so a row's fade follows it
@@ -77,7 +76,7 @@ class LyricsBackdropBlend internal constructor(
 
 // the list's edge fade on a row that draws normally; it only takes a buffer of its own while it's in the fade
 @Composable
-internal fun Modifier.lyricsEdgeFade(blend: LyricsBackdropBlend?): Modifier {
+fun Modifier.lyricsEdgeFade(blend: LyricsBackdropBlend?): Modifier {
     if (blend == null) return this
     val layer = rememberGraphicsLayer()
     val coords = remember { arrayOfNulls<LayoutCoordinates>(1) }
@@ -95,7 +94,7 @@ internal fun Modifier.lyricsEdgeFade(blend: LyricsBackdropBlend?): Modifier {
 
 // a lyric line as up to two copies: white soft-lit onto the background for the resting look, plain for the sung one; both only while it changes
 @Composable
-internal fun Modifier.softLightLine(
+fun Modifier.softLightLine(
     blend: LyricsBackdropBlend,
     softAlpha: () -> Float,
     litAlpha: () -> Float,
