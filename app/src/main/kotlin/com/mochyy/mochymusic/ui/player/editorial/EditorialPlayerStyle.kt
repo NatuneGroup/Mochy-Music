@@ -94,7 +94,6 @@ import com.mochyy.mochymusic.ui.player.styles.rememberStyleTrack
 import com.mochyy.mochymusic.ui.player.styles.styleInsets
 import com.mochyy.mochymusic.ui.player.styles.whileStyleInteractive
 import com.mochyy.mochymusic.utils.makeTimeString
-import kotlin.math.abs
 
 // the die-cut shapes the artwork cycles through, the same set V10 picks from
 private val EditorialShapes: List<RoundedPolygon>
@@ -348,24 +347,23 @@ private fun EditorialArtwork(
     modifier: Modifier,
 ) {
     val shapes = EditorialShapes
-    val index = abs(track.title.hashCode()) % shapes.size
+    // floor-mod, not abs: a title whose hash is Int.MIN_VALUE would otherwise index backwards
+    val index = ((track.title.hashCode() % shapes.size) + shapes.size) % shapes.size
     val target = shapes[index]
     val progress = remember { Animatable(1f) }
-    var morphStart by remember { mutableStateOf<RoundedPolygon?>(null) }
+    // the shape the artwork is morphing away from, held until the morph lands
+    var from by remember { mutableStateOf(target) }
     LaunchedEffect(target) {
-        val start = morphStart ?: target
-        if (start !== target) {
-            morphStart = start
+        if (from !== target) {
             progress.snapTo(0f)
             progress.animateTo(1f, tween(700))
-            morphStart = target
+            from = target
         }
     }
     val scale by animateFloatAsState(if (playing) 1f else 0.94f, tween(400), label = "editorialPauseScale")
-    val start = morphStart ?: target
-    val path = remember(start, target, progress.value) {
-        if (progress.value >= 0.999f || start === target) target.toPath()
-        else Morph(start, target).asCubics(progress.value).toPath()
+    val path = remember(from, target, progress.value) {
+        if (progress.value >= 0.999f || from === target) target.toPath()
+        else Morph(from, target).asCubics(progress.value).toPath()
     }
     Box(
         modifier
