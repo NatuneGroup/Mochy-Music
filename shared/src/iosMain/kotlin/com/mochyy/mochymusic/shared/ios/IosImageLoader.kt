@@ -16,6 +16,10 @@ import platform.Foundation.NSUserDomainMask
 
 // Covers on iOS use the same crossfade and memory share as Android, with the disk cache under the
 // app's caches folder and the same size setting the Android loader reads.
+/** The one loader covers load through; the storage page clears its memory and disk caches through it. */
+internal var iosImageLoader: ImageLoader? = null
+    private set
+
 internal fun configureIosImageLoader() {
     val cacheSizeMb = (PreferencesCache.current(iosPlaybackPreferences.store)[MaxImageCacheSizeKey]
         ?: DefaultImageCacheMb).toLong()
@@ -45,5 +49,6 @@ internal fun configureIosImageLoader() {
                 }
             }
             .build()
+            .also { iosImageLoader = it }
     }
 }

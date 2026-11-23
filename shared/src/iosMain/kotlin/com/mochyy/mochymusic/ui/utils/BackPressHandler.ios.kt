@@ -1,8 +1,16 @@
+// BackPressHandler.ios.kt
+// The shared screens' back action on iOS: Compose Multiplatform's own BackHandler, which the system
+// gestures (swipe from the edge in a UINavigationController, or the back button on a keyboard) feed.
+// Before CMP had it there was nothing to connect, so the old actual did nothing.
+
 package com.mochyy.mochymusic.ui.utils
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.backhandler.BackHandler
 
-// Compose's common BackHandler isn't on this build's classpath; until the shared navigation brings
-// navigationevent, there is no system back here (the search overlay closes with its own X)
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
-actual fun BackPressHandler(enabled: Boolean, onBack: () -> Unit) = Unit
+actual fun BackPressHandler(enabled: Boolean, onBack: () -> Unit) {
+    BackHandler(enabled = enabled, onBack = onBack)
+}
