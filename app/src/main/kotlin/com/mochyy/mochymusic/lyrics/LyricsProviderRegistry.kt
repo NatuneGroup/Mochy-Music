@@ -12,6 +12,12 @@ import com.mochyy.mochymusic.constants.PreferredLyricsProvider
  * this object only says which instances exist and how each is named on screen.
  */
 object LyricsProviderRegistry : LyricsProviderCatalog {
+    init {
+        // the shared translate flow drives the app's api/ back ends and the video-caption lookup;
+        // the first lyrics use of any kind is what needs them
+        LyricsTranslationHelper.install(AndroidLyricsTranslationServices, AndroidLyricsCaptionTranslation)
+    }
+
     private val providerMap = mapOf(
         "YouLyPlus"       to YouLyPlusLyricsProvider,
         "Paxsenix"        to PaxsenixLyricsProvider,

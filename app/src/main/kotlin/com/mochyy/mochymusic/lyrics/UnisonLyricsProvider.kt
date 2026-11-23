@@ -10,7 +10,6 @@ import com.music.directlyrics.models.UnisonLyrics
 object UnisonLyricsProvider : LyricsProvider {
     override val name = "Unison"
 
-
     override suspend fun getLyrics(
         id: String,
         title: String,

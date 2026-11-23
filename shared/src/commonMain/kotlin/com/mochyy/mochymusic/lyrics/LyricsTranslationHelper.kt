@@ -2,14 +2,16 @@
 
 package com.mochyy.mochymusic.lyrics
 
-import android.content.Context
-import com.mochyy.mochymusic.api.DeepLService
-import com.mochyy.mochymusic.api.MistralService
-import com.mochyy.mochymusic.api.OpenRouterService
-import com.mochyy.mochymusic.api.OpenRouterStreamingService
-import com.mochyy.mochymusic.constants.LanguageCodeToName
-import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.MochyDatabase
 import com.mochyy.mochymusic.db.entities.LyricsEntity
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.ai_error_api_key_required
+import com.mochyy.mochymusic.shared.resources.ai_error_language_required
+import com.mochyy.mochymusic.shared.resources.ai_error_lyrics_empty
+import com.mochyy.mochymusic.shared.resources.ai_error_no_lyrics
+import com.mochyy.mochymusic.shared.resources.ai_error_translation_failed
+import com.mochyy.mochymusic.shared.resources.ai_error_unknown
+import com.mochyy.mochymusic.shared.resources.ai_error_unexpected
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -22,10 +24,30 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import timber.log.Timber
-import java.util.Locale
+import kotlin.concurrent.Volatile
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.getString
 
 object LyricsTranslationHelper {
+    // the platform's translation back ends; the Android app installs the ones in api/ once
+    @Volatile private var services: LyricsTranslationServices? = null
+    @Volatile private var captions: LyricsCaptionTranslation? = null
+
+    /** Called by the host once; every later translate uses these back ends. */
+    fun install(translationServices: LyricsTranslationServices, captionTranslation: LyricsCaptionTranslation) {
+        services = translationServices
+        captions = captionTranslation
+    }
+
+    // the bridged string when the resources are readable, the same English text otherwise: an error
+    // path must never fail into a crash just because the message could not be loaded
+    private suspend fun message(resource: StringResource, fallback: String): String =
+        try {
+            getString(resource)
+        } catch (e: Exception) {
+            fallback
+        }
+
     private val _status = MutableStateFlow<TranslationStatus>(TranslationStatus.Idle)
     val status: StateFlow<TranslationStatus> = _status.asStateFlow()
 
@@ -53,7 +75,7 @@ object LyricsTranslationHelper {
     private var translationJob: Job? = null
     private var isCompositionActive = true
 
-    private val translationCache = android.util.LruCache<String, List<String>>(64)
+    private val translationCache = LyricsLru<String, List<String>>(64)
 
     private fun getCacheKey(lyricsText: String, mode: String, language: String): String =
         "${lyricsText.hashCode()}_${mode}_$language"
@@ -105,7 +127,7 @@ object LyricsTranslationHelper {
     fun getCachedTranslations(lyrics: List<LyricsEntry>, mode: String, language: String): List<String>? {
         val lyricsText = lyrics.filter { it.text.isNotBlank() }.joinToString("\n") { it.text }
         val key = getCacheKey(lyricsText, mode, language)
-        return translationCache.get(key)
+        return lyricsLocked(translationCache) { translationCache.get(key) }
     }
 
     fun applyCachedTranslations(lyrics: List<LyricsEntry>, mode: String, language: String): Boolean {
@@ -185,7 +207,7 @@ object LyricsTranslationHelper {
     }
 
     fun clearCache() {
-        translationCache.evictAll()
+        lyricsLocked(translationCache) { translationCache.evictAll() }
     }
 
     fun setCompositionActive(active: Boolean) {
@@ -235,7 +257,7 @@ object LyricsTranslationHelper {
 
         val lyricsText = lyrics.filter { it.text.isNotBlank() }.joinToString("\n") { it.text }
         val cacheKey = getCacheKey(lyricsText, mode, targetLanguage)
-        translationCache.put(cacheKey, translatedLines)
+        lyricsLocked(translationCache) { translationCache.put(cacheKey, translatedLines) }
         _hasActiveTranslations.value = true
         return true
     }
@@ -248,13 +270,12 @@ object LyricsTranslationHelper {
         model: String,
         mode: String,
         scope: CoroutineScope,
-        context: Context,
         provider: String = "OpenRouter",
         deeplApiKey: String = "",
         deeplFormality: String = "default",
         useStreaming: Boolean = true,
         songId: String = "",
-        database: MusicDatabase? = null,
+        database: MochyDatabase? = null,
     ) {
         translationJob?.cancel()
         _status.value = TranslationStatus.Translating
@@ -266,12 +287,12 @@ object LyricsTranslationHelper {
 
                 val effectiveApiKey = if (provider == "DeepL") deeplApiKey else apiKey
                 if (effectiveApiKey.isBlank()) {
-                    _status.value = TranslationStatus.Error(context.getString(com.mochyy.mochymusic.R.string.ai_error_api_key_required))
+                    _status.value = TranslationStatus.Error(message(Res.string.ai_error_api_key_required, "API key is required"))
                     return@launchTranslation
                 }
 
                 if (lyrics.isEmpty()) {
-                    _status.value = TranslationStatus.Error(context.getString(com.mochyy.mochymusic.R.string.ai_error_no_lyrics))
+                    _status.value = TranslationStatus.Error(message(Res.string.ai_error_no_lyrics, "No lyrics to translate"))
                     return@launchTranslation
                 }
 
@@ -280,14 +301,14 @@ object LyricsTranslationHelper {
                 }
 
                 if (nonEmptyEntries.isEmpty()) {
-                    _status.value = TranslationStatus.Error(context.getString(com.mochyy.mochymusic.R.string.ai_error_lyrics_empty))
+                    _status.value = TranslationStatus.Error(message(Res.string.ai_error_lyrics_empty, "Lyrics are empty"))
                     return@launchTranslation
                 }
 
                 val fullText = nonEmptyEntries.joinToString("\n") { it.second.text }
 
                 val cacheKey = getCacheKey(fullText, mode, targetLanguage)
-                val cachedTranslations = translationCache.get(cacheKey)
+                val cachedTranslations = lyricsLocked(translationCache) { translationCache.get(cacheKey) }
                 if (cachedTranslations != null && cachedTranslations.size >= nonEmptyEntries.size) {
 
                     nonEmptyEntries.forEachIndexed { idx, (originalIndex, _) ->
@@ -300,21 +321,19 @@ object LyricsTranslationHelper {
 
                     if (songId.isNotBlank() && database != null) {
                         try {
-                            val currentLyrics = database.lyrics(songId).first()
+                            val currentLyrics = database.songDao.lyrics(songId).first()
                             if (currentLyrics != null && currentLyrics.translatedLyrics.isNullOrBlank()) {
-                                database.query {
-                                    upsert(
-                                        currentLyrics.copy(
-                                            translatedLyrics = cachedTranslations.joinToString("\n"),
-                                            translationLanguage = targetLanguage,
-                                            translationMode = mode,
-                                        ),
-                                    )
-                                }
+                                database.suspendingDao.upsert(
+                                    currentLyrics.copy(
+                                        translatedLyrics = cachedTranslations.joinToString("\n"),
+                                        translationLanguage = targetLanguage,
+                                        translationMode = mode,
+                                    ),
+                                )
                                 _translationSaved.tryEmit(Unit)
                             }
-                        } catch (e: Exception) {
-                            Timber.e(e, "Failed to persist cached translations to database")
+                        } catch (_: Exception) {
+                            // the translation is on screen; failing to store it only means it won't show offline
                         }
                     }
 
@@ -326,27 +345,22 @@ object LyricsTranslationHelper {
                 }
 
                 if (targetLanguage.isBlank()) {
-                    _status.value = TranslationStatus.Error(context.getString(com.mochyy.mochymusic.R.string.ai_error_language_required))
+                    _status.value = TranslationStatus.Error(message(Res.string.ai_error_language_required, "Target language is required"))
                     return@launchTranslation
                 }
 
-                val fullLanguageName = LanguageCodeToName[targetLanguage]
-                    ?: try {
-                        Locale.forLanguageTag(targetLanguage).displayLanguage.takeIf { it.isNotBlank() && it != targetLanguage }
-                    } catch (e: Exception) { null }
-                    ?: targetLanguage
+                val fullLanguageName = translationLanguageName(targetLanguage)
 
+                val backEnd = checkNotNull(services) { "Translation services are not installed" }
                 val result = if (provider == "DeepL") {
-                    Timber.d("Using DeepL for translation")
-                    DeepLService.translate(
+                    backEnd.deepl(
                         text = fullText,
                         targetLanguage = targetLanguage,
                         apiKey = deeplApiKey,
                         formality = deeplFormality,
                     )
                 } else if (provider == "Mistral") {
-                    Timber.d("Using Mistral for translation")
-                    MistralService.translate(
+                    backEnd.mistral(
                         text = fullText,
                         targetLanguage = fullLanguageName,
                         apiKey = apiKey,
@@ -354,13 +368,12 @@ object LyricsTranslationHelper {
                         mode = mode,
                     )
                 } else if (useStreaming && provider != "Custom") {
-                    Timber.d("Using streaming for translation with provider: $provider")
                     var translatedLines: List<String>? = null
                     var hasError = false
                     var errorMessage = ""
                     val contentAccumulator = StringBuilder()
 
-                    OpenRouterStreamingService.streamTranslation(
+                    backEnd.openRouterStreaming(
                         text = fullText,
                         targetLanguage = fullLanguageName,
                         apiKey = apiKey,
@@ -368,9 +381,8 @@ object LyricsTranslationHelper {
                         model = model,
                         mode = mode,
                     ).collect { chunk ->
-                        Timber.v("Received streaming chunk: $chunk")
                         when (chunk) {
-                            is OpenRouterStreamingService.StreamChunk.Content -> {
+                            is LyricsTranslationChunk.Content -> {
                                 contentAccumulator.append(chunk.text)
 
                                 val partialContent = contentAccumulator.toString()
@@ -385,19 +397,16 @@ object LyricsTranslationHelper {
                                     _status.value = TranslationStatus.Translating
                                 }
                             }
-                            is OpenRouterStreamingService.StreamChunk.Complete -> {
-                                Timber.d("Streaming complete with ${chunk.translatedLines.size} lines")
+                            is LyricsTranslationChunk.Complete -> {
                                 translatedLines = chunk.translatedLines
                             }
-                            is OpenRouterStreamingService.StreamChunk.Error -> {
-                                Timber.e("Streaming error: ${chunk.message}")
+                            is LyricsTranslationChunk.Error -> {
                                 hasError = true
                                 errorMessage = chunk.message
                             }
                         }
                     }
 
-                    Timber.d("Streaming collection complete. hasError=$hasError, translatedLines=${translatedLines?.size}")
                     if (hasError) {
                         Result.failure(Exception(errorMessage))
                     } else if (translatedLines != null) {
@@ -406,8 +415,7 @@ object LyricsTranslationHelper {
                         Result.failure(Exception("No translation received"))
                     }
                 } else {
-                    Timber.d("Using non-streaming for translation")
-                    OpenRouterService.translate(
+                    backEnd.openRouter(
                         text = fullText,
                         targetLanguage = fullLanguageName,
                         apiKey = apiKey,
@@ -423,27 +431,25 @@ object LyricsTranslationHelper {
                     }
 
                     val cacheKey2 = getCacheKey(fullText, mode, targetLanguage)
-                    translationCache.put(cacheKey2, translatedLines)
+                    lyricsLocked(translationCache) { translationCache.put(cacheKey2, translatedLines) }
 
                     if (songId.isNotBlank() && database != null) {
                         scope.launch(Dispatchers.IO) {
                             try {
-                                val currentLyrics = database.lyrics(songId).first()
+                                val currentLyrics = database.songDao.lyrics(songId).first()
                                 if (currentLyrics != null) {
-                                    database.query {
-                                        upsert(
-                                            currentLyrics.copy(
-                                                translatedLyrics = translatedLines.joinToString("\n"),
-                                                translationLanguage = targetLanguage,
-                                                translationMode = mode,
-                                            ),
-                                        )
-                                    }
+                                    database.suspendingDao.upsert(
+                                        currentLyrics.copy(
+                                            translatedLyrics = translatedLines.joinToString("\n"),
+                                            translationLanguage = targetLanguage,
+                                            translationMode = mode,
+                                        ),
+                                    )
 
                                     _translationSaved.tryEmit(Unit)
                                 }
-                            } catch (e: Exception) {
-                                timber.log.Timber.e(e, "Failed to save translated lyrics to database")
+                            } catch (_: Exception) {
+                                // stored for offline use only; the lines are already on screen
                             }
                         }
                     }
@@ -469,7 +475,7 @@ object LyricsTranslationHelper {
                             _status.value = TranslationStatus.Success
                         }
                         else -> {
-                            _status.value = TranslationStatus.Error(context.getString(com.mochyy.mochymusic.R.string.ai_error_unexpected))
+                            _status.value = TranslationStatus.Error(message(Res.string.ai_error_unexpected, "Unexpected translation result"))
                         }
                     }
 
@@ -482,12 +488,12 @@ object LyricsTranslationHelper {
                         return@onFailure
                     }
 
-                    val errorMessage = error.message ?: context.getString(com.mochyy.mochymusic.R.string.ai_error_unknown)
+                    val errorMessage = error.message ?: message(Res.string.ai_error_unknown, "Unknown error occurred")
                     _status.value = TranslationStatus.Error(errorMessage)
                 }
             } catch (e: Exception) {
                 if (e !is kotlinx.coroutines.CancellationException && isCompositionActive) {
-                    val errorMessage = e.message ?: context.getString(com.mochyy.mochymusic.R.string.ai_error_translation_failed)
+                    val errorMessage = e.message ?: message(Res.string.ai_error_translation_failed, "Translation failed")
                     _status.value = TranslationStatus.Error(errorMessage)
                 }
             }
@@ -508,7 +514,7 @@ object LyricsTranslationHelper {
         sourceLanguage: String = "auto",
         scope: CoroutineScope,
         songId: String = "",
-        database: MusicDatabase? = null,
+        database: MochyDatabase? = null,
     ) {
         translationJob?.cancel()
         _status.value = TranslationStatus.Translating
@@ -543,25 +549,25 @@ object LyricsTranslationHelper {
             _status.value = TranslationStatus.Success
 
             val lyricsText = indexed.joinToString("\n") { it.second.text }
-            translationCache.put(getCacheKey(lyricsText, mode, languageTag(sourceLanguage, targetLanguage)), translated)
+            lyricsLocked(translationCache) {
+                translationCache.put(getCacheKey(lyricsText, mode, languageTag(sourceLanguage, targetLanguage)), translated)
+            }
 
             if (songId.isNotBlank() && database != null) {
                 try {
-                    val current = database.lyrics(songId).first()
+                    val current = database.songDao.lyrics(songId).first()
                     if (current != null) {
-                        database.query {
-                            upsert(
-                                current.copy(
-                                    translatedLyrics = translated.joinToString("\n"),
-                                    translationLanguage = languageTag(sourceLanguage, targetLanguage),
-                                    translationMode = mode,
-                                ),
-                            )
-                        }
+                        database.suspendingDao.upsert(
+                            current.copy(
+                                translatedLyrics = translated.joinToString("\n"),
+                                translationLanguage = languageTag(sourceLanguage, targetLanguage),
+                                translationMode = mode,
+                            ),
+                        )
                         _translationSaved.tryEmit(Unit)
                     }
-                } catch (e: Exception) {
-                    Timber.e(e, "Failed to persist Google translations")
+                } catch (_: Exception) {
+                    // stored for offline use only
                 }
             }
         }
@@ -570,19 +576,19 @@ object LyricsTranslationHelper {
     /** shows the video's own uploaded translation when youtube has one in the target language; false when it doesn't, so the caller translates the usual way */
     suspend fun translateWithYouTubeCaptions(
         lyrics: List<LyricsEntry>,
-        request: YouTubeCaptionTranslation.Request,
+        request: YouTubeCaptionRequest,
         lyricsEntity: LyricsEntity?,
         mode: String,
-        database: MusicDatabase,
+        database: MochyDatabase,
     ): Boolean {
-        val tag = YouTubeCaptionTranslation.storedLanguageTag(request.targetLanguage)
+        val tag = youTubeTranslationLanguageTag(request.targetLanguage)
         // saved from an earlier play, so it shows offline too
         if (loadTranslationsFromDatabase(lyrics, lyricsEntity, tag, mode)) return true
 
         translationJob?.cancel()
         _status.value = TranslationStatus.Translating
         val translated = try {
-            YouTubeCaptionTranslation.translate(request)
+            captions?.translate(request)
         } finally {
             if (_status.value is TranslationStatus.Translating) _status.value = TranslationStatus.Idle
         }
@@ -595,13 +601,13 @@ object LyricsTranslationHelper {
         // stored one row per non-blank line, the same way the other translations are
         val stored = lyrics.indices.filter { lyrics[it].text.isNotBlank() }.joinToString("\n") { translated[it].orEmpty() }
         try {
-            val current = database.lyrics(request.songId).first()
+            val current = database.songDao.lyrics(request.songId).first()
             if (current != null) {
-                database.query { upsert(current.copy(translatedLyrics = stored, translationLanguage = tag, translationMode = mode)) }
+                database.suspendingDao.upsert(current.copy(translatedLyrics = stored, translationLanguage = tag, translationMode = mode))
                 _translationSaved.tryEmit(Unit)
             }
-        } catch (e: Exception) {
-            Timber.e(e, "Failed to save the youtube translation")
+        } catch (_: Exception) {
+            // stored for offline use only
         }
 
         delay(3000)

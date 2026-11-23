@@ -42,7 +42,7 @@ import com.mochyy.mochymusic.lyrics.LyricsTranslationHelper
 import com.mochyy.mochymusic.lyrics.LyricsUtils
 import com.mochyy.mochymusic.lyrics.RubyToken
 import com.mochyy.mochymusic.lyrics.WordTimestamp
-import com.mochyy.mochymusic.lyrics.YouTubeCaptionTranslation
+import com.mochyy.mochymusic.lyrics.YouTubeCaptionRequest
 import com.mochyy.mochymusic.utils.rememberPreference
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -145,7 +145,7 @@ fun LyricsReadings(
         if (youtubeTranslations && metadata != null &&
             LyricsTranslationHelper.translateWithYouTubeCaptions(
                 lyrics = lines,
-                request = YouTubeCaptionTranslation.Request(
+                request = YouTubeCaptionRequest(
                     songId = metadata.id,
                     title = metadata.title,
                     artist = metadata.artists.joinToString { it.name },
@@ -193,7 +193,6 @@ fun LyricsReadings(
                 model = ai.model,
                 mode = translateMode,
                 scope = this,
-                context = context,
                 provider = ai.provider,
                 deeplApiKey = if (ai.provider == AiTranslatorConfig.DeepL) ai.apiKey else "",
                 deeplFormality = deeplFormality,
