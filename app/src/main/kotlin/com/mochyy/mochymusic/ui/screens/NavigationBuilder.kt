@@ -458,7 +458,7 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.InternetSettingsRoute) {
-        com.mochyy.mochymusic.ui.screens.settings.InternetSettingsScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.AndroidInternetSettingsScreen(navController = navController)
     }
     composable(com.mochyy.mochymusic.ui.screens.settings.AiTranslatorSettingsRoute) {
         com.mochyy.mochymusic.ui.screens.settings.AiTranslatorSettingsScreen(
