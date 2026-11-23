@@ -1,6 +1,5 @@
 package com.mochyy.mochymusic.ui.player.video
 
-import android.os.SystemClock
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.spring
@@ -18,25 +17,31 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlin.time.TimeSource
+
+// the clock the touch and double-tap times are read from: monotonic, like the uptime the Android build read before, so wall-clock changes never move it
+private val UptimeClock = TimeSource.Monotonic.markNow()
+
+private fun uptimeMillis(): Long = UptimeClock.elapsedNow().inWholeMilliseconds
 
 // what the right pane holds
-internal enum class VideoPane { LYRICS, QUEUE }
+enum class VideoPane { LYRICS, QUEUE }
 
 // a double tap's jump: which way, how far all the taps in a row add up to, and when, so a repeat restarts its flash
 @Immutable
-internal class SeekFlash(val forward: Boolean, val seconds: Int, val atMs: Long)
+class SeekFlash(val forward: Boolean, val seconds: Int, val atMs: Long)
 
 // double taps closer together than this add up into one jump on screen
 private const val SeekChainMs = 900L
 
 // the pane glides open on this curve: a quick start that settles softly, no bounce over the video
-internal val PaneEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+val PaneEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 private const val PaneOpenMs = 620
 private const val PaneCloseMs = 480
 
 // the sizes everything in the frame is laid out from, all in dp; stood upright there's no room beside the video, so the pane covers it
 @Stable
-internal class VideoFrame(val width: Dp, val height: Dp) {
+class VideoFrame(val width: Dp, val height: Dp) {
     val upright: Boolean = height > width
 
     // the lyrics pane takes this much of the right side, or the whole screen upright
@@ -54,7 +59,7 @@ internal class VideoFrame(val width: Dp, val height: Dp) {
 }
 
 @Stable
-internal class VideoModeState(private val scope: CoroutineScope) {
+class VideoModeState(private val scope: CoroutineScope) {
     // 0 with the pane away, 1 with it fully open; follows the finger while it's dragged
     val pane = Animatable(0f)
 
@@ -89,11 +94,11 @@ internal class VideoModeState(private val scope: CoroutineScope) {
     val paneOpen: Boolean get() = pane.targetValue > 0.5f
 
     fun touched() {
-        lastTouchMs = SystemClock.uptimeMillis()
+        lastTouchMs = uptimeMillis()
     }
 
     fun flashSeek(forward: Boolean) {
-        val now = SystemClock.uptimeMillis()
+        val now = uptimeMillis()
         val last = seekFlash
         val chained = last != null && last.forward == forward && now - last.atMs < SeekChainMs
         seekFlash = SeekFlash(forward, if (chained) last!!.seconds + 10 else 10, now)
