@@ -118,8 +118,10 @@ def apk_facts(apk: Path) -> dict:
 
 
 SETUP_DONE_PREFS = (
-    # androidx.datastore PreferenceMap { "setupCompleted": Value { boolean: true } }
+    # androidx.datastore PreferenceMap { "setupCompleted": true, "hideUpdateNotice": true }; the second
+    # keeps the update sheet (an older build sees a newer release) from covering Home and the tab bar
     b"\x0a\x14\x0a\x0esetupCompleted\x12\x02\x08\x01"
+    b"\x0a\x16\x0a\x10hideUpdateNotice\x12\x02\x08\x01"
 )
 
 
@@ -133,6 +135,24 @@ def mark_setup_done(pkg: str, work: Path) -> None:
     sh(f"touch {data}/no_backup/setup_wizard_completed")
     sh(f"chown -R {owner} {data}/files {data}/no_backup")
     sh(f"restorecon -R {data}", check=False)
+
+
+def save_app_log(pkg: str, out: Path) -> str:
+    """Keeps the app's crash and log lines for a start that didn't reach Home, and says what it found.
+
+    Mochy's own handler logs a crash under MochyCrash (main buffer) and kills itself, so the crash
+    buffer alone can be empty.
+    """
+    crash = sh("logcat -d -b crash", check=False, timeout=60)
+    main = sh("logcat -d -b main -v time", check=False, timeout=60)
+    pid_alive = sh(f"pidof {pkg}", check=False).strip()
+    (out / "app.log").write_text(f"pidof: {pid_alive or 'not running'}\n\n== crash buffer ==\n{crash}\n\n== main ==\n{main[-400000:]}")
+    lines = [l for l in (crash + main).splitlines() if "MochyCrash" in l or "FATAL EXCEPTION" in l or "ANR in" in l]
+    for l in lines[:12]:
+        log(f"  app: {l}")
+    if lines:
+        return "crashed: " + lines[0][-160:]
+    return "still running" if pid_alive else "not running, no crash line"
 
 
 def force_stop(pkg: str) -> None:
@@ -404,13 +424,19 @@ def measure(label: str, folder: Path, out_root: Path, runs: int) -> dict:
     force_stop(pkg)
     mark_setup_done(pkg, out)
 
-    cold_start(component)
+    sh("logcat -c", check=False)
+    try:
+        cold_start(component)
+    except Exception:
+        save_app_log(pkg, out)
+        raise
     time.sleep(SETTLE_AFTER_START + 3)
     screenshot(out / "1-home.png")
     nodes = ui_nodes(out / "1-home.xml")
     settings = find(nodes, "Settings", prefer_bottom=True)
     if settings is None:
-        raise RuntimeError(f"{label}: no Settings tab on screen, see {out}/1-home.png")
+        reason = save_app_log(pkg, out)
+        raise RuntimeError(f"{label}: no Settings tab on screen ({reason}), see {out}/1-home.png and app.log")
     tap(settings)
     time.sleep(SETTLE_AFTER_TAP + 1)
     screenshot(out / "2-settings.png")
