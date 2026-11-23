@@ -1,3 +1,8 @@
+// MainViewController.kt
+// What Swift mounts for the app: the shared Compose UI inside one UIViewController, with the iOS
+// runtime's player, queue and library above it. CarPlay builds the same runtime through its own
+// scene; this file only wires the phone UI.
+
 package com.mochyy.mochymusic.shared.ios
 
 import androidx.compose.foundation.layout.WindowInsets
@@ -9,12 +14,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.ComposeUIViewController
+import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
+import com.mochyy.mochymusic.shared.ios.ui.IosMusicApp
+import com.mochyy.mochymusic.shared.ios.ui.IosSettingsTab
+import com.mochyy.mochymusic.shared.playback.LocalPlayerConnection
 import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.shared.resources.inter_regular
 import com.mochyy.mochymusic.shared.resources.inter_semibold
 import com.mochyy.mochymusic.shared.resources.playback_failed
-import com.mochyy.mochymusic.shared.playback.LocalPlayerConnection
-import com.mochyy.mochymusic.shared.ui.shell.StandaloneMusicApp
+import com.mochyy.mochymusic.shared.ui.component.LocalSubSettingsChrome
+import com.mochyy.mochymusic.shared.ui.component.PlainSubSettingsChrome
 import com.mochyy.mochymusic.shared.ui.theme.StandaloneMochyTheme
 import com.mochyy.mochymusic.utils.LocalAppPreferences
 import com.mochyy.mochymusic.utils.PreferencesCache
@@ -49,18 +58,22 @@ private fun mainViewController(): UIViewController = ComposeUIViewController {
     CompositionLocalProvider(
         LocalAppPreferences provides iosPlaybackPreferences.store,
         LocalPlayerConnection provides IosPlaybackRuntime.connection,
+        // the settings pages keep their bottom spacer clear of the home indicator; the shell above
+        // pads the tabs and the mini player by the safe area itself
+        LocalPlayerAwareWindowInsets provides WindowInsets.safeDrawing,
         // settings sub-pages: nothing covers the bottom here, and their header is a plain tint
-        com.mochyy.mochymusic.LocalPlayerAwareWindowInsets provides androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
-        com.mochyy.mochymusic.ui.component.LocalSubSettingsChrome provides com.mochyy.mochymusic.ui.component.PlainSubSettingsChrome,
+        LocalSubSettingsChrome provides PlainSubSettingsChrome,
     ) {
         StandaloneMochyTheme(inter, iosPlaybackPreferences) {
-            StandaloneMusicApp(
+            IosMusicApp(
                 source = youtube,
                 lyricsProviders = providers,
                 settings = iosPlaybackPreferences,
                 library = library,
                 queue = queue,
                 modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing),
+                // the Settings tab is the whole shared settings tree, reached through its own graph
+                settingsContent = { _, _ -> IosSettingsTab() },
             )
         }
     }
