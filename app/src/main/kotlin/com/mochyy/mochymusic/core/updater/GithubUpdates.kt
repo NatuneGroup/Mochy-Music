@@ -5,241 +5,42 @@ import android.content.Intent
 import androidx.core.content.FileProvider
 import com.mochyy.mochymusic.BuildConfig
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 
 // GithubOwner, GithubRepo, InstagramUrl, ThreadsUrl and DiscordUrl live in :shared
 // (core/updater/ProjectLinks.kt), with the dev space pages that read them.
+// The release catalog itself (release parsing, the cache, the channels) lives in :shared
+// (core/updater/UpdateCatalog.kt); this file is the Android build's binding to it plus the APK
+// download and install, which only Android does.
 
 const val GithubProfileUrl = "https://github.com/$GithubOwner"
 const val GithubRepoUrl = "https://github.com/$GithubOwner/$GithubRepo"
 
-// UpdateOwner, UpdateRepo and UpdateRepoUrl live in :shared (core/updater/UpdateLinks.kt),
-// with the changelog screen that reads them.
-
-private const val ReleasesApi =
-    "https://api.github.com/repos/$UpdateOwner/$UpdateRepo/releases?per_page=20"
-
-data class GithubRelease(
-    val title: String,
-    val tag: String,
-    val version: String,
-    val body: String,
-    val htmlUrl: String,
-    val apkUrl: String?,
-    val apkName: String?,
-    val apkSizeBytes: Long,
-    val publishedAt: String,
-    // marked as a prerelease on github, which is what makes it a nightly
-    val isNightly: Boolean = false,
-)
-
-sealed interface UpdateState {
-    data object Checking : UpdateState
-    data object UpToDate : UpdateState
-    data class Available(val release: GithubRelease) : UpdateState
-    data class Failed(val message: String) : UpdateState
-}
-
-// a release is x.y.z, a nightly adds a fourth number counting up from the release it was built on (8.3.2.1, 8.3.2.2, then 8.3.3)
-data class FullVersion(
-    val major: Int = 0,
-    val minor: Int = 0,
-    val patch: Int = 0,
-    val buildNumber: Int = 0,
-    val nightly: Int = 0,
-) : Comparable<FullVersion> {
-    override fun compareTo(other: FullVersion): Int {
-        if (major != other.major) return major.compareTo(other.major)
-        if (minor != other.minor) return minor.compareTo(other.minor)
-        if (patch != other.patch) return patch.compareTo(other.patch)
-        if (nightly != other.nightly) return nightly.compareTo(other.nightly)
-        return buildNumber.compareTo(other.buildNumber)
-    }
-
-    // what people read: 8.3.2, 8.3.2.4 for a nightly
-    val name: String get() = if (nightly > 0) "$major.$minor.$patch.$nightly" else "$major.$minor.$patch"
-}
-
-private val VersionRegex = Regex("""(\d+)\.(\d+)(?:\.(\d+))?(?:\.(\d+))?""")
-private val BuildNumberRegex = Regex("""(?:build#|\(#|#|\()(\d+)\)?""", RegexOption.IGNORE_CASE)
-
-fun parseFullVersion(text: String): FullVersion {
-    val version = VersionRegex.find(text)?.groupValues
-    val buildNumber = BuildNumberRegex.find(text)?.groupValues?.get(1)?.toIntOrNull() ?: 0
-    return FullVersion(
-        major = version?.get(1)?.toIntOrNull() ?: 0,
-        minor = version?.get(2)?.toIntOrNull() ?: 0,
-        patch = version?.getOrNull(3)?.toIntOrNull() ?: 0,
-        buildNumber = buildNumber,
-        nightly = version?.getOrNull(4)?.toIntOrNull() ?: 0,
+// What the shared catalog needs to know about this build; every value is what the version sheet and
+// the launch check have always compared.
+private val installedBuild: UpdateBuild by lazy {
+    UpdateBuild(
+        versionName = BuildConfig.VERSION_NAME,
+        architecture = runCatching { BuildConfig.ARCHITECTURE }.getOrDefault("universal"),
+        variant = installedVariant(BuildConfig.FLAVOR),
+        isNightly = installedIsNightly,
     )
 }
 
-private const val CacheTtlMillis = 15L * 60L * 1000L
-
-// older releases in this repo are the app under its old id, so "downgrade" to one would add a second app instead
-private val FirstReleaseWithThisId = FullVersion(major = 8, minor = 2, patch = 3)
-
-/** A release with the version it was parsed to, so it can be compared without parsing again. */
-private class ParsedRelease(val version: FullVersion, val release: GithubRelease)
-
-private val cacheLock = Any()
-private var cachedAt = 0L
-private var cachedResult: Result<List<ParsedRelease>>? = null
-private var inFlight: kotlinx.coroutines.Deferred<Result<List<ParsedRelease>>>? = null
-
-private val updateScope = kotlinx.coroutines.CoroutineScope(
-    kotlinx.coroutines.SupervisorJob() + Dispatchers.IO
-)
-
-/** Every published release, asked for once and shared for [CacheTtlMillis] unless [force]d. */
-private suspend fun getReleases(force: Boolean): Result<List<ParsedRelease>> {
-    val deferred = synchronized(cacheLock) {
-        if (!force) {
-            val cached = cachedResult
-            if (cached != null && System.currentTimeMillis() - cachedAt < CacheTtlMillis) {
-                return cached
-            }
-        }
-        inFlight ?: updateScope.async { fetchReleases() }.also { inFlight = it }
-    }
-
-    val result = deferred.await()
-    synchronized(cacheLock) {
-        if (inFlight === deferred) inFlight = null
-        if (result.isSuccess) {
-            cachedResult = result
-            cachedAt = System.currentTimeMillis()
-        }
-    }
-    return result
-}
-
-// release only sees releases; nightly sees the prereleases and the releases, and takes the newest of all
-private fun ParsedRelease.inChannel(channel: UpdateChannel) = channel == UpdateChannel.Nightly || !release.isNightly
+internal val catalog: UpdateCatalog by lazy { UpdateCatalog(installedBuild) }
 
 /** The newest release on [channel], whatever is installed. */
 suspend fun getLatestRelease(channel: UpdateChannel, force: Boolean = false): Result<GithubRelease?> =
-    getReleases(force).map { list -> list.filter { it.inChannel(channel) }.maxByOrNull { it.version }?.release }
+    catalog.latest(channel, force)
 
-/**
- * What "Downgrade to" offers, null when there's none: on release, the newest release before the
- * installed x.y.z (an older build of the same version doesn't count); on nightly, the nightly before
- * this one. A nightly never steps down to a release, that can break the library.
- */
-suspend fun getPreviousRelease(channel: UpdateChannel, force: Boolean = false): Result<GithubRelease?> {
-    val installed = parseFullVersion(BuildConfig.VERSION_NAME).copy(buildNumber = 0)
-    return getReleases(force).map { list ->
-        when {
-            channel == UpdateChannel.Release && installedIsNightly -> null
-            channel == UpdateChannel.Release -> list.filter { !it.release.isNightly && it.version.copy(buildNumber = 0) < installed }
-            !installedIsNightly -> null
-            else -> list.filter { it.release.isNightly && it.version.copy(buildNumber = 0) < installed }
-        }?.maxByOrNull { it.version }?.release
-    }
-}
+/** What "Downgrade to" offers, null when there's none. */
+suspend fun getPreviousRelease(channel: UpdateChannel, force: Boolean = false): Result<GithubRelease?> =
+    catalog.previous(channel, force)
 
-private suspend fun fetchReleases(): Result<List<ParsedRelease>> = withContext(Dispatchers.IO) {
-    runCatching {
-        val connection = (URL(ReleasesApi).openConnection() as HttpURLConnection).apply {
-            connectTimeout = 12_000
-            readTimeout = 12_000
-            setRequestProperty("Accept", "application/vnd.github+json")
-            setRequestProperty("User-Agent", "mochy-android")
-        }
-        val json = connection.inputStream.bufferedReader().use { it.readText() }
-        val releases = JSONArray(json)
-        val appArch = runCatching { BuildConfig.ARCHITECTURE }.getOrDefault("universal")
-        val appVariant = installedVariant(BuildConfig.FLAVOR)
-
-        buildList {
-            for (i in 0 until releases.length()) {
-                val release = releases.getJSONObject(i)
-                if (release.optBoolean("draft", false)) continue
-
-                val tag = release.optString("tag_name").orEmpty()
-                val title = release.optString("name").orEmpty().ifBlank { tag }
-                val fullVer = parseFullVersion("$title $tag")
-
-                if (fullVer.major == 0 && fullVer.minor == 0 && fullVer.patch == 0) continue
-                if (fullVer.copy(buildNumber = 0) < FirstReleaseWithThisId) continue
-
-                val displayVersion = if (fullVer.buildNumber > 0) "${fullVer.name} (${fullVer.buildNumber})" else fullVer.name
-
-                val assets = release.optJSONArray("assets")
-                val apks = buildList {
-                    if (assets != null) {
-                        for (a in 0 until assets.length()) {
-                            val asset = assets.getJSONObject(a)
-                            add(
-                                ApkAsset(
-                                    name = asset.optString("name").orEmpty(),
-                                    url = asset.optString("browser_download_url").orEmpty(),
-                                    sizeBytes = asset.optLong("size", 0L),
-                                ),
-                            )
-                        }
-                    }
-                }
-                val picked = pickApkAsset(apks, appArch, appVariant)
-
-                add(
-                    ParsedRelease(
-                        version = fullVer,
-                        release = GithubRelease(
-                            title = title,
-                            tag = tag,
-                            version = displayVersion,
-                            body = release.optString("body").orEmpty(),
-                            htmlUrl = release.optString("html_url").orEmpty().ifBlank { "$UpdateRepoUrl/releases" },
-                            apkUrl = picked?.url,
-                            apkName = picked?.name,
-                            apkSizeBytes = picked?.sizeBytes ?: 0L,
-                            publishedAt = release.optString("published_at").orEmpty(),
-                            isNightly = release.optBoolean("prerelease", false),
-                        ),
-                    ),
-                )
-            }
-        }
-    }
-}
-
-/** One file attached to a release. */
-data class ApkAsset(val name: String, val url: String, val sizeBytes: Long)
-
-private val Variants = listOf("fdroid", "foss", "gms")
-
-/** foss, gms or fdroid out of the build's flavour name (arm64Foss -> foss), null when it has none. */
-fun installedVariant(flavor: String): String? = Variants.firstOrNull { flavor.contains(it, ignoreCase = true) }
-
-/**
- * The APK to install from a release: the one built for this ABI and flavour (mochy-8.4.4-arm64-foss.apk)
- * first. With none, what the updater always picked: the last one named for this ABI, else a universal
- * one, else the first APK.
- */
-fun pickApkAsset(assets: List<ApkAsset>, arch: String, variant: String?): ApkAsset? {
-    val apks = assets.filter { it.name.endsWith(".apk", ignoreCase = true) }
-    val specificArch = arch.isNotBlank() && arch != "universal"
-    if (specificArch && variant != null) {
-        apks.lastOrNull { it.name.contains(arch, ignoreCase = true) && it.name.contains(variant, ignoreCase = true) }
-            ?.let { return it }
-    }
-    return (if (specificArch) apks.lastOrNull { it.name.contains(arch, ignoreCase = true) } else null)
-        ?: apks.lastOrNull { it.name.contains("universal", ignoreCase = true) }
-        ?: apks.firstOrNull()
-}
-
-fun isNewerThanInstalled(candidateVersionText: String): Boolean {
-    val candidate = parseFullVersion(candidateVersionText)
-    val installed = parseFullVersion(BuildConfig.VERSION_NAME)
-    return candidate > installed
-}
+fun isNewerThanInstalled(candidateVersionText: String): Boolean = catalog.isNewerThanInstalled(candidateVersionText)
 
 suspend fun downloadApk(
     context: Context,
