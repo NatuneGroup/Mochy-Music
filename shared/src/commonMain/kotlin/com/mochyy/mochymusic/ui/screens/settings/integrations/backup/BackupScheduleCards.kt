@@ -2,7 +2,6 @@
 
 package com.mochyy.mochymusic.ui.screens.settings.integrations.backup
 
-import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -21,16 +20,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.mochyy.mochymusic.R
-import com.mochyy.mochymusic.backup.CloudBackupSchedule
 import com.mochyy.mochymusic.constants.CloudBackupAutoKey
 import com.mochyy.mochymusic.constants.CloudBackupEveryMinutesKey
 import com.mochyy.mochymusic.constants.CloudBackupKeepKey
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.backup_auto_desc
+import com.mochyy.mochymusic.shared.resources.backup_auto_title
+import com.mochyy.mochymusic.shared.resources.backup_every
+import com.mochyy.mochymusic.shared.resources.backup_keep
+import com.mochyy.mochymusic.shared.resources.backup_keep_note
+import com.mochyy.mochymusic.shared.resources.history
+import com.mochyy.mochymusic.shared.resources.update
 import com.mochyy.mochymusic.ui.component.AppSwitch
 import com.mochyy.mochymusic.ui.screens.settings.storage.StepSlider
 import com.mochyy.mochymusic.ui.screens.settings.storage.StorageCard
@@ -38,6 +40,11 @@ import com.mochyy.mochymusic.ui.screens.settings.storage.StorageCardColumn
 import com.mochyy.mochymusic.ui.screens.settings.storage.StorageMuted
 import com.mochyy.mochymusic.ui.screens.settings.storage.storageText
 import com.mochyy.mochymusic.utils.rememberPreference
+import com.mochyy.mochymusic.viewmodels.BackupScheduleDefaults
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 
 private const val MinutesInHour = 60
 private const val MinutesInDay = 24 * MinutesInHour
@@ -46,39 +53,39 @@ private const val MinutesInWeek = 7 * MinutesInDay
 @Composable
 internal fun BackupScheduleCards(connected: Boolean) {
     val (auto, onAutoChange) = rememberPreference(CloudBackupAutoKey, defaultValue = false)
-    val (everyMinutes, onEveryMinutesChange) = rememberPreference(CloudBackupEveryMinutesKey, CloudBackupSchedule.DefaultEveryMinutes)
-    val (keep, onKeepChange) = rememberPreference(CloudBackupKeepKey, CloudBackupSchedule.DefaultKeep)
+    val (everyMinutes, onEveryMinutesChange) = rememberPreference(CloudBackupEveryMinutesKey, BackupScheduleDefaults.DefaultEveryMinutes)
+    val (keep, onKeepChange) = rememberPreference(CloudBackupKeepKey, BackupScheduleDefaults.DefaultKeep)
     val scheduled = auto && connected
 
     StorageCardColumn {
-        CardHeader(icon = R.drawable.update, title = stringResource(R.string.backup_auto_title)) {
+        CardHeader(icon = Res.drawable.update, title = stringResource(Res.string.backup_auto_title)) {
             AppSwitch(checked = scheduled, onCheckedChange = onAutoChange, enabled = connected)
         }
         Text(
-            stringResource(R.string.backup_auto_desc),
+            stringResource(Res.string.backup_auto_desc),
             style = storageText(13f, FontWeight.Medium, StorageMuted, -0.2f),
             modifier = Modifier.padding(top = 8.dp),
         )
         AnimatedVisibility(visible = scheduled) {
             Column {
                 Spacer(Modifier.height(18.dp))
-                ValueRow(stringResource(R.string.backup_every), everyLabel(everyMinutes))
+                ValueRow(stringResource(Res.string.backup_every), everyLabel(everyMinutes))
                 Spacer(Modifier.height(12.dp))
-                StepSlider(steps = CloudBackupSchedule.EveryMinutesSteps, value = everyMinutes, onValueChange = onEveryMinutesChange)
-                EndLabels(everyLabel(CloudBackupSchedule.EveryMinutesSteps.first()), everyLabel(CloudBackupSchedule.EveryMinutesSteps.last()))
+                StepSlider(steps = BackupScheduleDefaults.EveryMinutesSteps, value = everyMinutes, onValueChange = onEveryMinutesChange)
+                EndLabels(everyLabel(BackupScheduleDefaults.EveryMinutesSteps.first()), everyLabel(BackupScheduleDefaults.EveryMinutesSteps.last()))
             }
         }
     }
     Spacer(Modifier.height(12.dp))
     StorageCardColumn {
-        CardHeader(icon = R.drawable.history, title = stringResource(R.string.backup_keep)) {
-            Text(pluralStringResource(R.plurals.backup_keep_count, keep, keep), style = storageText(15f, FontWeight.Bold))
+        CardHeader(icon = Res.drawable.history, title = stringResource(Res.string.backup_keep)) {
+            Text(pluralStringResource(Res.plurals.backup_keep_count, keep, keep), style = storageText(15f, FontWeight.Bold))
         }
         Spacer(Modifier.height(12.dp))
-        StepSlider(steps = CloudBackupSchedule.KeepSteps, value = keep, onValueChange = onKeepChange)
-        EndLabels(CloudBackupSchedule.KeepSteps.first().toString(), CloudBackupSchedule.KeepSteps.last().toString())
+        StepSlider(steps = BackupScheduleDefaults.KeepSteps, value = keep, onValueChange = onKeepChange)
+        EndLabels(BackupScheduleDefaults.KeepSteps.first().toString(), BackupScheduleDefaults.KeepSteps.last().toString())
         Text(
-            stringResource(R.string.backup_keep_note),
+            stringResource(Res.string.backup_keep_note),
             style = storageText(13f, FontWeight.Medium, StorageMuted, -0.2f),
             modifier = Modifier.padding(top = 12.dp),
         )
@@ -87,7 +94,7 @@ internal fun BackupScheduleCards(connected: Boolean) {
 
 // the same header the storage page's cache card has: a small light disc with the icon, the title, then whatever sits on the right
 @Composable
-private fun CardHeader(@DrawableRes icon: Int, title: String, trailing: @Composable () -> Unit) {
+private fun CardHeader(icon: DrawableResource, title: String, trailing: @Composable () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             contentAlignment = Alignment.Center,
@@ -123,8 +130,8 @@ private fun EndLabels(start: String, end: String) {
 // the biggest whole unit the step fits, so 4320 minutes reads as every 3 days
 @Composable
 private fun everyLabel(minutes: Int): String = when {
-    minutes % MinutesInWeek == 0 -> (minutes / MinutesInWeek).let { pluralStringResource(R.plurals.backup_every_weeks, it, it) }
-    minutes % MinutesInDay == 0 -> (minutes / MinutesInDay).let { pluralStringResource(R.plurals.backup_every_days, it, it) }
-    minutes % MinutesInHour == 0 -> (minutes / MinutesInHour).let { pluralStringResource(R.plurals.backup_every_hours, it, it) }
-    else -> pluralStringResource(R.plurals.backup_every_minutes, minutes, minutes)
+    minutes % MinutesInWeek == 0 -> (minutes / MinutesInWeek).let { pluralStringResource(Res.plurals.backup_every_weeks, it, it) }
+    minutes % MinutesInDay == 0 -> (minutes / MinutesInDay).let { pluralStringResource(Res.plurals.backup_every_days, it, it) }
+    minutes % MinutesInHour == 0 -> (minutes / MinutesInHour).let { pluralStringResource(Res.plurals.backup_every_hours, it, it) }
+    else -> pluralStringResource(Res.plurals.backup_every_minutes, minutes, minutes)
 }

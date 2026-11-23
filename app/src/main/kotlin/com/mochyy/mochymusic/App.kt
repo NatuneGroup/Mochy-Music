@@ -104,6 +104,8 @@ class App : Application(), SingletonImageLoader.Factory {
         com.mochyy.mochymusic.di.loadAndroidKoin(this)
         // the modules view model, over Hilt's one module registry and catalog
         com.mochyy.mochymusic.di.koin.loadModulesKoin(this)
+        // the Android side of the shared storage, backup and scrobbling pages
+        com.mochyy.mochymusic.di.koin.loadStorageKoin(this)
         if (BuildConfig.COMPACT_APK) {
             JapaneseLanguagePackManager.initialize(this)
             ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
