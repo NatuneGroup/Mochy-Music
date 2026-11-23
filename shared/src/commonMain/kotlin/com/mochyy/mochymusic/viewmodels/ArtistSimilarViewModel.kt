@@ -1,21 +1,16 @@
-// ArtistSimilarViewModel.kt
-
 package com.mochyy.mochymusic.viewmodels
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.mochyy.mochymusic.utils.ArtistPageCache
+import com.mochyy.mochymusic.utils.ArtistPageSource
 import com.mochyy.mochymusic.utils.ArtistVideos
-import com.mochyy.mochymusic.utils.reportException
-import com.music.innertube.YouTube
+import com.mochyy.mochymusic.utils.ioDispatcher
 import com.music.innertube.models.AlbumItem
 import com.music.innertube.models.ArtistItem
 import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
 import com.music.innertube.pages.ArtistPage
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,7 +18,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import javax.inject.Inject
 
 /** the world around one artist, grouped by kind rather than by who it came from */
 data class SimilarGroups(
@@ -33,17 +27,18 @@ data class SimilarGroups(
     val albums: List<AlbumItem> = emptyList(),
 )
 
-@HiltViewModel
-class ArtistSimilarViewModel @Inject constructor(
+// Koin builds it (di/AndroidKoin.kt on Android); the artist pages come from the platform's ArtistPageSource
+class ArtistSimilarViewModel(
+    private val artistPageSource: ArtistPageSource,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     val artistId = savedStateHandle.get<String>("artistId")!!
 
-    private val _page = MutableStateFlow(ArtistPageCache.page(artistId))
+    private val _page = MutableStateFlow(artistPageSource.page(artistId))
     val page: StateFlow<ArtistPage?> = _page
 
     /** what the Home box showed, when the page was opened from one: it leads every group */
-    val picks = ArtistPageCache.picks(artistId)
+    val picks = artistPageSource.picks(artistId)
     private val pickedSongs = picks?.items.orEmpty().filterIsInstance<SongItem>().distinctBy { it.id }
     private val pickedAlbums = picks?.items.orEmpty().filterIsInstance<AlbumItem>().distinctBy { it.id }
     private val pickedPlaylists = picks?.items.orEmpty().filterIsInstance<PlaylistItem>().distinctBy { it.id }
@@ -67,11 +62,11 @@ class ArtistSimilarViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val page = _page.value ?: YouTube.artist(artistId)
-                .onFailure(::reportException)
+            val page = _page.value ?: artistPageSource.fetch(artistId)
+                .onFailure(artistPageSource::reportFailure)
                 .getOrNull()
                 ?.also {
-                    ArtistPageCache.putPage(artistId, it)
+                    artistPageSource.putPage(artistId, it)
                     _page.value = it
                 }
             if (page == null) {
@@ -92,12 +87,12 @@ class ArtistSimilarViewModel @Inject constructor(
 
             // a handful of the similar artists' pages at once, each given a few seconds; the slow
             // or failing ones are just left out
-            val pages = withContext(Dispatchers.IO) {
+            val pages = withContext(ioDispatcher) {
                 artists.take(5).map { artist ->
                     async {
-                        ArtistPageCache.page(artist.id)
-                            ?: withTimeoutOrNull(8_000) { YouTube.artist(artist.id).getOrNull() }
-                                ?.also { ArtistPageCache.putPage(artist.id, it) }
+                        artistPageSource.page(artist.id)
+                            ?: withTimeoutOrNull(8_000) { artistPageSource.fetch(artist.id).getOrNull() }
+                                ?.also { artistPageSource.putPage(artist.id, it) }
                     }
                 }.awaitAll()
             }.filterNotNull()

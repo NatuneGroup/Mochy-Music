@@ -1,5 +1,3 @@
-// ArtistListRecommendation.kt
-
 package com.mochyy.mochymusic.models
 
 import com.music.innertube.models.YTItem
