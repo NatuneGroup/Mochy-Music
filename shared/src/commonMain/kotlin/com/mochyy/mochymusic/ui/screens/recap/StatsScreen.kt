@@ -58,21 +58,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -81,34 +77,30 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
-import com.mochyy.mochymusic.LocalDatabase
-import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.ProfilePicUriKey
-import com.mochyy.mochymusic.ui.component.BlurDirection
-import com.mochyy.mochymusic.ui.component.BlurEffectCache
-import com.mochyy.mochymusic.ui.component.GlassState
-import com.mochyy.mochymusic.ui.component.HomeContentInset
-import com.mochyy.mochymusic.ui.component.LocalBottomSheetPageState
-import com.mochyy.mochymusic.ui.component.PopupSheetHandle
-import com.mochyy.mochymusic.ui.component.ProgressiveGlassBackground
-import com.mochyy.mochymusic.ui.component.glassRoot
+import com.mochyy.mochymusic.db.MochyDatabase
+import com.mochyy.mochymusic.db.nowLocal
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.*
+import com.mochyy.mochymusic.ui.component.sheetHandleRoom
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import com.mochyy.mochymusic.ui.utils.resize
 import com.mochyy.mochymusic.ui.utils.stableSystemBars
 import com.mochyy.mochymusic.utils.rememberPreference
-import kotlinx.datetime.toJavaLocalDate
-import kotlinx.datetime.toJavaLocalTime
-import java.time.DayOfWeek
-import java.time.LocalDate
-import java.time.Month
-import java.time.YearMonth
-import java.util.Locale
-import java.time.format.TextStyle as JavaTextStyle
-import com.mochyy.mochymusic.ui.component.sheetHandleRoom
+import kotlinx.datetime.LocalDate
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 
 private val StatsCard = Color(0xFF0F0F0F)
 private val ChipBg = Color(0xFF2A2A2A)
 private val PagePadding = 20.dp
+
+// the page inset HomeContentInset gave these two places in :app
+private val ContentInset = 36.dp
+
+private val StatsFormat = StatisticsFormatter()
 
 private fun statsText(
     size: Float,
@@ -117,47 +109,53 @@ private fun statsText(
     tracking: Float = -0.02f * size,
 ) = TextStyle(fontFamily = InterFontFamily, fontWeight = weight, fontSize = size.sp, letterSpacing = tracking.sp, color = color)
 
-private fun monthShort(month: Int) = Month.of(month).getDisplayName(JavaTextStyle.SHORT, Locale.getDefault())
+private fun monthShort(month: Int) = StatsFormat.shortMonth(month)
 
-private fun monthFull(month: Int) = Month.of(month).getDisplayName(JavaTextStyle.FULL, Locale.getDefault())
+private fun monthFull(month: Int) = fullMonthName(month)
 
 @Composable
-fun StatsScreen(navController: NavController) {
-    val database = LocalDatabase.current
-    val context = LocalContext.current
+@Suppress("UNUSED_PARAMETER")
+fun StatsScreen(
+    navController: NavController,
+    database: MochyDatabase = koinInject(),
+    chrome: StatsChrome = ScrimStatsChrome,
+    pickerHost: StatsPickerHost = rememberStatsPickerDialogHost(),
+    genreShares: suspend (List<RecapArtist>) -> List<GenreShare>? = { null },
+) {
     val density = LocalDensity.current
-    val sheets = LocalBottomSheetPageState.current
     val (profilePicUri) = rememberPreference(ProfilePicUriKey, "")
-    val today = remember { LocalDate.now() }
+    val today = remember { nowLocal().date }
+    val currentGenreShares by rememberUpdatedState(genreShares)
+    val chromeState = chrome.state()
 
-    var kind by rememberSaveable { mutableStateOf(StatsRange.Kind.Month) }
+    var kindName by rememberSaveable { mutableStateOf(StatsRange.Kind.Month.name) }
+    val kind = StatsRange.Kind.valueOf(kindName)
     var year by rememberSaveable { mutableStateOf(today.year) }
-    var month by rememberSaveable { mutableStateOf(today.monthValue) }
+    var month by rememberSaveable { mutableStateOf(today.month.ordinal + 1) }
     val range = StatsRange(kind, year, if (kind == StatsRange.Kind.Month) month else 1)
 
     var firstDay by remember { mutableStateOf<LocalDate?>(null) }
     LaunchedEffect(Unit) {
-        firstDay = RecapRepository.firstPlayDate(database) ?: today
+        firstDay = RecapStats.firstPlayDate(database) ?: today
     }
 
     var stats by remember { mutableStateOf<ListeningStats?>(null) }
-    LaunchedEffect(range) { stats = RecapRepository.load(database, range) }
+    LaunchedEffect(range) { stats = RecapStats.load(database, range) }
     var genres by remember { mutableStateOf<GenreState>(GenreState.Loading) }
     LaunchedEffect(stats) {
         val s = stats ?: return@LaunchedEffect
         genres = GenreState.Loading
-        genres = RecapGenres.shares(context, s.topArtists)?.let { GenreState.Ready(it) } ?: GenreState.Unavailable
+        genres = currentGenreShares(s.topArtists)?.let { GenreState.Ready(it) } ?: GenreState.Unavailable
     }
 
     val start = firstDay ?: today
     val periods =
         remember(kind, start) {
             if (kind == StatsRange.Kind.Month) {
-                val first = YearMonth.from(start)
-                val last = YearMonth.from(today)
-                generateSequence(first) { it.plusMonths(1) }
-                    .takeWhile { !it.isAfter(last) }
-                    .map { StatsRange(StatsRange.Kind.Month, it.year, it.monthValue) }
+                val lastMonth = today.month.ordinal + 1
+                generateSequence(start.year to (start.month.ordinal + 1)) { (y, m) -> if (m == 12) y + 1 to 1 else y to m + 1 }
+                    .takeWhile { (y, m) -> y < today.year || (y == today.year && m <= lastMonth) }
+                    .map { (y, m) -> StatsRange(StatsRange.Kind.Month, y, m) }
                     .toList()
             } else {
                 (start.year..today.year).map { StatsRange(StatsRange.Kind.Year, it) }
@@ -168,7 +166,6 @@ fun StatsScreen(navController: NavController) {
     val allOpen = CardKeys.all { expanded[it] == true }
 
     val listState = rememberLazyListState()
-    val glassState = remember { GlassState() }
     val topInset = WindowInsets.stableSystemBars.asPaddingValues().calculateTopPadding()
     val collapse by remember {
         derivedStateOf {
@@ -184,36 +181,34 @@ fun StatsScreen(navController: NavController) {
 
     fun openPicker() {
         val choice = PickerChoice(kind, year, month)
-        var handle: PopupSheetHandle? = null
         // done sits in the button bar: at the end of the content it was cut off below the screen on most phones, so the sheet couldn't be closed with a pick
-        handle =
-            sheets.showWithHandle(
-                buttonBar = {
-                    Box(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .height(54.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF666666))
-                                .clickable {
-                                    kind = choice.kind
-                                    year = choice.year
-                                    month = choice.month
-                                    handle?.dismiss()
-                                },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(stringResource(R.string.rc_stats_done), style = statsText(20f))
-                    }
-                },
-            ) {
-                StatsPicker(choice = choice, firstDay = start, today = today)
-            }
+        pickerHost.show(
+            buttonBar = { dismiss ->
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(54.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF666666))
+                            .clickable {
+                                kindName = choice.kind.name
+                                year = choice.year
+                                month = choice.month
+                                dismiss()
+                            },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(stringResource(Res.string.rc_stats_done), style = statsText(20f))
+                }
+            },
+        ) {
+            StatsPicker(choice = choice, firstDay = start, today = today)
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-        Box(modifier = Modifier.fillMaxSize().glassRoot(glassState, isActive = { collapse > 0f })) {
+        Box(modifier = Modifier.fillMaxSize().then(chromeState.contentModifier({ collapse > 0f }))) {
             LazyColumn(
                 state = listState,
                 contentPadding = PaddingValues(top = topInset + 82.dp, bottom = 200.dp),
@@ -227,10 +222,10 @@ fun StatsScreen(navController: NavController) {
                                 .padding(horizontal = PagePadding)
                                 .graphicsLayer { alpha = 1f - collapse },
                     ) {
-                        Text(stringResource(R.string.rc_stats_title), style = statsText(44f, tracking = -1.6f))
+                        Text(stringResource(Res.string.rc_stats_title), style = statsText(44f, tracking = -1.6f))
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            stringResource(R.string.rc_stats_year_recap_link, year),
+                            stringResource(Res.string.rc_stats_year_recap_link, year),
                             style = statsText(22f, color = StatsInkMuted, tracking = -0.6f),
                             modifier =
                                 Modifier
@@ -247,7 +242,7 @@ fun StatsScreen(navController: NavController) {
                         available = available,
                         todayYear = today.year,
                         labelStart = PagePadding,
-                        restInset = HomeContentInset,
+                        restInset = ContentInset,
                         onSelect = { p ->
                             year = p.year
                             if (p.kind == StatsRange.Kind.Month) month = p.month
@@ -268,7 +263,7 @@ fun StatsScreen(navController: NavController) {
                                 }.padding(start = 14.dp, end = 10.dp, top = 7.dp, bottom = 7.dp),
                     ) {
                         Text(
-                            stringResource(if (allOpen) R.string.rc_stats_collapse_all else R.string.rc_stats_expand_all),
+                            stringResource(if (allOpen) Res.string.rc_stats_collapse_all else Res.string.rc_stats_expand_all),
                             style = statsText(13f, FontWeight.SemiBold, tracking = 0f),
                         )
                         Spacer(Modifier.width(4.dp))
@@ -284,13 +279,13 @@ fun StatsScreen(navController: NavController) {
                         StatsCardBox {
                             Text(
                                 stringResource(
-                                    R.string.rc_stats_empty_title,
+                                    Res.string.rc_stats_empty_title,
                                     if (kind == StatsRange.Kind.Month) "${monthFull(s.range.month)} ${s.range.year}" else "${s.range.year}",
                                 ),
                                 style = statsText(17f),
                             )
                             Text(
-                                stringResource(R.string.rc_stats_empty_hint),
+                                stringResource(Res.string.rc_stats_empty_hint),
                                 style = statsText(13f, FontWeight.Medium, StatsInkMuted, 0f),
                                 modifier = Modifier.padding(top = 4.dp),
                             )
@@ -306,7 +301,7 @@ fun StatsScreen(navController: NavController) {
                     if (s.newSongCount in 1 until s.songCount) item(key = "new") { NewFindsCard(s, expanded) }
                     item(key = "often") {
                         Text(
-                            stringResource(R.string.rc_stats_often),
+                            stringResource(Res.string.rc_stats_often),
                             style = statsText(16f),
                             modifier = Modifier.padding(start = PagePadding, end = PagePadding, top = 18.dp, bottom = 12.dp),
                         )
@@ -316,7 +311,7 @@ fun StatsScreen(navController: NavController) {
                     s.habits?.let { habits -> item(key = "habits") { HabitsCard(s, habits) } }
                     item(key = "privacy") {
                         Text(
-                            stringResource(R.string.rc_stats_privacy),
+                            stringResource(Res.string.rc_stats_privacy),
                             style = statsText(11f, FontWeight.SemiBold, StatsInkMuted, 0f),
                             modifier = Modifier.padding(horizontal = PagePadding + 4.dp, vertical = 10.dp),
                         )
@@ -326,39 +321,7 @@ fun StatsScreen(navController: NavController) {
         }
 
         // glass bar: a sibling of the glassRoot box, never inside it
-        val showGlass by remember { derivedStateOf { collapse > 0.01f } }
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height(topInset + 84.dp)
-                    .graphicsLayer { alpha = collapse },
-        ) {
-            if (showGlass) {
-                ProgressiveGlassBackground(
-                    state = glassState,
-                    maxBlurRadius = { 50f * collapse },
-                    foundationColor = Color.Black.copy(alpha = 0.5f),
-                    direction = BlurDirection.BottomToTop,
-                    steps = 3,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-            val progressiveBar =
-                com.mochyy.mochymusic.ui.component
-                    .rememberProgressiveBlur()
-            Box(
-                Modifier.fillMaxSize().background(
-                    if (progressiveBar) {
-                        Brush.verticalGradient(listOf(Color.Black, Color.Black.copy(alpha = 0.7f), Color.Transparent))
-                    } else {
-                        androidx.compose.ui.graphics.SolidColor(
-                            Color.Black.copy(alpha = com.mochyy.mochymusic.ui.component.FlatBarScrimAlpha),
-                        )
-                    },
-                ),
-            )
-        }
+        chromeState.TopBackground(collapse = { collapse }, topInset = topInset)
 
         // top row: the logo, which turns into "Stats" once the title scrolls away (one element
         // morphing, like Home's), and the avatar
@@ -377,7 +340,7 @@ fun StatsScreen(navController: NavController) {
         ) {
             Box(contentAlignment = Alignment.CenterStart) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_mochy_mark),
+                    painter = painterResource(Res.drawable.ic_mochy_mark),
                     contentDescription = "Mochy",
                     tint = Color.White,
                     modifier =
@@ -389,7 +352,7 @@ fun StatsScreen(navController: NavController) {
                                 scaleX = k
                                 scaleY = k
                                 transformOrigin = TransformOrigin(0f, 0.5f)
-                                renderEffect = BlurEffectCache.element(morph * 15f)
+                                renderEffect = chromeState.elementBlur(morph * 15f)
                             },
                 )
                 Row(
@@ -398,13 +361,13 @@ fun StatsScreen(navController: NavController) {
                         Modifier
                             .graphicsLayer {
                                 alpha = morph
-                                renderEffect = BlurEffectCache.element((1f - morph) * 15f)
+                                renderEffect = chromeState.elementBlur((1f - morph) * 15f)
                             }.clickable(enabled = morph > 0.5f, onClick = ::openPicker),
                 ) {
-                    Text(stringResource(R.string.rc_stats_title), style = statsText(28f, tracking = -1f))
+                    Text(stringResource(Res.string.rc_stats_title), style = statsText(28f, tracking = -1f))
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        stringResource(R.string.rc_stats_year_recap, year),
+                        stringResource(Res.string.rc_stats_year_recap, year),
                         style = statsText(15f, color = StatsInkMuted, tracking = -0.3f),
                         modifier = Modifier.padding(bottom = 4.dp),
                     )
@@ -413,10 +376,10 @@ fun StatsScreen(navController: NavController) {
             Spacer(Modifier.weight(1f))
             AsyncImage(
                 model = profilePicUri.takeIf { it.isNotBlank() }?.let { if (it.contains("://")) it else "file://$it" },
-                contentDescription = stringResource(R.string.rc_stats_cd_profile),
+                contentDescription = stringResource(Res.string.rc_stats_cd_profile),
                 contentScale = ContentScale.Crop,
-                placeholder = painterResource(R.drawable.person),
-                error = painterResource(R.drawable.person),
+                placeholder = painterResource(Res.drawable.person),
+                error = painterResource(Res.drawable.person),
                 modifier =
                     Modifier
                         .size(36.dp)
@@ -494,8 +457,8 @@ private fun Chevron(
 ) {
     val turn by animateFloatAsState(if (open) 180f else 0f, tween(320, easing = Emphasized), label = "chevron")
     Icon(
-        painter = painterResource(R.drawable.expand_more),
-        contentDescription = stringResource(if (open) R.string.rc_stats_cd_collapse else R.string.rc_stats_cd_expand),
+        painter = painterResource(Res.drawable.expand_more),
+        contentDescription = stringResource(if (open) Res.string.rc_stats_cd_collapse else Res.string.rc_stats_cd_expand),
         tint = Color.White,
         modifier = Modifier.size(size.dp).graphicsLayer { rotationZ = turn },
     )
@@ -526,9 +489,9 @@ private fun TotalCard(
                 if (s.range.kind ==
                     StatsRange.Kind.Month
                 ) {
-                    stringResource(R.string.rc_stats_every_day, monthFull(s.range.month))
+                    stringResource(Res.string.rc_stats_every_day, monthFull(s.range.month))
                 } else {
-                    stringResource(R.string.rc_stats_every_month, s.range.year)
+                    stringResource(Res.string.rc_stats_every_month, s.range.year)
                 },
                 style = statsText(13f, FontWeight.SemiBold, StatsInkMuted, 0f),
                 modifier = Modifier.padding(bottom = 8.dp),
@@ -555,19 +518,19 @@ private fun TotalCard(
                 if (s.range.kind ==
                     StatsRange.Kind.Month
                 ) {
-                    R.string.rc_stats_total_month
+                    Res.string.rc_stats_total_month
                 } else {
-                    R.string.rc_stats_total_year
+                    Res.string.rc_stats_total_year
                 },
             ),
             style = statsText(15f),
         )
         Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(top = 2.dp)) {
             OdometerText("${minutes / 60}", big, progress = roll)
-            Text(stringResource(R.string.profile_unit_hour_short), style = unit, modifier = Modifier.padding(bottom = 8.dp))
+            Text(stringResource(Res.string.profile_unit_hour_short), style = unit, modifier = Modifier.padding(bottom = 8.dp))
             Text(":", style = big)
             OdometerText((minutes % 60).toString().padStart(2, '0'), big, progress = roll)
-            Text(stringResource(R.string.profile_unit_minute_short), style = unit, modifier = Modifier.padding(bottom = 8.dp))
+            Text(stringResource(Res.string.profile_unit_minute_short), style = unit, modifier = Modifier.padding(bottom = 8.dp))
         }
         ComparisonLine(s)
         Spacer(Modifier.height(10.dp))
@@ -575,10 +538,10 @@ private fun TotalCard(
         Spacer(Modifier.height(12.dp))
         // wraps onto a second line; in one row the last fact got squeezed to a sliver under the chevron
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Fact(pluralStringResource(R.plurals.rc_stats_fact_songs, s.songCount, s.songCount))
-            Fact(pluralStringResource(R.plurals.rc_stats_fact_artists, s.artistCount, s.artistCount))
-            Fact(pluralStringResource(R.plurals.rc_stats_fact_albums, s.albumCount, s.albumCount))
-            Fact(pluralStringResource(R.plurals.rc_stats_fact_plays, s.plays, s.plays))
+            Fact(pluralStringResource(Res.plurals.rc_stats_fact_songs, s.songCount, s.songCount))
+            Fact(pluralStringResource(Res.plurals.rc_stats_fact_artists, s.artistCount, s.artistCount))
+            Fact(pluralStringResource(Res.plurals.rc_stats_fact_albums, s.albumCount, s.albumCount))
+            Fact(pluralStringResource(Res.plurals.rc_stats_fact_plays, s.plays, s.plays))
         }
     }
 }
@@ -620,11 +583,11 @@ private fun GenreCard(
                 }
             },
     ) {
-        Text(stringResource(R.string.rc_stats_dominant_genre), style = statsText(15f))
+        Text(stringResource(Res.string.rc_stats_dominant_genre), style = statsText(15f))
         when (state) {
             GenreState.Loading -> {
                 Text(
-                    stringResource(R.string.rc_stats_genre_loading),
+                    stringResource(Res.string.rc_stats_genre_loading),
                     style = statsText(14f, FontWeight.Medium, StatsInkMuted, 0f),
                     modifier = Modifier.padding(vertical = 30.dp),
                 )
@@ -632,7 +595,7 @@ private fun GenreCard(
 
             GenreState.Unavailable -> {
                 Text(
-                    stringResource(R.string.rc_stats_genre_unavailable),
+                    stringResource(Res.string.rc_stats_genre_unavailable),
                     style = statsText(14f, FontWeight.Medium, StatsInkMuted, 0f),
                     modifier = Modifier.padding(vertical = 18.dp),
                 )
@@ -701,7 +664,7 @@ private fun ArtistCard(
                     s.topArtists.take(10).map { a ->
                         RankRow(
                             a.name,
-                            pluralStringResource(R.plurals.rc_stats_artist_row, a.plays, shortDuration(a.playTimeMs), a.plays),
+                            pluralStringResource(Res.plurals.rc_stats_artist_row, a.plays, shortDuration(a.playTimeMs), a.plays),
                             a.playTimeMs,
                             a.thumbnailUrl,
                         )
@@ -710,7 +673,7 @@ private fun ArtistCard(
             )
         },
     ) {
-        Text(stringResource(R.string.rc_stats_artist_love), style = statsText(15f))
+        Text(stringResource(Res.string.rc_stats_artist_love), style = statsText(15f))
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 12.dp)) {
             AsyncImage(
                 model = top.thumbnailUrl?.resize(240, 240),
@@ -723,7 +686,7 @@ private fun ArtistCard(
                 // never cut: a long name was clipped with nothing to say there was more
                 Text(top.name, style = statsText(24f, tracking = -0.8f))
                 Text(
-                    pluralStringResource(R.plurals.rc_stats_artist_summary, top.plays, shortDuration(top.playTimeMs), top.plays, top.name),
+                    pluralStringResource(Res.plurals.rc_stats_artist_summary, top.plays, shortDuration(top.playTimeMs), top.plays, top.name),
                     style = statsText(12f, FontWeight.SemiBold, StatsInkMuted, 0f),
                 )
             }
@@ -747,7 +710,7 @@ private fun SongCard(
                         RankRow(
                             song.title,
                             pluralStringResource(
-                                R.plurals.rc_stats_song_row,
+                                Res.plurals.rc_stats_song_row,
                                 song.plays,
                                 song.artistName,
                                 song.plays,
@@ -761,7 +724,7 @@ private fun SongCard(
             )
         },
     ) {
-        Text(stringResource(R.string.rc_stats_song_number_one), style = statsText(15f))
+        Text(stringResource(Res.string.rc_stats_song_number_one), style = statsText(15f))
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 12.dp)) {
             AsyncImage(
                 model = top.thumbnailUrl?.resize(240, 240),
@@ -772,11 +735,11 @@ private fun SongCard(
             Spacer(Modifier.width(16.dp))
             Column {
                 Text(
-                    stringResource(R.string.rc_stats_song_from, top.title, top.artistName),
+                    stringResource(Res.string.rc_stats_song_from, top.title, top.artistName),
                     style = statsText(20f, tracking = -0.6f),
                 )
                 Text(
-                    pluralStringResource(R.plurals.rc_stats_song_summary, top.plays, shortDuration(top.playTimeMs), top.plays),
+                    pluralStringResource(Res.plurals.rc_stats_song_summary, top.plays, shortDuration(top.playTimeMs), top.plays),
                     style = statsText(12f, FontWeight.SemiBold, StatsInkMuted, 0f),
                 )
             }
@@ -790,14 +753,13 @@ private fun WeekdayCard(
     expanded: MutableMap<String, Boolean>,
 ) {
     val best = s.weekdayMs.indices.maxByOrNull { s.weekdayMs[it] } ?: 0
-    val day = DayOfWeek.of(best + 1)
     StatsCardBox(
         expandKey = "weekday",
         expanded = expanded,
         detail = {
             WeekdayBars(
                 values = s.weekdayMs,
-                labels = DayOfWeek.entries.map { it.getDisplayName(JavaTextStyle.NARROW, Locale.getDefault()) },
+                labels = (1..7).map { StatsFormat.narrowWeekday(it) },
             )
         },
     ) {
@@ -806,20 +768,20 @@ private fun WeekdayCard(
                 if (s.range.kind ==
                     StatsRange.Kind.Month
                 ) {
-                    R.string.rc_stats_weekday_month
+                    Res.string.rc_stats_weekday_month
                 } else {
-                    R.string.rc_stats_weekday_year
+                    Res.string.rc_stats_weekday_year
                 },
             ),
             style = statsText(13f, FontWeight.SemiBold),
         )
         Text(
-            day.getDisplayName(JavaTextStyle.FULL, Locale.getDefault()),
+            fullDayName(best + 1),
             style = statsText(32f, tracking = -1.2f),
             modifier = Modifier.padding(vertical = 2.dp),
         )
         Text(
-            stringResource(R.string.rc_stats_totaling_hours, formatHoursDecimal(s.weekdayMs[best])),
+            stringResource(Res.string.rc_stats_totaling_hours, formatHoursDecimal(s.weekdayMs[best])),
             style = statsText(12f, FontWeight.SemiBold, StatsInkSecondary, 0f),
         )
     }
@@ -833,10 +795,10 @@ private fun HourCard(
     val best = s.hourMs.indices.maxByOrNull { s.hourMs[it] } ?: 0
     val hourRes =
         when (best) {
-            in 5..11 -> R.string.rc_stats_hour_morning
-            in 12..16 -> R.string.rc_stats_hour_afternoon
-            in 17..21 -> R.string.rc_stats_hour_evening
-            else -> R.string.rc_stats_hour_night
+            in 5..11 -> Res.string.rc_stats_hour_morning
+            in 12..16 -> Res.string.rc_stats_hour_afternoon
+            in 17..21 -> Res.string.rc_stats_hour_evening
+            else -> Res.string.rc_stats_hour_night
         }
     StatsCardBox(
         expandKey = "hour",
@@ -852,7 +814,7 @@ private fun HourCard(
         Text(stringResource(hourRes), style = statsText(13f, FontWeight.SemiBold))
         Text(hourLabel(best), style = statsText(32f, tracking = -1.2f), modifier = Modifier.padding(vertical = 2.dp))
         Text(
-            stringResource(R.string.rc_stats_totaling_hours_time, formatHoursDecimal(s.hourMs[best])),
+            stringResource(Res.string.rc_stats_totaling_hours_time, formatHoursDecimal(s.hourMs[best])),
             style = statsText(12f, FontWeight.SemiBold, StatsInkSecondary, 0f),
         )
     }
@@ -867,9 +829,9 @@ private fun ComparisonLine(s: ListeningStats) {
     val partial = s.previousIsPartial
     val text =
         when {
-            percent >= 3 -> stringResource(if (partial) R.string.rc_stats_vs_more_so_far else R.string.rc_stats_vs_more, percent, name)
-            percent <= -3 -> stringResource(if (partial) R.string.rc_stats_vs_less_so_far else R.string.rc_stats_vs_less, -percent, name)
-            else -> stringResource(if (partial) R.string.rc_stats_vs_same_so_far else R.string.rc_stats_vs_same, name)
+            percent >= 3 -> stringResource(if (partial) Res.string.rc_stats_vs_more_so_far else Res.string.rc_stats_vs_more, percent, name)
+            percent <= -3 -> stringResource(if (partial) Res.string.rc_stats_vs_less_so_far else Res.string.rc_stats_vs_less, -percent, name)
+            else -> stringResource(if (partial) Res.string.rc_stats_vs_same_so_far else Res.string.rc_stats_vs_same, name)
         }
     Text(
         text,
@@ -881,7 +843,7 @@ private fun ComparisonLine(s: ListeningStats) {
 @Composable
 private fun RepeatCard(repeat: RepeatDay) {
     StatsCardBox {
-        Text(stringResource(R.string.rc_stats_repeat_title), style = statsText(15f))
+        Text(stringResource(Res.string.rc_stats_repeat_title), style = statsText(15f))
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 12.dp)) {
             AsyncImage(
                 model = repeat.song.thumbnailUrl?.resize(240, 240),
@@ -894,7 +856,7 @@ private fun RepeatCard(repeat: RepeatDay) {
                 Text(repeat.song.title, style = statsText(18f, tracking = -0.5f))
                 Text(repeat.song.artistName, style = statsText(12f, FontWeight.SemiBold, StatsInkMuted, 0f))
                 Text(
-                    pluralStringResource(R.plurals.rc_stats_repeat_times, repeat.plays, repeat.plays, shortDate(repeat.date.toJavaLocalDate())),
+                    pluralStringResource(Res.plurals.rc_stats_repeat_times, repeat.plays, repeat.plays, shortDate(repeat.date)),
                     style = statsText(13f, FontWeight.SemiBold, StatsAccent, 0f),
                     modifier = Modifier.padding(top = 4.dp),
                 )
@@ -918,7 +880,7 @@ private fun NewFindsCard(
                     s.newSongs.map { song ->
                         RankRow(
                             song.title,
-                            pluralStringResource(R.plurals.rc_stats_song_row, song.plays, song.artistName, song.plays, shortDuration(song.playTimeMs)),
+                            pluralStringResource(Res.plurals.rc_stats_song_row, song.plays, song.artistName, song.plays, shortDuration(song.playTimeMs)),
                             song.plays.toLong(),
                             song.thumbnailUrl,
                         )
@@ -927,13 +889,13 @@ private fun NewFindsCard(
             )
         },
     ) {
-        Text(stringResource(R.string.rc_stats_new_title), style = statsText(15f))
+        Text(stringResource(Res.string.rc_stats_new_title), style = statsText(15f))
         Text(
-            pluralStringResource(R.plurals.rc_stats_new_songs, s.newSongCount, s.newSongCount),
+            pluralStringResource(Res.plurals.rc_stats_new_songs, s.newSongCount, s.newSongCount),
             style = statsText(32f, tracking = -1.2f),
             modifier = Modifier.padding(vertical = 2.dp),
         )
-        Text(stringResource(R.string.rc_stats_new_share, share), style = statsText(12f, FontWeight.SemiBold, StatsInkSecondary, 0f))
+        Text(stringResource(Res.string.rc_stats_new_share, share), style = statsText(12f, FontWeight.SemiBold, StatsInkSecondary, 0f))
         s.newSongs.firstOrNull()?.let { best ->
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 14.dp)) {
                 AsyncImage(
@@ -944,8 +906,8 @@ private fun NewFindsCard(
                 )
                 Spacer(Modifier.width(12.dp))
                 Column {
-                    Text(stringResource(R.string.rc_stats_new_best), style = statsText(11f, FontWeight.SemiBold, StatsInkMuted, 0f))
-                    Text(stringResource(R.string.rc_stats_song_from, best.title, best.artistName), style = statsText(14f, tracking = -0.2f))
+                    Text(stringResource(Res.string.rc_stats_new_best), style = statsText(11f, FontWeight.SemiBold, StatsInkMuted, 0f))
+                    Text(stringResource(Res.string.rc_stats_song_from, best.title, best.artistName), style = statsText(14f, tracking = -0.2f))
                 }
             }
         }
@@ -959,34 +921,34 @@ private fun HabitsCard(
 ) {
     val perDay = s.totalMs / habits.activeDays.coerceAtLeast(1)
     StatsCardBox {
-        Text(stringResource(R.string.rc_stats_habits_title), style = statsText(15f))
+        Text(stringResource(Res.string.rc_stats_habits_title), style = statsText(15f))
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             HabitTile(
-                label = stringResource(R.string.rc_stats_habit_days),
-                value = stringResource(R.string.rc_stats_habit_days_value, habits.activeDays, habits.elapsedDays),
-                hint = stringResource(R.string.rc_stats_habit_days_average, shortDuration(perDay)),
+                label = stringResource(Res.string.rc_stats_habit_days),
+                value = stringResource(Res.string.rc_stats_habit_days_value, habits.activeDays, habits.elapsedDays),
+                hint = stringResource(Res.string.rc_stats_habit_days_average, shortDuration(perDay)),
             )
             HabitTile(
-                label = stringResource(R.string.rc_stats_habit_streak),
-                value = pluralStringResource(R.plurals.rc_stats_habit_streak_value, habits.longestStreak, habits.longestStreak),
-                hint = stringResource(R.string.rc_stats_habit_streak_hint),
+                label = stringResource(Res.string.rc_stats_habit_streak),
+                value = pluralStringResource(Res.plurals.rc_stats_habit_streak_value, habits.longestStreak, habits.longestStreak),
+                hint = stringResource(Res.string.rc_stats_habit_streak_hint),
             )
         }
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             HabitTile(
-                label = stringResource(R.string.rc_stats_habit_session),
+                label = stringResource(Res.string.rc_stats_habit_session),
                 value = shortDuration(habits.longestSessionMs),
                 hint =
                     habits.longestSessionStart?.let {
-                        stringResource(R.string.rc_stats_date_at_time, shortDate(it.date.toJavaLocalDate()), timeLabel(it.time.toJavaLocalTime()))
+                        stringResource(Res.string.rc_stats_date_at_time, shortDate(it.date), timeLabel(it.time.hour, it.time.minute))
                     },
             )
             HabitTile(
-                label = stringResource(R.string.rc_stats_habit_biggest),
+                label = stringResource(Res.string.rc_stats_habit_biggest),
                 value = shortDuration(habits.biggestDayMs),
-                hint = habits.biggestDay?.let { shortDate(it.toJavaLocalDate()) },
+                hint = habits.biggestDay?.let { shortDate(it) },
             )
         }
     }
@@ -1013,19 +975,11 @@ private fun RowScope.HabitTile(
 }
 
 // "wed, nov 19" style, the way the chart's tooltip names a day
-private fun shortDate(date: LocalDate): String =
-    "${date.dayOfWeek.getDisplayName(JavaTextStyle.SHORT, Locale.getDefault())}, ${monthShort(date.monthValue)} ${date.dayOfMonth}"
+private fun shortDate(date: LocalDate): String = StatsFormat.shortDate(date)
 
-private fun timeLabel(time: java.time.LocalTime): String =
-    time.format(java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT))
+private fun timeLabel(hour: Int, minute: Int): String = StatsFormat.shortTime(hour, minute)
 
-private fun hourLabel(h: Int): String =
-    java.time.LocalTime
-        .of(h, 0)
-        .format(
-            java.time.format.DateTimeFormatter
-                .ofLocalizedTime(java.time.format.FormatStyle.SHORT),
-        )
+private fun hourLabel(h: Int): String = StatsFormat.shortTime(h, 0)
 
 // ---------------------------------------------------------------------------------------------
 // The picker sheet
@@ -1054,8 +1008,8 @@ private fun ColumnScope.StatsPicker(
     val years = (firstDay.year..today.year).toList()
     val months =
         remember(y) {
-            val from = if (y == firstDay.year) firstDay.monthValue else 1
-            val to = if (y == today.year) today.monthValue else 12
+            val from = if (y == firstDay.year) firstDay.month.ordinal + 1 else 1
+            val to = if (y == today.year) today.month.ordinal + 1 else 12
             (from..to).toList()
         }
     if (m !in months) m = months.last()
@@ -1068,11 +1022,11 @@ private fun ColumnScope.StatsPicker(
                 .padding(horizontal = 22.dp)
                 .padding(top = sheetHandleRoom(), bottom = 8.dp),
     ) {
-        Text(stringResource(R.string.rc_stats_show_by), style = statsText(36f, tracking = -1.4f))
+        Text(stringResource(Res.string.rc_stats_show_by), style = statsText(36f, tracking = -1.4f))
         Spacer(Modifier.height(10.dp))
         listOf(
-            StatsRange.Kind.Month to stringResource(R.string.rc_stats_kind_month),
-            StatsRange.Kind.Year to stringResource(R.string.rc_stats_kind_year),
+            StatsRange.Kind.Month to stringResource(Res.string.rc_stats_kind_month),
+            StatsRange.Kind.Year to stringResource(Res.string.rc_stats_kind_year),
         ).forEach { (value, label) ->
             val on = k == value
             Row(
@@ -1100,7 +1054,7 @@ private fun ColumnScope.StatsPicker(
                 }
                 Spacer(Modifier.width(14.dp))
                 Text(label, style = statsText(18f), modifier = Modifier.weight(1f))
-                if (on) Text(stringResource(R.string.rc_stats_selected), style = statsText(13f, FontWeight.SemiBold, StatsInkMuted, 0f))
+                if (on) Text(stringResource(Res.string.rc_stats_selected), style = statsText(13f, FontWeight.SemiBold, StatsInkMuted, 0f))
             }
         }
         Box(
@@ -1110,22 +1064,22 @@ private fun ColumnScope.StatsPicker(
                 .height(1.dp)
                 .background(Color(0xFF555555)),
         )
-        Text(stringResource(R.string.rc_stats_what_year), style = statsText(36f, tracking = -1.4f))
+        Text(stringResource(Res.string.rc_stats_what_year), style = statsText(36f, tracking = -1.4f))
         Wheel(items = years, selected = y, label = { "$it" }, onSelected = { y = it })
         AnimatedVisibility(visible = k == StatsRange.Kind.Month) {
             Column {
                 Text(
-                    stringResource(R.string.rc_stats_what_month),
+                    stringResource(Res.string.rc_stats_what_month),
                     style = statsText(36f, tracking = -1.4f),
                     modifier = Modifier.padding(top = 10.dp),
                 )
-                val thisMonthTag = stringResource(R.string.rc_stats_this_month_tag)
+                val thisMonthTag = stringResource(Res.string.rc_stats_this_month_tag)
                 Wheel(
                     items = months,
                     selected = m,
                     label = { mm ->
                         monthFull(mm) +
-                            if (y == today.year && mm == today.monthValue) " $thisMonthTag" else ""
+                            if (y == today.year && mm == today.month.ordinal + 1) " $thisMonthTag" else ""
                     },
                     onSelected = { m = it },
                 )
