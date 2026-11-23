@@ -52,6 +52,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -93,7 +94,8 @@ internal fun SpatialFlowPlayerStyle(
     // a hushed copy of the sleeve's hue for the screen behind it, and the accent the transport
     // carries: the same colour lifted enough to read on it
     val backdrop = lerp(dominant, Color.Black, 0.82f)
-    val accent = lerp(dominant, Color.White, 0.12f)
+    val accent = lerp(dominant, Color.White, 0.20f)
+    val onAccent = if (accent.luminance() > 0.5f) Color(0xFF1C1B1F) else Color.White
     val contentColor = Color(0xFFF6F3F8)
     val contentSecondary = contentColor.copy(alpha = 0.6f)
     val interactive = LocalStyleInteractive.current
@@ -116,7 +118,7 @@ internal fun SpatialFlowPlayerStyle(
     }) { _, menuOpen, setMenuOpen ->
         val insets = styleInsets(false)
         BoxWithConstraints(Modifier.fillMaxSize()) {
-            val artSize = minOf(maxWidth - 24.dp, maxHeight * 0.46f)
+            val artSize = minOf(maxWidth - 24.dp, maxHeight * 0.42f)
             Column(
                 Modifier
                     .fillMaxSize()
@@ -217,7 +219,7 @@ internal fun SpatialFlowPlayerStyle(
                 Spacer(Modifier.height(22.dp))
                 SpatialFlowSeek(connection, accent, contentSecondary, transport.isPlaying, preview)
                 Spacer(Modifier.height(16.dp))
-                SpatialFlowTransport(connection, transport, accent, contentColor, preview)
+                SpatialFlowTransport(connection, transport, accent, onAccent, contentColor, preview)
                 Spacer(Modifier.weight(0.6f))
                 SpatialFlowQueueHandle(actions, contentSecondary, preview)
             }
@@ -284,6 +286,7 @@ private fun SpatialFlowTransport(
     connection: com.mochyy.mochymusic.playback.PlayerConnection,
     transport: com.mochyy.mochymusic.ui.player.models.TransportState,
     accent: Color,
+    onAccent: Color,
     contentColor: Color,
     preview: Boolean,
 ) {
@@ -309,7 +312,7 @@ private fun SpatialFlowTransport(
             description = if (transport.isPlaying) R.string.pause else R.string.play,
             weight = 1.2f,
             container = accent,
-            content = Color(0xFF1C1B1F),
+            content = onAccent,
             iconSize = 40.dp,
             enabled = !preview,
             loading = transport.playbackState == Player.STATE_BUFFERING,
