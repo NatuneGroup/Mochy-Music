@@ -46,12 +46,36 @@ jobs:
             echo "The Room schema changed. If that is intended: bump MusicDatabaseVersion, add its migration to AllMigrations, and commit the new app/schemas file (it is in this run's artifacts)."
             exit 1
           fi
+      # desktop and iOS declare the same database a second time (shared/src/nonAndroidMain); its export for the
+      # current MusicDatabaseVersion must match Android's byte for byte, identity hash included
+      - name: Desktop database schema
+        run: |
+          version=$(sed -n 's/^const val MusicDatabaseVersion = \([0-9][0-9]*\)$/\1/p' shared/src/commonMain/kotlin/com/mochyy/mochymusic/db/MochyDatabase.kt)
+          if [ -z "$version" ]; then
+            echo "Could not read MusicDatabaseVersion from shared/src/commonMain/kotlin/com/mochyy/mochymusic/db/MochyDatabase.kt"
+            exit 1
+          fi
+          ./gradlew --console=plain :shared:kspKotlinDesktop --warning-mode summary
+          android=app/schemas/com.mochyy.mochymusic.db.InternalDatabase/$version.json
+          desktop=shared/build/schemas/com.mochyy.mochymusic.db.InternalDatabase/$version.json
+          for f in "$android" "$desktop"; do
+            if [ ! -f "$f" ]; then
+              echo "Missing $f (MusicDatabaseVersion = $version)"
+              exit 1
+            fi
+          done
+          if ! diff -u "$android" "$desktop"; then
+            echo "The desktop/iOS InternalDatabase (shared/src/nonAndroidMain) no longer exports the same schema as the app's. Make its entities, views and converters match app/src/main/kotlin/com/mochyy/mochymusic/db/MusicDatabase.kt."
+            exit 1
+          fi
       - name: Upload schema on change
         if: failure()
         uses: actions/upload-artifact@v6
         with:
           name: room-schemas
-          path: app/schemas/
+          path: |
+            app/schemas/
+            shared/build/schemas/
           retention-days: 7
 
   unit-tests:

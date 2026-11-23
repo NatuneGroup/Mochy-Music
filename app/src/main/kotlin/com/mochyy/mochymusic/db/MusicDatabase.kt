@@ -111,9 +111,6 @@ class MusicDatabase(
     fun close() = delegate.close()
 }
 
-// bump this with every schema change and add its migration to AllMigrations, the import checks old exports against it too
-const val MusicDatabaseVersion = 45
-
 @Database(
     entities = [
         SongEntity::class,
@@ -151,10 +148,13 @@ const val MusicDatabaseVersion = 45
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
-abstract class InternalDatabase : RoomDatabase() {
+abstract class InternalDatabase : RoomDatabase(), MochyDatabase {
     abstract val dao: DatabaseDao
-    abstract val speedDialDao: SpeedDialDao
-    abstract val suspendingDao: SuspendingDao
+    abstract override val speedDialDao: SpeedDialDao
+    abstract override val suspendingDao: SuspendingDao
+    override val songDao: SongDao get() = dao
+    override val playlistDao: PlaylistDao get() = dao
+    override val historyDao: HistoryDao get() = dao
 
     companion object {
         const val DB_NAME = "mochy.db"
