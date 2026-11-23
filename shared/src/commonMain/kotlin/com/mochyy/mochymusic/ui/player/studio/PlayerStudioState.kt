@@ -37,13 +37,16 @@ enum class StudioStage { PLAYER, SELECTOR, EDIT, COVER, MIDDLE, MENU, BAR }
 /** the sheets the editor opens over itself */
 enum class StudioSheet { CONTROLS, SEEKBAR, END_TIME, MENU_SLOT, COVER_OPTIONS, DISC_LABEL, POSTER, IPOD, BEDSIDE }
 
+/** the parts of the player the editor opens with a camera move, lifting their pieces off it */
+enum class LiftedPart { MIDDLE, BAR }
+
 /** frames the selector's cards get to be built before the player shrinks into them */
 private const val PrepareFrames = 2
 /** frames a newly picked style gets to be built (and drawn once) behind its card before it grows */
 private const val HandoffFrames = 3
 
 /** one smooth, slightly unhurried spring for every move in the studio, so it all flows as one */
-internal val StudioSpring: AnimationSpec<Float> = spring(dampingRatio = 0.88f, stiffness = 210f)
+val StudioSpring: AnimationSpec<Float> = spring(dampingRatio = 0.88f, stiffness = 210f)
 
 /**
  * A value the studio animates. Drags write it directly (no coroutine, no mutex, so it tracks the
@@ -230,7 +233,6 @@ class PlayerStudioState internal constructor(
      * drawing until the camera is back out
      */
     var sheetCovered by mutableStateOf(false)
-        internal set
 
     var sheet by mutableStateOf<StudioSheet?>(null)
     /** which menu slot the menu-slot sheet is choosing for (0..3, or the side button) */
@@ -409,21 +411,21 @@ data class PartTransform(val scale: Float = 1f, val dx: Float = 0f, val dy: Floa
 }
 
 /** the selector card's size against the screen, and where its centre sits */
-internal const val CardScale = 0.72f
-internal const val CardCenterY = 0.465f
+const val CardScale = 0.72f
+const val CardCenterY = 0.465f
 
 // on its side the screen is short: smaller cards a touch lower, so the header above and the dots and buttons under them still fit
 private const val LandscapeCardScale = 0.54f
 private const val LandscapeCardCenterY = 0.485f
-internal fun cardScaleFor(w: Float, h: Float): Float = if (w > h) LandscapeCardScale else CardScale
-internal fun cardCenterYFor(w: Float, h: Float): Float = if (w > h) LandscapeCardCenterY else CardCenterY
-internal val CardCorner: Dp = 34.dp
-internal val CardGap: Dp = 18.dp
+fun cardScaleFor(w: Float, h: Float): Float = if (w > h) LandscapeCardScale else CardScale
+fun cardCenterYFor(w: Float, h: Float): Float = if (w > h) LandscapeCardCenterY else CardCenterY
+val CardCorner: Dp = 34.dp
+val CardGap: Dp = 18.dp
 
 /** the box the player zooms out into for the backgrounds */
-internal const val BoxScale = 0.6f
-internal const val BoxCenterY = 0.43f
-internal val BoxCorner: Dp = 30.dp
+const val BoxScale = 0.6f
+const val BoxCenterY = 0.43f
+val BoxCorner: Dp = 30.dp
 
 /**
  * Where the editor's tiles are: around the flagship's parts, right where they sit on the player.
@@ -439,10 +441,10 @@ class TileLayout(
     val fullCover: Boolean,
 )
 
-internal val TileMargin = 14.dp
-internal val TilePadding = 10.dp
-internal val TileCorner = 30.dp
-internal val TileStroke = 3.5.dp
+val TileMargin = 14.dp
+val TilePadding = 10.dp
+val TileCorner = 30.dp
+val TileStroke = 3.5.dp
 
 fun tileLayout(
     width: Float,

@@ -58,9 +58,6 @@ class StudioCapture internal constructor(internal val layer: GraphicsLayer) {
     }
 }
 
-/** the parts of the player the editor opens with a camera move, lifting their pieces off it */
-enum class LiftedPart { MIDDLE, BAR }
-
 /**
  * The pieces the editor lifts off the player: the middle part's side button, chevron, seek bar and
  * end time, or the transport and the bottom bar (in both its styles). While a part is lifted, each
