@@ -2,27 +2,21 @@
 
 package com.mochyy.mochymusic.modules.skin
 
-import android.os.Build
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.font.FontFamily
-import com.mochyy.mochymusic.constants.ChromeGlassStyle
-import com.mochyy.mochymusic.constants.PlayerStyle
-import com.mochyy.mochymusic.module.LookSetting
-import com.mochyy.mochymusic.ui.component.createAgslShader
 import com.mochyy.mochymusic.ui.theme.AppFont
-import com.mochyy.mochymusic.ui.theme.fontFamilyFromFiles
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import timber.log.Timber
-import java.io.File
 
 /** a module that can bring a skin: its own players, a font, a glass, a nav bar, pages */
-internal interface SkinSource {
+interface SkinSource {
     val skin: ModuleSkin?
 
     /** the skin's glass with what the module's settings change about it */
@@ -77,10 +71,10 @@ data class ActiveMini(val skin: ModuleSkin, val layout: SkinPlayer, val values: 
 data class Takeover(val skin: ModuleSkin, val page: SkinPage, val values: Map<String, String>)
 
 /** a skin and its module's settings right now */
-internal data class LookValues(val skin: ModuleSkin, val values: Map<String, String>)
+data class LookValues(val skin: ModuleSkin, val values: Map<String, String>)
 
 /** which look each part comes from: every look with players, the app's font, the glass, the nav bar, and every module with a takeover page */
-internal data class SkinParts(
+data class SkinParts(
     val players: List<LookValues> = emptyList(),
     val font: ModuleSkin? = null,
     val glassSkin: ModuleSkin? = null,
@@ -99,7 +93,7 @@ object ActiveSkin {
     private var picked: String by mutableStateOf("")
 
     /** where a new pick is kept, set by the registry so it survives a restart */
-    internal var onPick: ((String) -> Unit)? = null
+    var onPick: ((String) -> Unit)? = null
 
     /** the style the module player draws: the one picked, else the highest look's first */
     val style: ModuleStyle?
@@ -159,12 +153,15 @@ object ActiveSkin {
     }
 
     /** the pick saved last time, before the first publish */
-    internal fun restorePick(key: String) {
+    fun restorePick(key: String) {
         picked = key
     }
 
     @Volatile
     private var requested: SkinParts? = null
+
+    // one load of the fonts, the glass and the shaders at a time, so two quick refreshes can't interleave their caches
+    private val loading = Mutex()
 
     // the fonts and the compiled glass last loaded, so a settings change that only moves a uniform reloads neither
     private var fonts: Map<ModuleSkin, FontFamily?> = emptyMap()
@@ -174,13 +171,14 @@ object ActiveSkin {
     private val programs = mutableMapOf<String, SkinProgram>()
 
     /** called on every refresh of the switches; the fonts and the shaders load off the main thread, then everything changes on it together */
-    internal fun publish(parts: SkinParts, scope: CoroutineScope) {
+    fun publish(parts: SkinParts, scope: CoroutineScope) {
         if (parts == requested) return
         requested = parts
         val glassSkin = parts.glassSkin
         val shaded = (parts.players.map { it.skin } + listOfNotNull(parts.bar?.skin, parts.mini?.skin)).distinct()
         scope.launch(Dispatchers.IO) {
-            val loaded = synchronized(this@ActiveSkin) {
+            // common code has no synchronized, so the loads take this lock instead; a refresh that arrives while another loads waits here
+            val loaded = loading.withLock {
                 // the app's font and each player's own font, each loaded once and kept while its look stays
                 val wanted = (listOfNotNull(parts.font) + parts.players.map { it.skin }.filter { it.font != null }).distinct()
                 fonts = wanted.associateWith { skin -> if (skin in fonts) fonts[skin] else skin.font?.let { fontFamily(skin, it) } }
@@ -220,8 +218,8 @@ object ActiveSkin {
         }
     }
 
-    // each player as a style, its sub-styles after it, in the looks' order
-    private fun stylesOf(players: List<LookValues>): List<ModuleStyle> = players.flatMap { (skin, values) ->
+    // each player as a style, its sub-styles after it, in the looks' order; internal for the shared test
+    internal fun stylesOf(players: List<LookValues>): List<ModuleStyle> = players.flatMap { (skin, values) ->
         skin.players.flatMap { player ->
             listOf(ModuleStyle("${skin.moduleId}/${player.id}", skin, player, player.name, null, values)) +
                 player.variants.map { variant ->
@@ -231,7 +229,7 @@ object ActiveSkin {
     }
 
     // every takeover page by the name it replaces, the highest module first, so where two take the same page the higher one wins
-    private fun takeoversOf(pages: List<LookValues>): Map<String, List<Takeover>> {
+    internal fun takeoversOf(pages: List<LookValues>): Map<String, List<Takeover>> {
         val found = linkedMapOf<String, MutableList<Takeover>>()
         pages.forEach { (skin, values) ->
             skin.takeovers.forEach { page -> page.replaces.forEach { name -> found.getOrPut(name) { mutableListOf() } += Takeover(skin, page, values) } }
@@ -249,22 +247,23 @@ object ActiveSkin {
 
     // each of a skin's shader files, compiled once and kept while the file stays the same; [problem] hears the last thing that went wrong
     private fun compilePlayer(skin: ModuleSkin, problem: (String) -> Unit): Map<String, SkinProgram> {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || skin.playerShaders.isEmpty()) return emptyMap()
+        val platform = SkinPlatforms.current
+        if (!platform.shaders || skin.playerShaders.isEmpty()) return emptyMap()
         return skin.playerShaders.mapNotNull { name ->
-            val file = (skin.assetFile(name) as? File)?.takeIf { it.isFile && it.length() <= MaxShaderBytes }
+            val file = skin.assetFile(name)?.takeIf { platform.exists(it) && platform.length(it) <= MaxShaderBytes }
             if (file == null) {
                 problem("its shader $name isn't in the module, or is bigger than ${MaxShaderBytes / 1024} KB")
                 return@mapNotNull null
             }
-            val key = "${file.path}:${file.lastModified()}:${file.length()}"
+            val key = platform.stamp(file)
             programs[key]?.let { return@mapNotNull name to it }
             try {
-                val source = file.readText()
-                val program = SkinProgram(createAgslShader(source), DeclaredUniform.findAll(source).map { it.groupValues[1] }.toSet())
+                val source = platform.read(file) ?: error("its shader $name isn't in the module")
+                val program = SkinProgram(platform.compile(source), DeclaredUniform.findAll(source).map { it.groupValues[1] }.toSet())
                 programs[key] = program
                 name to program
             } catch (e: Exception) {
-                Timber.tag("ActiveSkin").w(e, "Couldn't compile the look's shader $name")
+                platform.warn("ActiveSkin", "Couldn't compile the look's shader $name", e)
                 problem("$name: " + (e.message?.lineSequence()?.firstOrNull { it.isNotBlank() }?.trim()?.take(200) ?: e.javaClass.simpleName))
                 null
             }
@@ -275,22 +274,23 @@ object ActiveSkin {
 
     // the shader's text, compiled once per file; a broken one gives the compiler's first line back for the module's page
     private fun compile(skin: ModuleSkin, look: SkinGlass): Compiled {
+        val platform = SkinPlatforms.current
         // runtime shaders are android 13+, older phones keep mochy's frost and that's not a fault of the module's
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return Compiled(null, null)
-        val file = (skin.assetFile(look.shader) as? File)?.takeIf { it.isFile } ?: return Compiled(null, "its shader file ${look.shader} isn't in the module")
-        if (file.length() > MaxShaderBytes) return Compiled(null, "its shader is bigger than ${MaxShaderBytes / 1024} KB")
-        val key = "${file.path}:${file.lastModified()}:${file.length()}"
+        if (!platform.shaders) return Compiled(null, null)
+        val file = skin.assetFile(look.shader)?.takeIf(platform::exists) ?: return Compiled(null, "its shader file ${look.shader} isn't in the module")
+        if (platform.length(file) > MaxShaderBytes) return Compiled(null, "its shader is bigger than ${MaxShaderBytes / 1024} KB")
+        val key = platform.stamp(file)
         if (key == shaderKey && shader != null) return Compiled(shader, null, shaderDrawsPill)
         return try {
-            val source = file.readText()
-            val made = createAgslShader(source)
+            val source = platform.read(file) ?: error("its shader file ${look.shader} isn't in the module")
+            val made = platform.compile(source)
             shaderKey = key
             shader = made
             // a glass that takes the lit tab's place draws it itself, and mochy leaves its own highlight out
             shaderDrawsPill = DeclaredUniform.findAll(source).any { it.groupValues[1] == "pill" }
             Compiled(made, null, shaderDrawsPill)
         } catch (e: Exception) {
-            Timber.tag("ActiveSkin").w(e, "Couldn't compile the look's glass")
+            platform.warn("ActiveSkin", "Couldn't compile the look's glass", e)
             shaderKey = null
             shader = null
             Compiled(null, e.message?.lineSequence()?.firstOrNull { it.isNotBlank() }?.trim()?.take(200) ?: e.javaClass.simpleName)
@@ -298,20 +298,13 @@ object ActiveSkin {
     }
 
     private fun fontFamily(skin: ModuleSkin, font: SkinFont): FontFamily? {
-        val regular = (skin.assetFile(font.regular) as? File)?.takeIf { it.isFile } ?: return null
-        val bold = (skin.assetFile(font.bold) as? File)?.takeIf { it.isFile }
-        return fontFamilyFromFiles(regular, bold)
+        val platform = SkinPlatforms.current
+        val regular = skin.assetFile(font.regular)?.takeIf(platform::exists) ?: return null
+        val bold = skin.assetFile(font.bold)?.takeIf(platform::exists)
+        return platform.font(regular, bold)
     }
 
     private const val MaxShaderBytes = 64 * 1024
-    // "uniform float time;" or "layout(color) uniform half4 played;", the name is what a frame may set
-    internal val DeclaredUniform = Regex("""\buniform\s+\w+\s+(\w+)\s*[;\[]""")
-}
-
-/** the look as it's applied: a module with its own player or glass switches to it, and a fixed accent turns the cover-coloured theme off */
-internal fun appliedLook(look: Map<String, String>, skin: ModuleSkin?): Map<String, String> = buildMap {
-    putAll(look)
-    if (skin?.player != null && LookSetting.PLAYER_STYLE !in look) put(LookSetting.PLAYER_STYLE, PlayerStyle.MODULE.name)
-    if (skin?.glass != null && LookSetting.BOTTOM_BAR !in look) put(LookSetting.BOTTOM_BAR, ChromeGlassStyle.MODULE.name)
-    if (LookSetting.ACCENT_COLOR in look && LookSetting.DYNAMIC_THEME !in look) put(LookSetting.DYNAMIC_THEME, "false")
+    // "uniform float time;" or "layout(color) uniform half4 played;", the name is what a frame may set; public because a module's page compiles its shaders with it too
+    val DeclaredUniform = Regex("""\buniform\s+\w+\s+(\w+)\s*[;\[]""")
 }
