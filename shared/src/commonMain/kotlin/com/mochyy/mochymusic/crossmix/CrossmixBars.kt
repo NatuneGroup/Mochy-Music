@@ -64,7 +64,8 @@ internal object CrossmixBars {
             for (k in 1 until 4) if (score[k] > score[leader]) leader = k
             val jump = score[leader] - JumpCost
             for (k in 0 until 4) {
-                val from = Math.floorMod(k - step, 4)
+                // k - step can be negative, and kotlin's % keeps the sign
+                val from = ((k - step) % 4 + 4) % 4
                 val kept = score[from] >= jump
                 next[k] = (if (kept) score[from] else jump) + fit[i * 4 + k]
                 back[i * 4 + k] = if (kept) from else leader
