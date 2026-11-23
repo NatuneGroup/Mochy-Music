@@ -70,12 +70,9 @@ internal class QueuePlayerConnection(
             } catch (_: Exception) {
                 return@launch
             }
-            if (status.items.isEmpty()) return@launch
-            val start = status.mediaItemIndex.coerceIn(status.items.indices)
-            val first = status.items[start]
-            // the rest of the page becomes Up next; the chosen song plays now, as queue.play does
-            this@QueuePlayerConnection.queue.replace(status.items.filterNot { it.id == first.id })
-            this@QueuePlayerConnection.queue.play(first)
+            // the chosen song plays now from the queue's start position; the songs after it stay in
+            // order as Up next and the ones before it are what Previous walks back through (jarvis on #102)
+            this@QueuePlayerConnection.queue.playList(status.items, status.mediaItemIndex, status.position)
         }
     }
 

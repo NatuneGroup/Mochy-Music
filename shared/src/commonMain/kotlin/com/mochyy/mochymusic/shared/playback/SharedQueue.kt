@@ -19,10 +19,12 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import okio.IOException
 
 private const val PreloadStartDelayMs = 2_000L
 private const val PreviousRestartThresholdMs = 3_000L
+private const val StartSeekTimeoutMs = 30_000L
 
 /**
  * Up next and everything that moves through it: restoring it from settings, saving each change, the
@@ -49,6 +51,7 @@ internal class SharedQueue(
     private var recent: List<SongItem> = emptyList()
     private var lastRecorded: String? = null
     private var started = false
+    private var pendingStartSeek: Job? = null
 
     /** The songs after the current one, in order. */
     val upcoming: StateFlow<List<SongItem>> = mutableUpcoming.asStateFlow()
@@ -141,8 +144,36 @@ internal class SharedQueue(
 
     /** Plays [song] now, taking it out of Up next if it was there. */
     fun play(song: SongItem) {
+        pendingStartSeek?.cancel()
+        pendingStartSeek = null
         replace(mutableUpcoming.value.filterNot { it.id == song.id })
         player.play(song)
+    }
+
+    /**
+     * Plays a whole list the way Android's queue does: [items] at [startIndex] starts now (from
+     * [startPositionMs]), everything after it becomes Up next in the same order, and the songs before
+     * it are where Previous goes back to.
+     */
+    fun playList(items: List<SongItem>, startIndex: Int, startPositionMs: Long) {
+        if (items.isEmpty()) return
+        val start = startIndex.coerceIn(items.indices)
+        val first = items[start]
+        pendingStartSeek?.cancel()
+        pendingStartSeek = null
+        items.subList(0, start).forEach(history::started)
+        replace(items.subList(start + 1, items.size))
+        player.play(first)
+        if (startPositionMs > 0L) {
+            // the platform players open the stream in the background and drop a seek sent before
+            // that, so the start position is applied once this song has actually loaded
+            pendingStartSeek = scope.launch {
+                val loaded = withTimeoutOrNull(StartSeekTimeoutMs) {
+                    player.state.first { it.song?.id != first.id || (!it.isLoading && it.error == null && it.durationMs > 0L) }
+                }
+                if (loaded?.song?.id == first.id) player.seekTo(startPositionMs)
+            }
+        }
     }
 
     fun add(song: SongItem) {
