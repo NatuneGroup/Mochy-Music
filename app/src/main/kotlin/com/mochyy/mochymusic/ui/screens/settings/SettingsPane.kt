@@ -108,7 +108,7 @@ fun NavController.openSettingsPage(route: String) {
 fun SettingsListPane(navController: NavController, selectedRoute: String?, modifier: Modifier = Modifier) {
     val windowWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.dp
     Box(modifier = modifier.width(settingsListWidth(windowWidth)).fillMaxHeight()) {
-        MochySettingsScreen(navController = navController, pane = SettingsPane(selectedRoute))
+        AndroidMochySettingsScreen(navController = navController, pane = SettingsPane(selectedRoute))
         Box(
             modifier = Modifier
                 .align(Alignment.CenterEnd)

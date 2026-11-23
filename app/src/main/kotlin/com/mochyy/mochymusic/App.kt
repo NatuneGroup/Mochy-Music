@@ -102,6 +102,8 @@ class App : Application(), SingletonImageLoader.Factory {
         com.mochyy.mochymusic.di.startMochyKoin(database = { internalDatabase }, preferences = { dataStore })
         // and the artist pages, which only Android can read through innertube's YouTube facade
         com.mochyy.mochymusic.di.loadAndroidKoin(this)
+        // the modules view model, over Hilt's one module registry and catalog
+        com.mochyy.mochymusic.di.koin.loadModulesKoin(this)
         if (BuildConfig.COMPACT_APK) {
             JapaneseLanguagePackManager.initialize(this)
             ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
