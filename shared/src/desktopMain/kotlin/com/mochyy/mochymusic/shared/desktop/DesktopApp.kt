@@ -94,6 +94,7 @@ private fun runDesktopWindow(font: FontFamily) = application {
                     desktopPlaybackPreferences,
                     desktopLibrary,
                     queue = queue,
+                    settingsContent = { settings, codecBadge -> DesktopSettingsScreen(settings, codecBadge) },
                 )
             }
         }
