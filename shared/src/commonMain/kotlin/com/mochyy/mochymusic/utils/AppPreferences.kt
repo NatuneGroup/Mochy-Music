@@ -20,7 +20,6 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import com.mochyy.mochymusic.extensions.toEnum
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.SupervisorJob
@@ -28,9 +27,6 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import okio.IOException
 import kotlin.concurrent.Volatile
-
-/** The dispatcher the cache reads and writes the store on (Dispatchers.IO where the platform has one). */
-internal expect val preferencesDispatcher: CoroutineDispatcher
 
 /** Reads the store's current preferences, blocking the caller; used only until the cache is warm. */
 internal expect fun readPreferencesBlocking(store: DataStore<Preferences>): Preferences
@@ -63,7 +59,7 @@ open class StorePreferencesCache internal constructor() {
     var store: DataStore<Preferences>? = null
         private set
 
-    private val writeScope = CoroutineScope(SupervisorJob() + preferencesDispatcher)
+    private val writeScope = CoroutineScope(SupervisorJob() + ioDispatcher)
 
     val snapshot: State<Preferences> get() = snapshotState
 
@@ -74,7 +70,7 @@ open class StorePreferencesCache internal constructor() {
     fun start(store: DataStore<Preferences>, scope: CoroutineScope = writeScope) {
         if (this.store === store) return
         this.store = store
-        scope.launch(preferencesDispatcher, start = CoroutineStart.UNDISPATCHED) {
+        scope.launch(ioDispatcher, start = CoroutineStart.UNDISPATCHED) {
             store.data
                 .catch { error -> if (error is IOException) readFailed = true else throw error }
                 .collect { prefs -> publish(prefs) }

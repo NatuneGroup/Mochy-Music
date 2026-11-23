@@ -2,13 +2,10 @@ package com.mochyy.mochymusic.utils
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-
-internal actual val preferencesDispatcher: CoroutineDispatcher get() = Dispatchers.IO
 
 internal actual fun readPreferencesBlocking(store: DataStore<Preferences>): Preferences =
     runBlocking(Dispatchers.IO) { store.data.first() }
