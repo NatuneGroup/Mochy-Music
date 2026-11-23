@@ -9,8 +9,10 @@ package com.mochyy.mochymusic.di
 
 import android.content.Context
 import com.mochyy.mochymusic.BuildConfig
+import com.mochyy.mochymusic.discord.AndroidDiscordPictures
 import com.mochyy.mochymusic.discord.AndroidDiscordTokens
 import com.mochyy.mochymusic.discord.DiscordAuth
+import com.mochyy.mochymusic.discord.DiscordPresence
 import com.mochyy.mochymusic.scrobble.AndroidScrobbleQueueStore
 import com.mochyy.mochymusic.scrobble.ScrobbleSite
 import com.mochyy.mochymusic.scrobble.Scrobbler
@@ -47,4 +49,19 @@ object W12ServicesModule {
         tokens = AndroidDiscordTokens(context.dataStore),
         clientId = BuildConfig.DISCORD_CLIENT_ID,
     )
+
+    @Provides
+    @Singleton
+    fun discordPresence(@ApplicationContext context: Context, auth: DiscordAuth): DiscordPresence {
+        // the picture makers signal "ready" through the presence, which is built around them
+        lateinit var presence: DiscordPresence
+        val pictures = AndroidDiscordPictures(context, onReady = { presence.nudge() })
+        presence = DiscordPresence(
+            preferences = context.dataStore,
+            auth = auth,
+            pictures = pictures,
+            isOffline = { OfflineMode.isOn },
+        )
+        return presence
+    }
 }

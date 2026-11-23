@@ -2,11 +2,7 @@
 
 package com.mochyy.mochymusic.recognition
 
-import android.util.Base64
-import java.io.ByteArrayOutputStream
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
-import java.util.zip.CRC32
+import okio.Buffer
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.ln
@@ -35,8 +31,13 @@ internal object ShazamSignatureGenerator {
         require(samples.size >= 2 && samples.size % 2 == 0) {
             "samples must be a non-empty byte array with even length (16-bit PCM)"
         }
+        // little-endian 16-bit samples, read the way ByteBuffer used to
         val pcm = ShortArray(samples.size / 2)
-        ByteBuffer.wrap(samples).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(pcm)
+        for (i in pcm.indices) {
+            val low = samples[i * 2].toInt() and 0xFF
+            val high = samples[i * 2 + 1].toInt() shl 8
+            pcm[i] = (low or high).toShort()
+        }
         return SignatureGeneratorState().process(pcm)
     }
 
@@ -182,74 +183,72 @@ internal object ShazamSignatureGenerator {
         }
 
         private fun encodeSignature(): String {
-            val contentsStream = ByteArrayOutputStream()
+            val contentsStream = Buffer()
 
             for (bandId in 0..3) {
                 val peaks = bandPeaks[bandId]
                 if (peaks.isEmpty()) continue
 
-                val peakBuf = ByteArrayOutputStream()
+                val peakBuf = Buffer()
                 var prevFftPassNumber = 0
 
                 for (peak in peaks) {
                     val diff = peak.fftPassNumber - prevFftPassNumber
                     if (diff >= 255) {
 
-                        peakBuf.write(0xFF)
+                        peakBuf.writeByte(0xFF)
                         writeLittleEndian32(peakBuf, peak.fftPassNumber)
                         prevFftPassNumber = peak.fftPassNumber
                     }
-                    peakBuf.write(peak.fftPassNumber - prevFftPassNumber)
+                    peakBuf.writeByte(peak.fftPassNumber - prevFftPassNumber)
                     writeLittleEndian16(peakBuf, peak.peakMagnitude)
                     writeLittleEndian16(peakBuf, peak.correctedPeakFrequencyBin)
                     prevFftPassNumber = peak.fftPassNumber
                 }
 
-                val peakBytes = peakBuf.toByteArray()
+                val peakBytes = peakBuf.readByteArray()
 
                 writeLittleEndian32(contentsStream, 0x60030040 + bandId)
                 writeLittleEndian32(contentsStream, peakBytes.size)
                 contentsStream.write(peakBytes)
 
                 val padBytes = (4 - peakBytes.size % 4) % 4
-                repeat(padBytes) { contentsStream.write(0) }
+                repeat(padBytes) { contentsStream.writeByte(0) }
             }
 
-            val contents = contentsStream.toByteArray()
+            val contents = contentsStream.readByteArray()
             val sizeMinusHeader = contents.size + 8
             val samplesAndOffset = (numSamples + SAMPLE_RATE * 0.24).toInt()
 
-            val headerBytes = ByteBuffer.allocate(48).order(ByteOrder.LITTLE_ENDIAN).apply {
-                putInt(0xcafe2580.toInt())
-                putInt(0)
-                putInt(sizeMinusHeader)
-                putInt(0x94119c00.toInt())
-                putInt(0); putInt(0); putInt(0)
-                putInt(3 shl 27)
-                putInt(0); putInt(0)
-                putInt(samplesAndOffset)
-                putInt((15 shl 19) + 0x40000)
-            }.array()
+            val header = Buffer()
+            writeLittleEndian32(header, 0xcafe2580.toInt())
+            writeLittleEndian32(header, 0)
+            writeLittleEndian32(header, sizeMinusHeader)
+            writeLittleEndian32(header, 0x94119c00.toInt())
+            writeLittleEndian32(header, 0); writeLittleEndian32(header, 0); writeLittleEndian32(header, 0)
+            writeLittleEndian32(header, 3 shl 27)
+            writeLittleEndian32(header, 0); writeLittleEndian32(header, 0)
+            writeLittleEndian32(header, samplesAndOffset)
+            writeLittleEndian32(header, (15 shl 19) + 0x40000)
+            val headerBytes = header.readByteArray()
 
-            val fullBuf = ByteArrayOutputStream(56 + contents.size)
+            val fullBuf = Buffer()
             fullBuf.write(headerBytes)
             writeLittleEndian32(fullBuf, 0x40000000)
             writeLittleEndian32(fullBuf, contents.size + 8)
             fullBuf.write(contents)
 
-            val fullBytes = fullBuf.toByteArray()
+            val fullBytes = fullBuf.readByteArray()
 
-            val crc = CRC32()
-            crc.update(fullBytes, 8, fullBytes.size - 8)
-            val crc32Value = crc.value.toInt()
+            val crc32Value = crc32(fullBytes, 8, fullBytes.size - 8)
 
             fullBytes[4] = (crc32Value and 0xFF).toByte()
             fullBytes[5] = ((crc32Value shr 8) and 0xFF).toByte()
             fullBytes[6] = ((crc32Value shr 16) and 0xFF).toByte()
             fullBytes[7] = ((crc32Value shr 24) and 0xFF).toByte()
 
-            val base64 = Base64.encodeToString(fullBytes, Base64.NO_WRAP)
-            return "data:audio/vnd.shazam.sig;base64,$base64"
+            val encoded = base64(fullBytes)
+            return "data:audio/vnd.shazam.sig;base64,$encoded"
         }
     }
 
@@ -259,16 +258,16 @@ internal object ShazamSignatureGenerator {
         val correctedPeakFrequencyBin: Int
     )
 
-    private fun writeLittleEndian32(out: ByteArrayOutputStream, value: Int) {
-        out.write(value and 0xFF)
-        out.write((value ushr 8) and 0xFF)
-        out.write((value ushr 16) and 0xFF)
-        out.write((value ushr 24) and 0xFF)
+    private fun writeLittleEndian32(out: Buffer, value: Int) {
+        out.writeByte(value and 0xFF)
+        out.writeByte((value ushr 8) and 0xFF)
+        out.writeByte((value ushr 16) and 0xFF)
+        out.writeByte((value ushr 24) and 0xFF)
     }
 
-    private fun writeLittleEndian16(out: ByteArrayOutputStream, value: Int) {
-        out.write(value and 0xFF)
-        out.write((value ushr 8) and 0xFF)
+    private fun writeLittleEndian16(out: Buffer, value: Int) {
+        out.writeByte(value and 0xFF)
+        out.writeByte((value ushr 8) and 0xFF)
     }
 
     private fun computeRfft(windowed: DoubleArray): DoubleArray {
@@ -330,3 +329,54 @@ internal object ShazamSignatureGenerator {
         }
     }
 }
+
+// ---- the two byte helpers the signature needs, written out so every platform hashes and encodes the same ----
+
+/** The standard (IEEE) CRC-32, the same 32 bits `java.util.zip.CRC32` gave this payload. */
+private fun crc32(bytes: ByteArray, offset: Int, length: Int): Int {
+    var crc = -1
+    for (i in offset until offset + length) {
+        crc = crc xor (bytes[i].toInt() and 0xFF)
+        repeat(8) {
+            crc = if ((crc and 1) != 0) (crc ushr 1) xor CrcPolynomial else crc ushr 1
+        }
+    }
+    return crc.inv()
+}
+
+private const val CrcPolynomial = -306674912 // 0xEDB88320
+
+/**
+ * Standard base64 with `=` padding, the encoding `Base64.NO_WRAP` wrote: the signature is read by
+ * the recognition service's own decoder, so it has to stay byte-for-byte the same.
+ */
+private fun base64(bytes: ByteArray): String {
+    val out = StringBuilder((bytes.size + 2) / 3 * 4)
+    var i = 0
+    while (i + 2 < bytes.size) {
+        val chunk = ((bytes[i].toInt() and 0xFF) shl 16) or ((bytes[i + 1].toInt() and 0xFF) shl 8) or (bytes[i + 2].toInt() and 0xFF)
+        out.append(Base64Alphabet[chunk ushr 18 and 0x3F])
+        out.append(Base64Alphabet[chunk ushr 12 and 0x3F])
+        out.append(Base64Alphabet[chunk ushr 6 and 0x3F])
+        out.append(Base64Alphabet[chunk and 0x3F])
+        i += 3
+    }
+    when (bytes.size - i) {
+        1 -> {
+            val chunk = (bytes[i].toInt() and 0xFF) shl 16
+            out.append(Base64Alphabet[chunk ushr 18 and 0x3F])
+            out.append(Base64Alphabet[chunk ushr 12 and 0x3F])
+            out.append("==")
+        }
+        2 -> {
+            val chunk = ((bytes[i].toInt() and 0xFF) shl 16) or ((bytes[i + 1].toInt() and 0xFF) shl 8)
+            out.append(Base64Alphabet[chunk ushr 18 and 0x3F])
+            out.append(Base64Alphabet[chunk ushr 12 and 0x3F])
+            out.append(Base64Alphabet[chunk ushr 6 and 0x3F])
+            out.append("=")
+        }
+    }
+    return out.toString()
+}
+
+private const val Base64Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"

@@ -1,29 +1,33 @@
 // PictureHosts.kt
+//
+// Discord only shows pictures that live on the web, so the ones made or kept on the phone go to a
+// free file host first. The uploads were OkHttp's multipart; they are Ktor's now, so every
+// platform can make them.
 
 package com.mochyy.mochymusic.discord
 
+import io.ktor.client.request.forms.MultiPartFormDataContent
+import io.ktor.client.request.forms.formData
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.Headers
+import io.ktor.http.HttpHeaders
+import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.MultipartBody
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import timber.log.Timber
+import com.mochyy.mochymusic.db.nowEpochMillis
 
-// discord only shows pictures that live on the web, so the ones made or kept on the phone go to a free file host first
-internal object PictureHosts {
+object PictureHosts {
     // where a picture went, and when to stop using it, a little before the host deletes it
     class Hosted(val url: String, val usableUntilMs: Long)
 
-    private class Host(val name: String, val keepsMs: Long, val upload: (bytes: ByteArray, fileName: String, mime: String) -> String)
+    private class Host(val name: String, val keepsMs: Long, val upload: suspend (bytes: ByteArray, fileName: String, mime: String) -> String)
 
-    private const val LogTag = "PictureHosts"
     private const val HourMs = 60 * 60_000L
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -47,17 +51,17 @@ internal object PictureHosts {
     )
 
     // tries each host in turn: free hosts come and go, so one being down mustn't stop the picture
-    suspend fun upload(bytes: ByteArray, fileName: String, mime: String): Hosted = withContext(Dispatchers.IO) {
+    suspend fun upload(bytes: ByteArray, fileName: String, mime: String): Hosted {
         var lastProblem: Exception? = null
         for (host in Hosts) {
             try {
                 val url = host.upload(bytes, fileName, mime)
                 check(url.startsWith("https://")) { "${host.name} sent back \"${url.take(120)}\"" }
-                return@withContext Hosted(url, System.currentTimeMillis() + host.keepsMs * 9 / 10)
+                return Hosted(url, nowEpochMillis() + host.keepsMs * 9 / 10)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Timber.tag(LogTag).d(e, "${host.name} didn't take $fileName")
+                log("${host.name} didn't take $fileName (${e.message})")
                 lastProblem = e
             }
         }
@@ -65,16 +69,28 @@ internal object PictureHosts {
     }
 
     // sends [bytes] as a form upload and returns the reply's text, trimmed
-    private fun post(url: String, fileField: String, bytes: ByteArray, fileName: String, mime: String, vararg fields: Pair<String, String>): String {
-        val body = MultipartBody.Builder().setType(MultipartBody.FORM).apply {
-            fields.forEach { (name, value) -> addFormDataPart(name, value) }
-            addFormDataPart(fileField, fileName, bytes.toRequestBody(mime.toMediaType()))
-        }.build()
-        val request = Request.Builder().url(url).post(body).build()
-        return DiscordDownloads.client.newCall(request).execute().use { response ->
-            val text = response.body?.string().orEmpty().trim()
-            check(response.isSuccessful) { "HTTP ${response.code}" }
-            text
+    private suspend fun post(url: String, fileField: String, bytes: ByteArray, fileName: String, mime: String, vararg fields: Pair<String, String>): String {
+        val response = DiscordHttp.client.post(url) {
+            setBody(
+                MultiPartFormDataContent(
+                    formData {
+                        fields.forEach { (name, value) -> append(name, value) }
+                        append(
+                            fileField,
+                            bytes,
+                            Headers.build {
+                                append(HttpHeaders.ContentType, mime)
+                                append(HttpHeaders.ContentDisposition, "filename=\"$fileName\"")
+                            },
+                        )
+                    },
+                ),
+            )
         }
+        val text = response.bodyAsText().trim()
+        check(response.status.isSuccess()) { "HTTP ${response.status.value}" }
+        return text
     }
+
+    private fun log(message: String) = println("PictureHosts: $message")
 }
