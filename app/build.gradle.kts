@@ -30,8 +30,19 @@ extensions.configure<ApplicationExtension> {
         applicationId = "com.mochyy.mochymusic"
         minSdk = 24
         targetSdk = 37
-        versionCode = 73
-        versionName = "8.4.3 build#1290"
+        // Local and PR builds keep 73 and the name below. The nightly and release workflows pass
+        // -Pmochy.versionCode (73 + minutes since 1970, so every published build updates the one
+        // before) and -Pmochy.versionName ("8.4.4 build#<code>", nightlies "8.4.3.5 build#<code>").
+        // The x.y.z below is the floor those workflows count up from.
+        val versionCodeFloor = 73
+        val ciVersionCode = providers.gradleProperty("mochy.versionCode").orNull?.let {
+            requireNotNull(it.toIntOrNull()) { "mochy.versionCode must be a number, got '$it'" }
+        }
+        require(ciVersionCode == null || ciVersionCode >= versionCodeFloor) {
+            "mochy.versionCode $ciVersionCode is below $versionCodeFloor; it would not install over the last release"
+        }
+        versionCode = ciVersionCode ?: versionCodeFloor
+        versionName = providers.gradleProperty("mochy.versionName").orNull ?: "8.4.3 build#1290"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
