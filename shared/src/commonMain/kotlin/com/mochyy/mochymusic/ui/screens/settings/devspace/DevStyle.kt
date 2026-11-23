@@ -1,13 +1,11 @@
-// colours, type and small helpers shared by the dev spaces page
+// colours and type shared by the dev spaces page
 
 package com.mochyy.mochymusic.ui.screens.settings.devspace
 
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
@@ -38,8 +36,10 @@ internal fun devText(
 @Composable
 internal fun devFigureSp(dp: Float): TextUnit = with(LocalDensity.current) { dp.dp.toSp() }
 
-internal fun Context.openDevUrl(url: String) {
-    runCatching {
-        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-    }
+/** opens a link; a device with no browser is not worth a crash, the same as the app's Context.openDevUrl */
+internal fun UriHandler.openDevLink(url: String) {
+    runCatching { openUri(url) }
 }
+
+// Context.openDevUrl stays in :app (app/.../devspace/OpenDevUrl.kt): it is an Android Intent. The
+// screens here open links through Compose's LocalUriHandler.

@@ -106,6 +106,7 @@ import com.mochyy.mochymusic.utils.rememberEnumPreference
 import com.mochyy.mochymusic.utils.rememberPreference
 import com.mochyy.mochymusic.ui.screens.settings.ProfileScreen
 import com.mochyy.mochymusic.ui.screens.settings.showVideoQualitySheet
+import com.mochyy.mochymusic.ui.screens.donate.showDonateSheet
 import com.mochyy.mochymusic.ui.screens.library.LibraryAlbumsScreen
 import com.mochyy.mochymusic.ui.screens.SectionDetailScreen
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -528,14 +529,27 @@ fun NavGraphBuilder.navigationBuilder(
         arguments = listOf(navArgument("person") { type = NavType.IntType; defaultValue = 0 }),
     ) { entry ->
         val person = entry.arguments?.getInt("person") ?: 0
+        // the donate sheet is the app's (ui/screens/donate); the shared page only places the row
+        val donatePopup = com.mochyy.mochymusic.ui.component.LocalZoomOutOverlayState.current
         com.mochyy.mochymusic.ui.screens.settings.devspace.DeveloperSpaceScreen(
             navController = navController,
             initialPage = person,
+            onDonate = { donatePopup.showDonateSheet() },
         )
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.devspace.DevPlaygroundRoute) {
-        com.mochyy.mochymusic.ui.screens.settings.devspace.DevPlaygroundScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.devspace.DevPlaygroundScreen(
+            navController = navController,
+            // experimental settings is an app page, so its row into it is the app's too
+            experimentalSettingsEntry = {
+                com.mochyy.mochymusic.ui.screens.settings.CategoryBubble(
+                    title = stringResource(R.string.dev_experimental_settings_bubble),
+                    iconRes = R.drawable.biotech,
+                    onClick = { navController.navigate("experimental_settings") },
+                )
+            },
+        )
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.storage.StorageRoute) {

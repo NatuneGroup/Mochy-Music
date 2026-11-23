@@ -2,7 +2,6 @@
 
 package com.mochyy.mochymusic.ui.screens.settings.devspace
 
-import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
@@ -38,41 +37,33 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
-import coil3.request.transformations
-import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.core.updater.DiscordUrl
 import com.mochyy.mochymusic.core.updater.InstagramUrl
 import com.mochyy.mochymusic.core.updater.ThreadsUrl
-import com.mochyy.mochymusic.ui.component.LocalZoomOutOverlayState
-import com.mochyy.mochymusic.ui.component.pressBounce
-import com.mochyy.mochymusic.ui.screens.donate.showDonateSheet
-import com.mochyy.mochymusic.ui.utils.SoftBlurTransformation
 import com.mochyy.mochymusic.ui.component.RemoteFocus
-import com.mochyy.mochymusic.ui.component.rememberResourcePainter
+import com.mochyy.mochymusic.ui.component.pressBounce
 
-internal data class DevSocial(val label: String, val url: String)
+data class DevSocial(val label: String, val url: String)
 
-internal data class DevPerson(
+data class DevPerson(
     val name: String,
     val bio: String,
-    @DrawableRes val avatar: Int,
+    val avatar: DevPicture,
     /** the main dev takes donations, the donate section only shows for them */
     val takesDonations: Boolean = false,
     val socials: List<DevSocial> = emptyList(),
 )
 
-internal val DevPeople = listOf(
+val DevPeople = listOf(
     DevPerson(
         name = "idkroo",
         bio = "ui ux guy here uhh idk what to write here, pls star the repo",
-        avatar = R.drawable.frame_51_3,
+        avatar = DevPicture.Idkroo,
         takesDonations = true,
         socials = listOf(
             DevSocial("Instagram", InstagramUrl),
@@ -83,15 +74,15 @@ internal val DevPeople = listOf(
     DevPerson(
         name = "Keycii",
         bio = "Hi hello hi",
-        avatar = R.drawable.dev_keycii,
+        avatar = DevPicture.Keycii,
     ),
 )
 
 /** someone's picture, round, on the mock's light grey */
 @Composable
-internal fun DevAvatar(person: DevPerson, modifier: Modifier = Modifier) {
+fun DevAvatar(person: DevPerson, modifier: Modifier = Modifier) {
     Image(
-        painter = rememberResourcePainter(person.avatar),
+        painter = LocalDevPictures.current.avatar(person.avatar),
         contentDescription = person.name,
         contentScale = ContentScale.Crop,
         modifier = modifier.clip(CircleShape).background(Color(0xFFD9D9D9)),
@@ -108,6 +99,8 @@ internal fun DevProfilePage(
     scrollState: ScrollState,
     bannerHeight: Dp,
     modifier: Modifier = Modifier,
+    /** the app's donate sheet; null on a platform without one, and the donate section is left out there */
+    onDonate: (() -> Unit)? = null,
     below: @Composable ColumnScope.() -> Unit,
 ) {
     val reveal = remember { Animatable(0f) }
@@ -140,20 +133,20 @@ internal fun DevProfilePage(
                 Rule()
             }
 
-            if (person.takesDonations || person.socials.isNotEmpty()) {
+            val donate = onDonate?.takeIf { person.takesDonations }
+            if (donate != null || person.socials.isNotEmpty()) {
                 Column(Modifier.rise(2).padding(top = 22.dp)) {
-                    if (person.takesDonations) {
-                        val popup = LocalZoomOutOverlayState.current
+                    if (donate != null) {
                         SectionTitle("Donate")
-                        DevLinkRow("Donate me!") { popup.showDonateSheet() }
+                        DevLinkRow("Donate me!") { donate() }
                         Spacer(Modifier.height(14.dp))
                     }
                     if (person.socials.isNotEmpty()) {
-                        val context = LocalContext.current
+                        val uriHandler = LocalUriHandler.current
                         SectionTitle("Socials")
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             person.socials.forEach { social ->
-                                DevLinkRow(social.label) { context.openDevUrl(social.url) }
+                                DevLinkRow(social.label) { uriHandler.openDevLink(social.url) }
                             }
                         }
                     }
@@ -173,15 +166,8 @@ internal fun DevProfilePage(
 /** the banner is the person's own picture, blurred and dimmed, so every page gets its own colour */
 @Composable
 private fun ProfileHeader(person: DevPerson, scrollState: ScrollState, bannerHeight: Dp) {
-    val context = LocalContext.current
-    // blurred once, small and off the main thread, so it costs the same on every phone
-    val banner = remember(person.avatar) {
-        ImageRequest.Builder(context)
-            .data(person.avatar)
-            .size(192)
-            .transformations(SoftBlurTransformation())
-            .build()
-    }
+    // the platform makes the small blurred copy once and caches it, so scrolling costs the same on every phone
+    val banner = LocalDevPictures.current.banner(person.avatar)
     Box(Modifier.fillMaxWidth().height(bannerHeight + AvatarSize / 2)) {
         Box(
             Modifier
@@ -193,8 +179,8 @@ private fun ProfileHeader(person: DevPerson, scrollState: ScrollState, bannerHei
                 }
                 .background(Color(0xFF4A4A4A)),
         ) {
-            AsyncImage(
-                model = banner,
+            Image(
+                painter = banner,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier

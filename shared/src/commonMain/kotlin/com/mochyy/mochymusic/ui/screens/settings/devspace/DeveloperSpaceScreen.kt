@@ -37,37 +37,46 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.mochyy.mochymusic.BuildConfig
 import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
-import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.back_content_desc
+import com.mochyy.mochymusic.shared.resources.chevron_leftpx
 import com.mochyy.mochymusic.ui.component.BlurDirection
-import com.mochyy.mochymusic.ui.component.GlassState
-import com.mochyy.mochymusic.ui.component.ProgressiveGlassBackground
-import com.mochyy.mochymusic.ui.component.glassRoot
+import com.mochyy.mochymusic.ui.component.FlatBarScrimAlpha
+import com.mochyy.mochymusic.ui.component.LocalSubSettingsChrome
+import com.mochyy.mochymusic.ui.component.RemoteFocus
 import com.mochyy.mochymusic.ui.component.pressBounce
+import com.mochyy.mochymusic.ui.component.rememberProgressiveBlur
 import com.mochyy.mochymusic.ui.utils.stableSystemBars
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlin.math.abs
-import com.mochyy.mochymusic.ui.component.RemoteFocus
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 
 /** how long the picker stays open showing names after the last tap or swipe */
 private const val PickerOpenMs = 2600L
 
 @Composable
-fun DeveloperSpaceScreen(navController: NavController, initialPage: Int = 0) {
-    val stats by DevSpaceRepository.current.collectAsState()
-    val loading by DevSpaceRepository.loading.collectAsState()
+fun DeveloperSpaceScreen(
+    navController: NavController,
+    initialPage: Int = 0,
+    /** the app's donate sheet; null on a platform that has none, and the donate section is left out there */
+    onDonate: (() -> Unit)? = null,
+    devSpace: DevSpaceRepository = koinInject(),
+) {
+    val stats by devSpace.current.collectAsState()
+    val loading by devSpace.loading.collectAsState()
 
     // every open asks GitHub again; the playground page reuses what this fetched
-    LaunchedEffect(Unit) { DevSpaceRepository.refresh(BuildConfig.BUILD_TIME_MILLIS, force = true) }
+    LaunchedEffect(Unit) { devSpace.refresh(force = true) }
 
     val pagerState = rememberPagerState(initialPage = initialPage.coerceIn(0, DevPeople.lastIndex)) { DevPeople.size }
     val scrollStates = DevPeople.map { rememberScrollState() }
@@ -97,15 +106,16 @@ fun DeveloperSpaceScreen(navController: NavController, initialPage: Int = 0) {
             FastOutSlowInEasing.transform((scrolled / barRangePx).coerceIn(0f, 1f))
         }
     }
-    val glassState = remember { GlassState() }
+    // the same platform glass SubSettingsScaffold uses (Android: GlassKit's frosted header), never a second copy
+    val glass = LocalSubSettingsChrome.current.rememberHeaderGlass()
     val ready = stats != null || !loading
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        // glassRoot wraps the content only, the glass bar is a sibling or it crashes (see docs/notes/settings.md)
+        // the backdrop wraps the content only, the glass bar is a sibling or it crashes (see docs/notes/settings.md)
         Box(
             Modifier
                 .fillMaxSize()
-                .glassRoot(glassState, isActive = { barP > 0f }),
+                .then(glass.backdrop(isActive = { barP > 0f })),
         ) {
             HorizontalPager(
                 state = pagerState,
@@ -117,6 +127,7 @@ fun DeveloperSpaceScreen(navController: NavController, initialPage: Int = 0) {
                     person = person,
                     scrollState = scrollStates[page],
                     bannerHeight = bannerHeight,
+                    onDonate = onDonate,
                     modifier = Modifier.graphicsLayer {
                         // the page leaving sinks back a little and dims, so a swipe has some depth
                         val offset = abs(pagerState.currentPage - page + pagerState.currentPageOffsetFraction).coerceIn(0f, 1f)
@@ -139,8 +150,7 @@ fun DeveloperSpaceScreen(navController: NavController, initialPage: Int = 0) {
                 .graphicsLayer { alpha = barP },
         ) {
             if (barP > 0.01f) {
-                ProgressiveGlassBackground(
-                    state = glassState,
+                glass.Background(
                     maxBlurRadius = { 50f * barP },
                     foundationColor = Color.Black.copy(alpha = 0.5f),
                     direction = BlurDirection.BottomToTop,
@@ -148,7 +158,7 @@ fun DeveloperSpaceScreen(navController: NavController, initialPage: Int = 0) {
                     modifier = Modifier.fillMaxSize(),
                 )
             }
-            val progressiveBar = com.mochyy.mochymusic.ui.component.rememberProgressiveBlur()
+            val progressiveBar = rememberProgressiveBlur()
             Box(
                 Modifier
                     .fillMaxSize()
@@ -156,7 +166,7 @@ fun DeveloperSpaceScreen(navController: NavController, initialPage: Int = 0) {
                         if (progressiveBar) {
                             Brush.verticalGradient(listOf(Color.Black, Color.Black.copy(alpha = 0.7f), Color.Transparent))
                         } else {
-                            androidx.compose.ui.graphics.SolidColor(Color.Black.copy(alpha = com.mochyy.mochymusic.ui.component.FlatBarScrimAlpha))
+                            SolidColor(Color.Black.copy(alpha = FlatBarScrimAlpha))
                         },
                     ),
             )
@@ -201,6 +211,11 @@ private fun BackButton(onClick: () -> Unit) {
             .background(DevBarButtonFill)
             .clickable(interactionSource = interaction, indication = RemoteFocus, onClick = onClick),
     ) {
-        Icon(painterResource(R.drawable.chevron_leftpx), contentDescription = stringResource(R.string.back_content_desc), tint = Color.White, modifier = Modifier.size(20.dp))
+        Icon(
+            painter = painterResource(Res.drawable.chevron_leftpx),
+            contentDescription = stringResource(Res.string.back_content_desc),
+            tint = Color.White,
+            modifier = Modifier.size(20.dp),
+        )
     }
 }

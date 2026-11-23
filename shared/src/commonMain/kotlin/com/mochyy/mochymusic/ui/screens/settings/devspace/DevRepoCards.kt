@@ -2,8 +2,6 @@
 
 package com.mochyy.mochymusic.ui.screens.settings.devspace
 
-import android.content.Context
-import androidx.annotation.StringRes
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -42,31 +40,55 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.dev_commits
+import com.mochyy.mochymusic.shared.resources.dev_couldnt_reach_github
+import com.mochyy.mochymusic.shared.resources.dev_filter_all
+import com.mochyy.mochymusic.shared.resources.dev_filter_bug
+import com.mochyy.mochymusic.shared.resources.dev_filter_feature
+import com.mochyy.mochymusic.shared.resources.dev_filter_other
+import com.mochyy.mochymusic.shared.resources.dev_new_reported_issues
+import com.mochyy.mochymusic.shared.resources.dev_new_resolved_issue
+import com.mochyy.mochymusic.shared.resources.dev_no_filtered_issues_open
+import com.mochyy.mochymusic.shared.resources.dev_no_open_issues
+import com.mochyy.mochymusic.shared.resources.dev_playground_title
+import com.mochyy.mochymusic.shared.resources.dev_releases
+import com.mochyy.mochymusic.shared.resources.dev_repo_issues
+import com.mochyy.mochymusic.shared.resources.dev_resolved_header
+import com.mochyy.mochymusic.shared.resources.dev_show_all_issues
+import com.mochyy.mochymusic.shared.resources.dev_showing_last_numbers
+import com.mochyy.mochymusic.shared.resources.dev_time_days_ago
+import com.mochyy.mochymusic.shared.resources.dev_time_months_ago
+import com.mochyy.mochymusic.shared.resources.dev_time_today
+import com.mochyy.mochymusic.shared.resources.dev_time_years_ago
+import com.mochyy.mochymusic.shared.resources.dev_time_yesterday
+import com.mochyy.mochymusic.shared.resources.dev_try_again
+import com.mochyy.mochymusic.shared.resources.navigate_next
 import com.mochyy.mochymusic.ui.component.OdometerNumber
 import com.mochyy.mochymusic.ui.component.RemoteFocus
 import com.mochyy.mochymusic.ui.component.pressBounce
-import java.time.Instant
-import java.time.temporal.ChronoUnit
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 private val BugText = Color(0xFFFF8A80)
 private val BugFill = Color(0xFF4A2424)
 private const val IssueRowsShown = 6
 
 private enum class IssueFilter(
-    @StringRes val labelRes: Int,
+    val labelRes: StringResource,
 ) {
-    All(R.string.dev_filter_all),
-    Bug(R.string.dev_filter_bug),
-    Feature(R.string.dev_filter_feature),
-    Other(R.string.dev_filter_other),
+    All(Res.string.dev_filter_all),
+    Bug(Res.string.dev_filter_bug),
+    Feature(Res.string.dev_filter_feature),
+    Other(Res.string.dev_filter_other),
     ;
 
     fun matches(issue: DevIssue) =
@@ -105,13 +127,13 @@ internal fun PlaygroundCard(
 ) {
     val interaction = remember { MutableInteractionSource() }
     RepoFiguresCard(
-        title = stringResource(R.string.dev_playground_title),
+        title = stringResource(Res.string.dev_playground_title),
         figures =
             listOf(
-                stats?.newIssues to stringResource(R.string.dev_new_reported_issues),
-                stats?.newResolved to stringResource(R.string.dev_new_resolved_issue),
-                stats?.commits to stringResource(R.string.dev_commits),
-                stats?.releases to stringResource(R.string.dev_releases),
+                stats?.newIssues to stringResource(Res.string.dev_new_reported_issues),
+                stats?.newResolved to stringResource(Res.string.dev_new_resolved_issue),
+                stats?.commits to stringResource(Res.string.dev_commits),
+                stats?.releases to stringResource(Res.string.dev_releases),
             ),
         settled = settled,
         showChevron = true,
@@ -138,7 +160,7 @@ internal fun RepoFiguresCard(
             Text(title, style = devText(17f, tracking = -0.6f))
             if (showChevron) {
                 Icon(
-                    painter = painterResource(R.drawable.navigate_next),
+                    painter = painterResource(Res.drawable.navigate_next),
                     contentDescription = null,
                     tint = Color.White.copy(alpha = 0.6f),
                     modifier = Modifier.size(20.dp),
@@ -187,7 +209,7 @@ internal fun RepoIssuesSection(
     error: String?,
     onRetry: () -> Unit,
 ) {
-    val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
     var filter by remember { mutableStateOf(IssueFilter.All) }
     var showAllOpen by remember { mutableStateOf(false) }
     var showAllResolved by remember { mutableStateOf(false) }
@@ -196,7 +218,7 @@ internal fun RepoIssuesSection(
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         DevPanel {
-            Text(stringResource(R.string.dev_repo_issues), style = devText(17f, tracking = -0.6f))
+            Text(stringResource(Res.string.dev_repo_issues), style = devText(17f, tracking = -0.6f))
             Spacer(Modifier.height(10.dp))
             FilterChips(
                 selected = filter,
@@ -215,28 +237,26 @@ internal fun RepoIssuesSection(
                 }
 
                 stats == null -> {
-                    RetryNote(error ?: stringResource(R.string.dev_couldnt_reach_github), onRetry)
+                    RetryNote(error ?: stringResource(Res.string.dev_couldnt_reach_github), onRetry)
                 }
 
                 shown.isEmpty() -> {
                     Note(
                         if (open.isEmpty()) {
-                            stringResource(
-                                R.string.dev_no_open_issues,
-                            )
+                            stringResource(Res.string.dev_no_open_issues)
                         } else {
-                            stringResource(R.string.dev_no_filtered_issues_open, stringResource(filter.labelRes).lowercase())
+                            stringResource(Res.string.dev_no_filtered_issues_open, stringResource(filter.labelRes).lowercase())
                         },
                     )
                 }
 
                 else -> {
-                    IssueList(shown, showAllOpen, context) { showAllOpen = true }
+                    IssueList(shown, showAllOpen, onShowAll = { showAllOpen = true }, onOpen = { uriHandler.openDevLink(it) })
                 }
             }
             if (stats != null && error != null) {
                 Spacer(Modifier.height(10.dp))
-                RetryNote(stringResource(R.string.dev_showing_last_numbers, error), onRetry)
+                RetryNote(stringResource(Res.string.dev_showing_last_numbers, error), onRetry)
             }
         }
 
@@ -245,14 +265,14 @@ internal fun RepoIssuesSection(
             DevPanel {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        stringResource(R.string.dev_resolved_header),
+                        stringResource(Res.string.dev_resolved_header),
                         style = devText(17f, tracking = -0.6f),
                         modifier = Modifier.weight(1f),
                     )
                     Text("${shownResolved.size}", style = devText(15f, FontWeight.SemiBold, DevMuted))
                 }
                 Spacer(Modifier.height(12.dp))
-                IssueList(shownResolved, showAllResolved, context) { showAllResolved = true }
+                IssueList(shownResolved, showAllResolved, onShowAll = { showAllResolved = true }, onOpen = { uriHandler.openDevLink(it) })
             }
         }
     }
@@ -291,15 +311,15 @@ private fun FilterChips(
 private fun IssueList(
     issues: List<DevIssue>,
     showAll: Boolean,
-    context: Context,
     onShowAll: () -> Unit,
+    onOpen: (String) -> Unit,
 ) {
     val visible = if (showAll) issues else issues.take(IssueRowsShown)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        visible.forEach { IssueRow(it) { context.openDevUrl(it.url) } }
+        visible.forEach { IssueRow(it) { onOpen(it.url) } }
         if (!showAll && issues.size > IssueRowsShown) {
             Text(
-                stringResource(R.string.dev_show_all_issues, issues.size),
+                stringResource(Res.string.dev_show_all_issues, issues.size),
                 style = devText(13f, FontWeight.SemiBold, Color.White, -0.2f),
                 modifier =
                     Modifier
@@ -318,7 +338,6 @@ private fun IssueRow(
     issue: DevIssue,
     onClick: () -> Unit,
 ) {
-    val context = LocalContext.current
     Row(
         verticalAlignment = Alignment.Top,
         modifier =
@@ -332,7 +351,7 @@ private fun IssueRow(
         Column(Modifier.weight(1f)) {
             Text(issue.title, style = devText(15f, FontWeight.SemiBold, tracking = -0.2f), maxLines = 2, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(3.dp))
-            Text("#${issue.number} · ${ago(context, issue.createdAt)}", style = devText(12f, FontWeight.Medium, DevMuted, 0f), maxLines = 1)
+            Text("#${issue.number} · ${ago(issue.createdAtMillis)}", style = devText(12f, FontWeight.Medium, DevMuted, 0f), maxLines = 1)
         }
         val tag = if (issue.isBug) "bug" else issue.labels.firstOrNull()
         if (tag != null) {
@@ -385,7 +404,7 @@ private fun RetryNote(
         Text(text, style = devText(13f, FontWeight.Medium, DevMuted, -0.2f), modifier = Modifier.weight(1f))
         Spacer(Modifier.width(10.dp))
         Text(
-            stringResource(R.string.dev_try_again),
+            stringResource(Res.string.dev_try_again),
             style = devText(13f, FontWeight.SemiBold, Color.Black, -0.2f),
             modifier =
                 Modifier
@@ -397,16 +416,18 @@ private fun RetryNote(
     }
 }
 
-private fun ago(
-    context: Context,
-    at: Instant,
-): String {
-    val days = ChronoUnit.DAYS.between(at, Instant.now())
+// the same count as java's ChronoUnit.DAYS.between(at, Instant.now()): whole days, truncated toward zero
+@OptIn(ExperimentalTime::class)
+@Composable
+private fun ago(createdAtMillis: Long): String {
+    val days = (Clock.System.now().toEpochMilliseconds() - createdAtMillis) / DayMillis
     return when {
-        days <= 0L -> context.getString(R.string.dev_time_today)
-        days == 1L -> context.getString(R.string.dev_time_yesterday)
-        days < 30L -> context.getString(R.string.dev_time_days_ago, days)
-        days < 365L -> context.getString(R.string.dev_time_months_ago, days / 30)
-        else -> context.getString(R.string.dev_time_years_ago, days / 365)
+        days <= 0L -> stringResource(Res.string.dev_time_today)
+        days == 1L -> stringResource(Res.string.dev_time_yesterday)
+        days < 30L -> stringResource(Res.string.dev_time_days_ago, days.toInt())
+        days < 365L -> stringResource(Res.string.dev_time_months_ago, (days / 30).toInt())
+        else -> stringResource(Res.string.dev_time_years_ago, (days / 365).toInt())
     }
 }
+
+private const val DayMillis = 86_400_000L
