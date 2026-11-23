@@ -333,7 +333,7 @@ private fun SpatialFlowTransport(
             content = contentColor,
             iconSize = 34.dp,
             enabled = !preview && transport.canSkipNext,
-            onClick = tap(connection.seekToNext),
+            onClick = tap(connection::seekToNext),
         )
     }
 }
