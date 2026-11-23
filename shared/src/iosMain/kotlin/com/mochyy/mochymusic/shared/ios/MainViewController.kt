@@ -13,6 +13,7 @@ import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.shared.resources.inter_regular
 import com.mochyy.mochymusic.shared.resources.inter_semibold
 import com.mochyy.mochymusic.shared.resources.playback_failed
+import com.mochyy.mochymusic.shared.playback.LocalPlayerConnection
 import com.mochyy.mochymusic.shared.ui.shell.StandaloneMusicApp
 import com.mochyy.mochymusic.shared.ui.theme.StandaloneMochyTheme
 import com.mochyy.mochymusic.utils.LocalAppPreferences
@@ -34,7 +35,6 @@ private fun mainViewController(): UIViewController = ComposeUIViewController {
     val playbackFailed = stringResource(Res.string.playback_failed)
     SideEffect { IosPlaybackRuntime.playbackFailedText = playbackFailed }
     val youtube = IosPlaybackRuntime.youtube
-    val player = IosPlaybackRuntime.player
     val providers = IosPlaybackRuntime.lyricsProviders
     val library = IosPlaybackRuntime.library
     val queue = IosPlaybackRuntime.queue
@@ -45,6 +45,7 @@ private fun mainViewController(): UIViewController = ComposeUIViewController {
     )
     CompositionLocalProvider(
         LocalAppPreferences provides iosPlaybackPreferences.store,
+        LocalPlayerConnection provides IosPlaybackRuntime.connection,
         // settings sub-pages: nothing covers the bottom here, and their header is a plain tint
         com.mochyy.mochymusic.LocalPlayerAwareWindowInsets provides androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         com.mochyy.mochymusic.ui.component.LocalSubSettingsChrome provides com.mochyy.mochymusic.ui.component.PlainSubSettingsChrome,
@@ -52,7 +53,6 @@ private fun mainViewController(): UIViewController = ComposeUIViewController {
         StandaloneMochyTheme(inter, iosPlaybackPreferences) {
             StandaloneMusicApp(
                 source = youtube,
-                player = player,
                 lyricsProviders = providers,
                 settings = iosPlaybackPreferences,
                 library = library,

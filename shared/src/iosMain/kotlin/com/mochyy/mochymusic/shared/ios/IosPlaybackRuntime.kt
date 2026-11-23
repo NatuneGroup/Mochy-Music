@@ -2,6 +2,7 @@ package com.mochyy.mochymusic.shared.ios
 
 import kotlinx.coroutines.MainScope
 import com.mochyy.mochymusic.shared.playback.SharedQueue
+import com.mochyy.mochymusic.shared.playback.QueuePlayerConnection
 import com.mochyy.mochymusic.shared.lyrics.playerLyricsProviders
 import com.mochyy.mochymusic.shared.lyrics.LyricsProvider
 import com.mochyy.mochymusic.shared.playback.QueueTransport
@@ -19,5 +20,7 @@ internal object IosPlaybackRuntime {
     val queue by lazy {
         SharedQueue(player, iosPlaybackPreferences, library, queueTransport, MainScope()).also { it.start() }
     }
+    /** The shared screens' player, behind the portable contract. */
+    val connection by lazy { QueuePlayerConnection(player, queue, MainScope()) }
     val lyricsProviders: List<LyricsProvider> by lazy { playerLyricsProviders(youtube.http) }
 }

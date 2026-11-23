@@ -41,11 +41,13 @@ import com.mochyy.mochymusic.playback.queues.Queue
 import com.mochyy.mochymusic.playback.queues.ListQueue
 import com.mochyy.mochymusic.playback.queues.YouTubeQueue
 import com.mochyy.mochymusic.ui.player.models.ProgressState
+import com.mochyy.mochymusic.shared.playback.PlaybackConnection as SharedPlaybackConnection
 import com.mochyy.mochymusic.shared.playback.PlaybackQueueItem
 import com.mochyy.mochymusic.shared.playback.PlaybackQueueState
 import com.mochyy.mochymusic.shared.playback.PlaybackRepeatMode
-import com.mochyy.mochymusic.shared.playback.PlayerController
+import com.mochyy.mochymusic.shared.playback.PlayerQueueWindow
 import com.mochyy.mochymusic.shared.playback.PlayerState
+import com.mochyy.mochymusic.shared.playback.Queue as PlaybackQueue
 import com.music.innertube.models.Album as YouTubeAlbum
 import com.music.innertube.models.Artist as YouTubeArtist
 import com.music.innertube.models.SongItem
@@ -78,7 +80,7 @@ class PlayerConnection(
     binder: MusicBinder,
     val database: MusicDatabase,
     parentScope: CoroutineScope,
-) : Player.Listener, PlayerController {
+) : Player.Listener, SharedPlaybackConnection {
     private companion object {
         private const val TAG = "PlayerConnection"
         private const val PLAYER_INIT_TIMEOUT_MS = 5000L
@@ -113,7 +115,7 @@ class PlayerConnection(
 
     val playbackState: MutableStateFlow<Int>
     private val playWhenReady: MutableStateFlow<Boolean>
-    val isPlaying: kotlinx.coroutines.flow.StateFlow<Boolean>
+    override val isPlaying: kotlinx.coroutines.flow.StateFlow<Boolean>
 
     init {
         Timber.tag(TAG).d("PlayerConnection init: playerReady=${playerReadinessFlow.value}")
@@ -207,6 +209,10 @@ class PlayerConnection(
             return attachedPlayer?.isPlaying == true
         }
 
+    // the shared contract's position and length follow the cast receiver too
+    override val positionMs: Long get() = effectivePositionMs
+    override val durationMs: Long get() = effectiveDurationMs
+
     val effectivePlaybackSpeed: Float
         get() {
             val cast = service.castConnectionHandler
@@ -227,6 +233,11 @@ class PlayerConnection(
         queueMetadata = metadata
         mediaMetadata.value = metadata?.let(SongEdits::applyTo)
     }
+
+    /** The playing song in the model shared screens show; the app's own callers keep using [mediaMetadata]. */
+    override val nowPlaying: StateFlow<SongItem?> = mediaMetadata
+        .map { it?.toSongItem() }
+        .stateIn(scope, SharingStarted.WhileSubscribed(5_000L), mediaMetadata.value?.toSongItem())
 
     val currentSong =
         mediaMetadata.flatMapLatest {
@@ -345,6 +356,21 @@ class PlayerConnection(
             title = queueTitle.value.orEmpty(),
         )
     }
+
+    /** The songs either side of the playing one, in play order, for the shared player UI. */
+    override val queueWindow: StateFlow<PlayerQueueWindow> =
+        combine(queueWindows, currentWindowIndex) { windows, index ->
+            PlayerQueueWindow(
+                previous = windows.getOrNull(index - 1)?.mediaItem?.metadata?.toSongItem(),
+                current = windows.getOrNull(index)?.mediaItem?.metadata?.toSongItem()
+                    ?: mediaMetadata.value?.toSongItem(),
+                next = windows.getOrNull(index + 1)?.mediaItem?.metadata?.toSongItem(),
+            )
+        }.stateIn(
+            scope,
+            SharingStarted.WhileSubscribed(5_000L),
+            PlayerQueueWindow(current = mediaMetadata.value?.toSongItem()),
+        )
 
     private val isPositionAdvancing = MutableStateFlow(false)
     private val progress = MutableStateFlow(ProgressState())
@@ -527,6 +553,31 @@ class PlayerConnection(
         }
     }
 
+    /**
+     * A portable queue from shared code: its first page becomes a media3 ListQueue, which the service
+     * reads exactly like any other. Later pages are not wired yet (no shared queue has any this wave).
+     */
+    override fun playQueue(queue: PlaybackQueue) {
+        scope.launch {
+            val status = try {
+                queue.getInitialStatus()
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                Timber.tag(TAG).e(e, "Error reading shared queue")
+                return@launch
+            }
+            if (status.items.isEmpty()) return@launch
+            playQueue(
+                ListQueue(
+                    title = status.title,
+                    items = status.items.map { it.toMediaItem() },
+                    startIndex = status.mediaItemIndex.coerceIn(status.items.indices),
+                    position = status.position,
+                )
+            )
+        }
+    }
+
     fun startRadioSeamlessly() {
 
         if (!playerReadinessFlow.value) {
@@ -544,6 +595,8 @@ class PlayerConnection(
 
     fun playNext(item: MediaItem) = playNext(listOf(item))
 
+    override fun playNext(song: SongItem) = playNext(song.toMediaItem())
+
     fun playNext(items: List<MediaItem>) {
         if (remote?.takeNext(items) == true) return
         try {
@@ -555,6 +608,8 @@ class PlayerConnection(
     }
 
     fun addToQueue(item: MediaItem) = addToQueue(listOf(item))
+
+    override fun addToQueue(song: SongItem) = addToQueue(song.toMediaItem())
 
     fun addToQueue(items: List<MediaItem>) {
         if (remote?.takeQueueEnd(items) == true) return
@@ -744,7 +799,7 @@ class PlayerConnection(
         }
     }
 
-    fun play() {
+    override fun play() {
         try {
             val castHandler = service.castConnectionHandler
             if (castHandler?.isCasting?.value == true) {
@@ -757,7 +812,7 @@ class PlayerConnection(
         }
     }
 
-    fun pause() {
+    override fun pause() {
         try {
             val castHandler = service.castConnectionHandler
             if (castHandler?.isCasting?.value == true) {
