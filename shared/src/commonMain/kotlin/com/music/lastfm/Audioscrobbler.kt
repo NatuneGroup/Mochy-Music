@@ -1,8 +1,6 @@
 package com.music.lastfm
 
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.okhttp.OkHttp
-import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.forms.FormDataContent
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -15,8 +13,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
-import java.security.MessageDigest
-import java.util.Locale
+import okio.ByteString.Companion.toByteString
 
 /** a song as a scrobbling service wants it, times are in seconds */
 @Serializable
@@ -69,7 +66,7 @@ class Audioscrobbler(
     /** signs in straight from mochy's own form, the password only goes to the service over https and isn't kept */
     suspend fun getMobileSession(username: String, password: String): AudioscrobblerSession {
         val login = if (signsInWithToken) {
-            mapOf("authToken" to md5(username.lowercase(Locale.ROOT) + md5(password)))
+            mapOf("authToken" to md5(username.lowercase() + md5(password)))
         } else {
             mapOf("password" to password)
         }
@@ -136,8 +133,8 @@ class Audioscrobbler(
     private fun signature(params: Map<String, String>): String =
         md5(params.toSortedMap().entries.joinToString("") { it.key + it.value } + secret)
 
-    private fun md5(text: String): String =
-        MessageDigest.getInstance("MD5").digest(text.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
+    // okio hashes the same bytes on every platform; the hex is what last.fm's signature asks for
+    private fun md5(text: String): String = text.encodeToByteArray().toByteString().md5().hex()
 
     private fun ScrobbleTrack.params(index: Int?): Map<String, String> {
         val suffix = index?.let { "[$it]" }.orEmpty()
@@ -158,16 +155,8 @@ class Audioscrobbler(
         const val MAX_BATCH = 50
 
         private const val USER_AGENT = "Mochy"
-
-        private val client by lazy {
-            HttpClient(OkHttp) {
-                install(HttpTimeout) {
-                    connectTimeoutMillis = 15_000
-                    requestTimeoutMillis = 30_000
-                    socketTimeoutMillis = 30_000
-                }
-                expectSuccess = false
-            }
-        }
     }
+
+    // one client for every call, made by the platform that's running: each one installs its own engine
+    private val client: HttpClient by lazy { audioscrobblerHttpClient() }
 }

@@ -15,18 +15,22 @@ import com.music.lastfm.Audioscrobbler
 /**
  * The services Mochy scrobbles to. Both speak Last.fm's API, so one client serves both. Their
  * API keys come from local.properties (or CI secrets) at build time and never sit in the source.
+ *
+ * The enum stays in the app because it builds the clients from those build-time keys; the
+ * scrobbling itself is shared (`com.mochyy.mochymusic.scrobble.Scrobbler`), which is why this
+ * implements [ScrobbleAccount].
  */
 enum class ScrobbleSite(
-    val label: String,
-    val sessionKey: Preferences.Key<String>,
-    val usernameKey: Preferences.Key<String>,
+    override val label: String,
+    override val sessionKey: Preferences.Key<String>,
+    override val usernameKey: Preferences.Key<String>,
     /** Scrobbling on or paused, with the account kept either way. */
-    val enabledKey: Preferences.Key<Boolean>,
+    override val enabledKey: Preferences.Key<Boolean>,
     private val profilePage: String,
     /** where someone without an account makes one */
     val signUpUrl: String,
-    val api: Audioscrobbler,
-) {
+    override val api: Audioscrobbler,
+) : ScrobbleAccount {
     LASTFM(
         label = "Last.fm",
         sessionKey = LastFMSessionKey,
@@ -54,6 +58,9 @@ enum class ScrobbleSite(
             signsInWithToken = true,
         ),
     );
+
+    /** the enum's name, which is what the queue file has always stored */
+    override val siteName: String get() = name
 
     fun profileUrl(username: String) = profilePage + username
 }

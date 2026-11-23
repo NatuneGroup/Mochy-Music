@@ -2,7 +2,6 @@
 
 package com.mochyy.mochymusic.scrobble
 
-import android.util.AtomicFile
 import com.music.lastfm.ScrobbleTrack
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,8 +11,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
-import timber.log.Timber
-import java.io.File
+import com.mochyy.mochymusic.db.nowEpochMillis
 
 /** A play waiting to be sent, and the services that still need it. */
 @Serializable
@@ -21,16 +19,27 @@ internal data class PendingScrobble(
     val track: ScrobbleTrack,
     /** When it started playing, in seconds since 1970. */
     val startedAt: Long,
-    val sites: Set<ScrobbleSite>,
+    val sites: Set<String>,
 )
+
+/**
+ * Where the queue's file lives. Android writes it with AtomicFile, desktop and iOS with their own
+ * file APIs; the queue itself only reads and writes whole files, so it never needs a path.
+ */
+interface ScrobbleQueueStore {
+    /** The file's bytes, or null when it doesn't exist. */
+    suspend fun read(): ByteArray?
+
+    /** Replaces the file's contents whole. */
+    suspend fun write(bytes: ByteArray)
+}
 
 /**
  * Plays waiting to be sent, kept in a file so they outlast the app closing, a reboot, or a week
  * with no signal. Each play remembers which services still need it, so one service being down
  * doesn't hold back the other.
  */
-internal class ScrobbleQueue(file: File) {
-    private val file = AtomicFile(file)
+internal class ScrobbleQueue(private val store: ScrobbleQueueStore) {
     private val mutex = Mutex()
     private val json = Json { ignoreUnknownKeys = true }
     private val serializer = ListSerializer(PendingScrobble.serializer())
@@ -53,14 +62,14 @@ internal class ScrobbleQueue(file: File) {
     }
 
     /** The oldest plays [site] still needs, up to [max]. Plays too old for any service to take are dropped. */
-    suspend fun nextFor(site: ScrobbleSite, max: Int): List<PendingScrobble> = edit { plays ->
-        val oldest = System.currentTimeMillis() / 1000 - MAX_AGE_SECONDS
+    suspend fun nextFor(site: String, max: Int): List<PendingScrobble> = edit { plays ->
+        val oldest = nowEpochMillis() / 1000 - MAX_AGE_SECONDS
         plays.removeAll { it.startedAt < oldest }
         plays.filter { site in it.sites }.take(max)
     }
 
     /** [sent] reached [site]. A play no other service is waiting for is done with. */
-    suspend fun markSent(site: ScrobbleSite, sent: List<PendingScrobble>) = edit { plays ->
+    suspend fun markSent(site: String, sent: List<PendingScrobble>) = edit { plays ->
         // by play rather than by object: the other service may have been marked in between
         val done = sent.mapTo(HashSet()) { it.startedAt to it.track }
         plays.replaceAll { if ((it.startedAt to it.track) in done) it.copy(sites = it.sites - site) else it }
@@ -68,7 +77,7 @@ internal class ScrobbleQueue(file: File) {
     }
 
     /** Signed out of [site]: nothing waiting for it can be sent any more. */
-    suspend fun forget(site: ScrobbleSite) = edit { plays ->
+    suspend fun forget(site: String) = edit { plays ->
         plays.replaceAll { it.copy(sites = it.sites - site) }
         plays.removeAll { it.sites.isEmpty() }
     }
@@ -82,29 +91,24 @@ internal class ScrobbleQueue(file: File) {
         result
     }
 
-    private fun read(): MutableList<PendingScrobble> = try {
-        if (!file.baseFile.exists()) mutableListOf() else json.decodeFromString(serializer, String(file.readFully())).toMutableList()
+    private suspend fun read(): MutableList<PendingScrobble> = try {
+        val bytes = store.read()
+        if (bytes == null) mutableListOf() else json.decodeFromString(serializer, bytes.decodeToString()).toMutableList()
     } catch (e: Exception) {
         // a file cut short when the phone died mid-write: better to start empty than never scrobble again
-        Timber.tag(LOG_TAG).w(e, "Couldn't read the scrobble queue, starting it again")
+        logProblem("Couldn't read the scrobble queue, starting it again", e)
         mutableListOf()
     }
 
-    private fun write(plays: List<PendingScrobble>) {
-        val stream = try {
-            file.startWrite()
-        } catch (e: Exception) {
-            Timber.tag(LOG_TAG).w(e, "Couldn't save the scrobble queue")
-            return
-        }
+    private suspend fun write(plays: List<PendingScrobble>) {
         try {
-            stream.write(json.encodeToString(serializer, plays).toByteArray())
-            file.finishWrite(stream)
+            store.write(json.encodeToString(serializer, plays).encodeToByteArray())
         } catch (e: Exception) {
-            file.failWrite(stream)
-            Timber.tag(LOG_TAG).w(e, "Couldn't save the scrobble queue")
+            logProblem("Couldn't save the scrobble queue", e)
         }
     }
+
+    private fun logProblem(message: String, error: Throwable) = println("$LOG_TAG: $message (${error.message})")
 
     private companion object {
         const val LOG_TAG = "Scrobble"
