@@ -1,6 +1,7 @@
 package com.mochyy.mochymusic.eq.audio
 
 import com.mochyy.mochymusic.eq.data.ParametricEQ
+import kotlin.concurrent.Volatile
 import kotlin.math.pow
 
 /**
@@ -14,8 +15,9 @@ class EqEngine {
     private var sampleRate = 0
     private var channels = 0
 
-    private var design: ParametricEQ? = null
-    private var designVersion = 0
+    // written from the thread that changes the eq, read on the audio thread
+    @Volatile private var design: ParametricEQ? = null
+    @Volatile private var designVersion = 0
     private var builtVersion = -1
 
     private var bank: FilterBank? = null
