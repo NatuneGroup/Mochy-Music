@@ -34,21 +34,21 @@ import com.mochyy.mochymusic.constants.PlayerStyle
 import com.mochyy.mochymusic.constants.PlaylistStyle
 import com.mochyy.mochymusic.ui.screens.audiolab.LabColors
 
-internal val PreviewWidth = 133.dp
+val PreviewWidth = 133.dp
 
 private val FrameShape = RoundedCornerShape(topStart = 15.dp, topEnd = 15.dp)
-internal val FrameFill = Color(0xFF2B2B2D)
-internal val ArtFill = Brush.verticalGradient(listOf(Color(0xFF636365), Color(0xFF3F3F41)))
+val FrameFill = Color(0xFF2B2B2D)
+val ArtFill = Brush.verticalGradient(listOf(Color(0xFF636365), Color(0xFF3F3F41)))
 private val SoftArtFill = Brush.verticalGradient(listOf(Color(0xFF545456), FrameFill))
 private val ArtLight = Color(0xFF7C7C7E)
-internal val Ink = Color.White.copy(alpha = 0.92f)
-internal val Bone = Color.White.copy(alpha = 0.2f)
-internal val BoneDim = Color.White.copy(alpha = 0.1f)
+val Ink = Color.White.copy(alpha = 0.92f)
+val Bone = Color.White.copy(alpha = 0.2f)
+val BoneDim = Color.White.copy(alpha = 0.1f)
 private val Pill = RoundedCornerShape(50)
 
 // the little phone screen peeking up from a style card's bottom right, sinking into the card at its foot
 @Composable
-internal fun PreviewFrame(
+fun PreviewFrame(
     modifier: Modifier = Modifier,
     width: Dp = PreviewWidth,
     top: Dp = 23.dp,
@@ -80,7 +80,7 @@ private val SinkingFoot = Modifier.drawWithCache {
 }
 
 @Composable
-internal fun PlaylistStylePreview(style: PlaylistStyle, coverRadius: Dp) {
+fun PlaylistStylePreview(style: PlaylistStyle, coverRadius: Dp) {
     when (style) {
         PlaylistStyle.FLOW -> Box(Modifier.fillMaxSize().background(ArtFill)) {
             TitleBars(Modifier.align(Alignment.BottomStart).padding(start = 12.dp, bottom = 38.dp))
@@ -182,7 +182,7 @@ internal fun PlayerStylePreview(style: PlayerStyle) {
 }
 
 @Composable
-internal fun HomeStylePreview(style: HomeStyle, coverRadius: Dp) {
+fun HomeStylePreview(style: HomeStyle, coverRadius: Dp) {
     val radius = RoundedCornerShape(scaledRadius(coverRadius, 0.2f))
     when (style) {
         HomeStyle.MOCHYY -> Column(Modifier.fillMaxSize()) {
@@ -257,7 +257,7 @@ private fun NowPlayingBars() {
 
 // a title and the line under it, like the mock's two white bars
 @Composable
-internal fun TitleBars(modifier: Modifier = Modifier) {
+fun TitleBars(modifier: Modifier = Modifier) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = modifier) {
         Bar(42.dp, 4.5.dp)
         Bar(30.dp, 4.5.dp)
@@ -313,7 +313,7 @@ private fun Shelf(shape: RoundedCornerShape, modifier: Modifier = Modifier) {
 }
 
 @Composable
-internal fun Bar(width: Dp, height: Dp, color: Color = Ink) {
+fun Bar(width: Dp, height: Dp, color: Color = Ink) {
     Box(Modifier.size(width, height).background(color, Pill))
 }
 
