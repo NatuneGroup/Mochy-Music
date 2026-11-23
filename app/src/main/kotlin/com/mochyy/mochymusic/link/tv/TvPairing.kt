@@ -50,7 +50,8 @@ class TvPairing @Inject constructor(
     fun advertiseAgain() = door.advertiseAgain()
 
     // the code matched: the phone lands in a profile, new or the one that asked for it
-    private fun accept(body: JSONObject, remoteHost: String, code: String): LinkResponse {
+    private fun accept(bodyText: String, remoteHost: String, code: String): LinkResponse {
+        val body = runCatching { JSONObject(bodyText) }.getOrNull() ?: return LinkResponse.status(400)
         val phoneId = body.optString("phoneId").ifBlank { return LinkResponse.status(400) }
         // a phone on the old protocol sends the key itself instead of a public half; it has to update first
         val otherPublic = body.optString("pub").ifBlank { return LinkResponse.status(426, "update mochy on the phone") }

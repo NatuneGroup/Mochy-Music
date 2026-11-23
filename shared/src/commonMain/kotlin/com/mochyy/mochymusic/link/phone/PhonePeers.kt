@@ -2,37 +2,38 @@
 
 package com.mochyy.mochymusic.link.phone
 
-import android.content.Context
 import com.mochyy.mochymusic.link.DeviceKind
 import com.mochyy.mochymusic.link.LinkCredentials
 import com.mochyy.mochymusic.link.LinkIdentity
 import com.mochyy.mochymusic.link.LinkWire
+import com.mochyy.mochymusic.link.PlatformLock
 import com.mochyy.mochymusic.link.discoverPeers
+import com.mochyy.mochymusic.utils.ioDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import java.util.concurrent.ConcurrentHashMap
+import kotlin.time.Clock
 
 // while mochy is on screen, a phone says hello to the other phones and tablets it's paired with, so each knows the other is there to steer
 internal class PhonePeers(
-    private val context: Context,
+    private val platformContext: Any,
     private val host: PhoneLinkHost,
     private val scope: CoroutineScope,
 ) {
     private var loop: Job? = null
+    private val lock = PlatformLock()
 
     // looking a peer up on the wi-fi keeps the radio busy for seconds, so a missing one is looked for now and then
-    private val lookedAt = ConcurrentHashMap<String, Long>()
+    private val lookedAt = mutableMapOf<String, Long>()
+    private val lookedAtLock = PlatformLock()
 
-    @Synchronized
-    fun start() {
-        if (loop?.isActive == true) return
-        loop = scope.launch(Dispatchers.IO) {
+    fun start() = lock.withLock {
+        if (loop?.isActive == true) return@withLock
+        loop = scope.launch(ioDispatcher) {
             while (isActive) {
                 checkAll()
                 delay(HeartbeatMs)
@@ -40,14 +41,13 @@ internal class PhonePeers(
         }
     }
 
-    @Synchronized
-    fun stop() {
+    fun stop() = lock.withLock {
         loop?.cancel()
         loop = null
     }
 
     fun poke() {
-        scope.launch(Dispatchers.IO) { checkAll() }
+        scope.launch(ioDispatcher) { checkAll() }
     }
 
     private suspend fun checkAll() {
@@ -58,12 +58,13 @@ internal class PhonePeers(
     private suspend fun reach(peer: PairedDevice, myPort: Int) {
         val address = peer.host
         if (address != null && hello(peer, address, peer.port, myPort)) return
-        val now = System.currentTimeMillis()
-        if (now - (lookedAt[peer.id] ?: 0L) < LookEveryMs) return
-        lookedAt[peer.id] = now
+        val now = Clock.System.now().toEpochMilliseconds()
+        val lastLooked = lookedAtLock.withLock { lookedAt[peer.id] ?: 0L }
+        if (now - lastLooked < LookEveryMs) return
+        lookedAtLock.withLock { lookedAt[peer.id] = now }
         // it moved to another address, or never said where it was: find it by its id
         val found = withTimeoutOrNull(LookForMs) {
-            discoverPeers(context, LinkWire.PhoneServiceType)
+            discoverPeers(platformContext, LinkWire.PhoneServiceType)
                 .first { peers -> peers.any { it.id == peer.id } }
                 .first { it.id == peer.id }
         } ?: return
@@ -72,8 +73,8 @@ internal class PhonePeers(
 
     // true when the peer answered, whatever it said
     private suspend fun hello(peer: PairedDevice, address: String, port: Int, myPort: Int): Boolean = try {
-        val url = "${LinkWire.baseUrl(address, port)}/hello?port=$myPort&kind=${DeviceKind.of(context).wire}"
-        val response = LinkWire.get(url, LinkCredentials(LinkIdentity.id(context), peer.key))
+        val url = "${LinkWire.baseUrl(address, port)}/hello?port=$myPort&kind=${DeviceKind.of(platformContext).wire}"
+        val response = LinkWire.get(url, LinkCredentials(LinkIdentity.id(platformContext), peer.key))
         try {
             when (response.code) {
                 200 -> {

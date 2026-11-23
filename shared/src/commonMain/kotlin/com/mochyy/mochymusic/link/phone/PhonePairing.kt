@@ -2,28 +2,28 @@
 
 package com.mochyy.mochymusic.link.phone
 
-import android.content.Context
 import com.mochyy.mochymusic.link.DeviceKind
 import com.mochyy.mochymusic.link.LinkIdentity
 import com.mochyy.mochymusic.link.LinkPairingDoor
 import com.mochyy.mochymusic.link.LinkResponse
 import com.mochyy.mochymusic.link.PairingCode
-import dagger.hilt.android.qualifiers.ApplicationContext
+import com.mochyy.mochymusic.link.string
+import com.mochyy.mochymusic.link.string
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import org.json.JSONObject
-import javax.inject.Inject
-import javax.inject.Singleton
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 // while the add device sheet is open, this phone shows a code too, so another phone or tablet can pair with it
-@Singleton
-class PhonePairing @Inject constructor(
-    @ApplicationContext private val context: Context,
+class PhonePairing(
+    private val platformContext: Any,
     private val host: PhoneLinkHost,
 ) {
-    private val door = LinkPairingDoor(context, "PhonePair", ::accept)
+    private val door = LinkPairingDoor(platformContext, "PhonePair", ::accept)
 
     val code: StateFlow<PairingCode?> = door.code
 
@@ -36,7 +36,9 @@ class PhonePairing @Inject constructor(
 
     fun close() = door.close()
 
-    private fun accept(body: JSONObject, remoteHost: String, code: String): LinkResponse {
+    private fun accept(bodyText: String, remoteHost: String, code: String): LinkResponse {
+        val body = runCatching { Json.parseToJsonElement(bodyText) as? JsonObject }.getOrNull()
+            ?: return LinkResponse.status(400)
         val accepted = host.acceptPairing(body, remoteHost, code).getOrElse {
             return when ((it as? PairException)?.reason) {
                 PairException.Reason.Full -> LinkResponse.status(409, PhoneLinkHost.FullReply)
@@ -46,13 +48,13 @@ class PhonePairing @Inject constructor(
         }
         _paired.tryEmit(accepted.device)
         return LinkResponse.json(
-            JSONObject()
-                .put("tvId", LinkIdentity.id(context))
-                .put("tvName", LinkIdentity.name(context))
-                .put("kind", DeviceKind.of(context).wire)
-                .put("port", host.port)
-                .put("pub", accepted.publicKey)
-                .toString(),
+            buildJsonObject {
+                put("tvId", LinkIdentity.id(platformContext))
+                put("tvName", LinkIdentity.name(platformContext))
+                put("kind", DeviceKind.of(platformContext).wire)
+                put("port", host.port)
+                put("pub", accepted.publicKey)
+            }.toString(),
         )
     }
 }
