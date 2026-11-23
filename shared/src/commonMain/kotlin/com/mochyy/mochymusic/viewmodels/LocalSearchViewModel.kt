@@ -2,19 +2,17 @@
 
 package com.mochyy.mochymusic.viewmodels
 
-import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mochyy.mochymusic.constants.HideVideoSongsKey
-import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.MochyDatabase
 import com.mochyy.mochymusic.db.entities.Album
 import com.mochyy.mochymusic.db.entities.Artist
 import com.mochyy.mochymusic.db.entities.LocalItem
 import com.mochyy.mochymusic.db.entities.Playlist
 import com.mochyy.mochymusic.db.entities.Song
-import com.mochyy.mochymusic.utils.dataStore
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -24,15 +22,13 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import javax.inject.Inject
 
+// Koin builds it (di/LibraryModule.kt). preferences is the one DataStore Android hands in, the same one
+// context.dataStore gave before the move, so the hide-videos switch reads from the same place.
 @OptIn(ExperimentalCoroutinesApi::class)
-@HiltViewModel
-class LocalSearchViewModel
-@Inject
-constructor(
-    @ApplicationContext context: Context,
-    database: MusicDatabase,
+class LocalSearchViewModel(
+    database: MochyDatabase,
+    preferences: DataStore<Preferences>,
 ) : ViewModel() {
     val query = MutableStateFlow("")
     val filter = MutableStateFlow(LocalFilter.ALL)
@@ -41,7 +37,7 @@ constructor(
         combine(
             query,
             filter,
-            context.dataStore.data.map { it[HideVideoSongsKey] ?: false }.distinctUntilChanged()
+            preferences.data.map { it[HideVideoSongsKey] ?: false }.distinctUntilChanged()
         ) { query, filter, hideVideoSongs ->
             Triple(query, filter, hideVideoSongs)
         }.flatMapLatest { (query, filter, hideVideoSongs) ->
@@ -51,21 +47,21 @@ constructor(
                 when (filter) {
                     LocalFilter.ALL ->
                         combine(
-                            database.searchSongs(query, PREVIEW_SIZE),
-                            database.searchAlbums(query, PREVIEW_SIZE),
-                            database.searchArtists(query, PREVIEW_SIZE),
-                            database.searchPlaylists(query, PREVIEW_SIZE),
+                            database.songDao.searchSongs(query, PREVIEW_SIZE),
+                            database.songDao.searchAlbums(query, PREVIEW_SIZE),
+                            database.songDao.searchArtists(query, PREVIEW_SIZE),
+                            database.playlistDao.searchPlaylists(query, PREVIEW_SIZE),
                         ) { songs, albums, artists, playlists ->
                             val filteredSongs = if (hideVideoSongs) songs.filter { !it.song.isVideo } else songs
                             filteredSongs + albums + artists + playlists
                         }
 
-                    LocalFilter.SONG -> database.searchSongs(query).map { songs ->
+                    LocalFilter.SONG -> database.songDao.searchSongs(query).map { songs ->
                         if (hideVideoSongs) songs.filter { !it.song.isVideo } else songs
                     }
-                    LocalFilter.ALBUM -> database.searchAlbums(query)
-                    LocalFilter.ARTIST -> database.searchArtists(query)
-                    LocalFilter.PLAYLIST -> database.searchPlaylists(query)
+                    LocalFilter.ALBUM -> database.songDao.searchAlbums(query)
+                    LocalFilter.ARTIST -> database.songDao.searchArtists(query)
+                    LocalFilter.PLAYLIST -> database.playlistDao.searchPlaylists(query)
                 }.map { list ->
                     LocalSearchResult(
                         query = query,

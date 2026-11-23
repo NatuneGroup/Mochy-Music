@@ -1,5 +1,6 @@
 package com.mochyy.mochymusic.di
 
+import android.app.Application
 import com.mochyy.mochymusic.ui.screens.settings.devspace.AppDevSpaceRepository
 import com.mochyy.mochymusic.ui.screens.settings.devspace.DevSpaceRepository
 import com.mochyy.mochymusic.utils.AndroidArtistPageSource
@@ -15,8 +16,9 @@ import org.koin.dsl.module
  * page reads its numbers through AppDevSpaceRepository (HttpURLConnection, org.json, BuildConfig).
  * Every Android-only binding goes here, so the shared appModule keeps one shape on every platform.
  * Loaded right after startMochyKoin in App.onCreate, before any composition asks for the view model.
+ * The Library's Android view models are in libraryAndroidModule (di/LibraryKoin.kt); they need the Application.
  */
-fun loadAndroidKoin() {
+fun loadAndroidKoin(app: Application) {
     loadKoinModules(
         module {
             single<ArtistPageSource> { AndroidArtistPageSource }
@@ -24,4 +26,5 @@ fun loadAndroidKoin() {
             viewModelOf(::ArtistSimilarViewModel)
         }
     )
+    loadKoinModules(libraryAndroidModule(app))
 }

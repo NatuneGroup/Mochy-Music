@@ -27,6 +27,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -111,7 +112,7 @@ internal fun TvOnlinePlaylistScreen(viewModel: OnlinePlaylistViewModel = hiltVie
 }
 
 @Composable
-internal fun TvLocalPlaylistScreen(viewModel: LocalPlaylistViewModel = hiltViewModel(), transformKey: String? = null) {
+internal fun TvLocalPlaylistScreen(viewModel: LocalPlaylistViewModel = koinViewModel(), transformKey: String? = null) {
     val playlist by viewModel.playlist.collectAsState()
     val entries by viewModel.playlistSongs.collectAsState()
     val actions = LocalTvActions.current
@@ -198,7 +199,7 @@ private const val RevealCards = 18
 // albums, artists or playlists from the library as a wall of covers
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-internal fun TvGridScreen(kind: String, viewModel: LibraryHomeViewModel = hiltViewModel()) {
+internal fun TvGridScreen(kind: String, viewModel: LibraryHomeViewModel = koinViewModel()) {
     val actions = LocalTvActions.current
     val albums by viewModel.albums.collectAsState()
     val artists by viewModel.artists.collectAsState()
