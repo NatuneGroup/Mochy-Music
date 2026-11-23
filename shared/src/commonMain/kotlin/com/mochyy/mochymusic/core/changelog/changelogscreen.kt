@@ -1,12 +1,7 @@
 package com.mochyy.mochymusic.core.changelog
 
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import android.util.Log
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,8 +21,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -35,11 +28,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
@@ -51,8 +40,6 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -62,47 +49,42 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
-import com.mochyy.mochymusic.BuildConfig
+import coil3.compose.LocalPlatformContext
 import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
-import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.core.platform.platformVersionName
 import com.mochyy.mochymusic.core.updater.extractUrls
-import com.mochyy.mochymusic.core.updater.UpdateOwner
-import com.mochyy.mochymusic.core.updater.UpdateRepo
-import com.mochyy.mochymusic.core.updater.UpdateRepoUrl
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.utils.ioDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
-import org.json.JSONObject
-import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-import java.util.Locale
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ChangelogScreen(
     navController: NavController,
     scrollBehavior: TopAppBarScrollBehavior,
-    versionTag: String = "v${BuildConfig.VERSION_NAME}"
+    versionTag: String = "",
 ) {
-    val context = LocalContext.current
+    val platformContext = LocalPlatformContext.current
+    val uriHandler = LocalUriHandler.current
+    val openingVersion = remember(versionTag, platformContext) {
+        versionTag.ifBlank { "v" + platformVersionName(platformContext) }
+    }
+    val currentLabel = stringResource(Res.string.current)
     var changelogSections by remember { mutableStateOf<List<ChangelogSection>>(emptyList()) }
     var updateImage by remember { mutableStateOf<String?>(null) }
     var updateDescription by remember { mutableStateOf<String?>(null) }
@@ -112,9 +94,9 @@ fun ChangelogScreen(
     var showingCached by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    var currentVersionTag by remember { mutableStateOf(versionTag) }
+    var currentVersionTag by remember { mutableStateOf(openingVersion) }
     var availableReleases by remember { mutableStateOf<List<ReleaseMetadata>>(
-        listOf(ReleaseMetadata(versionTag, versionTag, context.getString(R.string.current), null))
+        listOf(ReleaseMetadata(openingVersion, openingVersion, currentLabel, null))
     ) }
     var isFetchingOldReleases by remember { mutableStateOf(false) }
 
@@ -129,83 +111,23 @@ fun ChangelogScreen(
     fun fetchChangelog(tag: String) {
         isLoading = true
         hasError = false
-        coroutineScope.launch(Dispatchers.IO) {
-            try {
-                val cachedData = loadChangelogFromCache(context, tag)
-                if (cachedData != null) {
-                    withContext(Dispatchers.Main) {
-                        changelogSections = cachedData.sections
-                        updateImage = cachedData.image
-                        updateDescription = cachedData.description
-                        updateWarning = cachedData.warning
+        coroutineScope.launch(ioDispatcher) {
+            val read = ChangelogRepository.load(platformContext, tag)
+            withContext(Dispatchers.Main) {
+                read.fold(
+                    onSuccess = { data ->
+                        changelogSections = data.payload.sections
+                        updateImage = data.payload.image?.takeIf { it.isNotBlank() }
+                        updateDescription = data.payload.description?.takeIf { it.isNotBlank() }
+                        updateWarning = data.payload.warning?.takeIf { it.isNotBlank() }
                         isLoading = false
-                        showingCached = true
-                    }
-                } else {
-                    val changelogUrl = URL("$UpdateRepoUrl/releases/download/$tag/changelog.json")
-                    val connection = changelogUrl.openConnection() as HttpURLConnection
-                    connection.setRequestProperty("User-Agent", "Mochy-Changelog-App")
-                    connection.setRequestProperty("Accept", "application/json")
-
-                    if (connection.responseCode == 200) {
-                        val changelogJson = connection.inputStream.bufferedReader().use { it.readText() }
-                        val changelogData = JSONObject(changelogJson)
-
-                        val desc = changelogData.optString("description", null)
-                        val imageUrl = changelogData.optString("image", null)
-                        val warning = changelogData.optString("warning", null)
-                        val changelogArray = changelogData.optJSONArray("changelog")
-
-                        val sections = mutableListOf<ChangelogSection>()
-                        if (changelogArray != null) {
-                            for (i in 0 until changelogArray.length()) {
-                                val sectionObj = changelogArray.optJSONObject(i)
-                                if (sectionObj != null) {
-                                    val title = sectionObj.optString("title", "")
-                                    val itemsArray = sectionObj.optJSONArray("items")
-                                    val items = mutableListOf<String>()
-                                    if (itemsArray != null) {
-                                        for (j in 0 until itemsArray.length()) {
-                                            items.add(itemsArray.getString(j))
-                                        }
-                                    }
-                                    if (title.isNotBlank() || items.isNotEmpty()) {
-                                        sections.add(ChangelogSection(title, items))
-                                    }
-                                } else {
-
-                                    val item = changelogArray.optString(i, "")
-                                    if (item.isNotBlank()) {
-                                        if (sections.isEmpty() || sections[0].title.isNotBlank()) {
-                                            sections.add(0, ChangelogSection("", mutableListOf()))
-                                        }
-                                        (sections[0].items as MutableList<String>).add(item)
-                                    }
-                                }
-                            }
-                        }
-
-                        saveChangelogToCache(context, tag, sections, imageUrl, desc, warning)
-                        withContext(Dispatchers.Main) {
-                            changelogSections = sections
-                            updateImage = imageUrl.takeIf { !it.isNullOrBlank() }
-                            updateDescription = desc.takeIf { !it.isNullOrBlank() }
-                            updateWarning = warning.takeIf { !it.isNullOrBlank() }
-                            isLoading = false
-                            hasError = false
-                            showingCached = false
-                        }
-                    } else {
-                        Log.e("ChangelogScreen", "HTTP Error ${connection.responseCode} for $tag")
-                        withContext(Dispatchers.Main) { hasError = true; isLoading = false }
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("ChangelogScreen", "Error fetching changelog: ${e.message}")
-                withContext(Dispatchers.Main) {
-                    hasError = true
-                    isLoading = false
-                }
+                        showingCached = data.cached
+                    },
+                    onFailure = {
+                        isLoading = false
+                        hasError = true
+                    },
+                )
             }
         }
     }
@@ -213,55 +135,14 @@ fun ChangelogScreen(
     fun fetchOldReleases() {
         if (isFetchingOldReleases) return
         isFetchingOldReleases = true
-        coroutineScope.launch(Dispatchers.IO) {
-            try {
-                val releasesUrl = URL("https://api.github.com/repos/$UpdateOwner/$UpdateRepo/releases")
-                val connection = releasesUrl.openConnection() as HttpURLConnection
-                connection.setRequestProperty("User-Agent", "Mochy-Changelog-App")
-                connection.setRequestProperty("Accept", "application/vnd.github+json")
-
-                if (connection.responseCode == 200) {
-                    val json = connection.inputStream.bufferedReader().use { it.readText() }
-                    val array = JSONArray(json)
-                    val list = mutableListOf<ReleaseMetadata>()
-                    val outputFormatter = DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.getDefault())
-
-                for (i in 0 until array.length()) {
-                    val obj = array.getJSONObject(i)
-                    val tagName = obj.getString("tag_name")
-                    if (!tagName.startsWith("v", ignoreCase = true)) continue
-
-                    val name = obj.optString("name", tagName)
-                    val publishedAt = obj.getString("published_at")
-                    val formattedDate = try {
-                        ZonedDateTime.parse(publishedAt).format(outputFormatter)
-                    } catch (e: Exception) { publishedAt }
-
-                    val assets = obj.getJSONArray("assets")
-                    var changelogUrl: String? = null
-                    for (j in 0 until assets.length()) {
-                        val asset = assets.getJSONObject(j)
-                        if (asset.getString("name") == "changelog.json") {
-                            changelogUrl = asset.getString("browser_download_url")
-                            break
-                        }
-                    }
-
-                    if (changelogUrl != null) {
-                        list.add(ReleaseMetadata(tagName, name, formattedDate, null))
-                    }
+        coroutineScope.launch(ioDispatcher) {
+            val list = ChangelogRepository.releases().getOrDefault(emptyList())
+            withContext(Dispatchers.Main) {
+                if (list.isNotEmpty()) {
+                    val currentVersion = ReleaseMetadata(openingVersion, openingVersion, currentLabel, null)
+                    availableReleases = (listOf(currentVersion) + list).distinctBy { it.tagName }
                 }
-                    withContext(Dispatchers.Main) {
-                        val currentVersion = ReleaseMetadata(versionTag, versionTag, context.getString(R.string.current), null)
-                        availableReleases = (listOf(currentVersion) + list).distinctBy { it.tagName }
-                        isFetchingOldReleases = false
-                    }
-                } else {
-                    Log.e("ChangelogScreen", "GitHub API Error ${connection.responseCode}")
-                    withContext(Dispatchers.Main) { isFetchingOldReleases = false }
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) { isFetchingOldReleases = false }
+                isFetchingOldReleases = false
             }
         }
     }
@@ -271,7 +152,7 @@ fun ChangelogScreen(
     }
 
     LaunchedEffect(currentVersionTag) {
-        cleanupOldChangelogCache(context, currentVersionTag)
+        withContext(ioDispatcher) { ChangelogRepository.cleanup(platformContext, currentVersionTag) }
         fetchChangelog(currentVersionTag)
     }
 
@@ -283,10 +164,10 @@ fun ChangelogScreen(
         ),
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.changelog_title)) },
+                title = { Text(stringResource(Res.string.changelog_title)) },
                 navigationIcon = {
                     IconButton(onClick = navController::navigateUp) {
-                        Icon(painterResource(R.drawable.arrow_back), null)
+                        Icon(painterResource(Res.drawable.arrow_back), null)
                     }
                 },
                 scrollBehavior = scrollBehavior
@@ -354,9 +235,9 @@ fun ChangelogScreen(
                 if (hasError && !isLoading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.Error, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
+                            Icon(painterResource(Res.drawable.error), null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
                             Spacer(Modifier.height(16.dp))
-                            Text(stringResource(R.string.error_loading_changelog), color = MaterialTheme.colorScheme.error)
+                            Text(stringResource(Res.string.error_loading_changelog), color = MaterialTheme.colorScheme.error)
                         }
                     }
                 } else {
@@ -382,7 +263,7 @@ fun ChangelogScreen(
                                     )
                                     if (showingCached) {
                                         Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(8.dp)) {
-                                            Text(stringResource(R.string.cached), style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                                            Text(stringResource(Res.string.cached), style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
                                         }
                                     }
                                 }
@@ -434,7 +315,7 @@ fun ChangelogScreen(
                                                     text = annotatedText,
                                                     onClick = { offset ->
                                                         annotatedText.getStringAnnotations("URL", offset, offset).firstOrNull()?.let {
-                                                            ContextCompat.startActivity(context, Intent(Intent.ACTION_VIEW, Uri.parse(it.item)), null)
+                                                            uriHandler.openUri(it.item)
                                                         }
                                                     },
                                                     style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface)
@@ -448,7 +329,7 @@ fun ChangelogScreen(
                                     Spacer(Modifier.height(24.dp))
                                     Surface(color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f), shape = RoundedCornerShape(12.dp)) {
                                         Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                            Icon(Icons.Default.Error, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+                                            Icon(painterResource(Res.drawable.error), null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
                                             Text(warning, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onErrorContainer)
                                         }
                                     }
@@ -473,68 +354,4 @@ fun ChangelogScreen(
             }
         }
     }
-}
-
-data class ChangelogSection(val title: String, val items: List<String>)
-data class ReleaseMetadata(val tagName: String, val name: String, val date: String, val imageUrl: String?)
-data class CachedChangelogData(val sections: List<ChangelogSection>, val image: String?, val description: String?, val warning: String?)
-
-private fun cleanupOldChangelogCache(context: Context, currentVersionTag: String) {
-    try {
-        context.filesDir.listFiles { file -> file.name.startsWith("changelog_cache_") && file.name.endsWith(".json") }?.forEach { file ->
-            if (file.name != "changelog_cache_$currentVersionTag.json") file.delete()
-        }
-    } catch (e: Exception) { Log.e("ChangelogCache", "Error cleaning up cache", e) }
-}
-
-private fun saveChangelogToCache(context: Context, versionTag: String, sections: List<ChangelogSection>, image: String?, description: String?, warning: String?) {
-    try {
-        val cacheData = JSONObject().apply {
-            val sectionsArray = JSONArray()
-            sections.forEach { section ->
-                val sectionObj = JSONObject().apply {
-                    put("title", section.title)
-                    val itemsArray = JSONArray()
-                    section.items.forEach { itemsArray.put(it) }
-                    put("items", itemsArray)
-                }
-                sectionsArray.put(sectionObj)
-            }
-            put("sections", sectionsArray)
-            put("image", image ?: "")
-            put("description", description ?: "")
-            put("warning", warning ?: "")
-        }
-        context.openFileOutput("changelog_cache_$versionTag.json", Context.MODE_PRIVATE).use { it.write(cacheData.toString().toByteArray()) }
-    } catch (e: Exception) { Log.e("ChangelogCache", "Error saving cache", e) }
-}
-
-private fun loadChangelogFromCache(context: Context, versionTag: String): CachedChangelogData? {
-    return try {
-        val cacheFile = File(context.filesDir, "changelog_cache_$versionTag.json")
-        if (!cacheFile.exists()) return null
-        val cacheData = JSONObject(context.openFileInput("changelog_cache_$versionTag.json").use { it.bufferedReader().readText() })
-
-        val sectionsArray = cacheData.optJSONArray("sections")
-        val sections = mutableListOf<ChangelogSection>()
-        if (sectionsArray != null) {
-            for (i in 0 until sectionsArray.length()) {
-                val sectionObj = sectionsArray.getJSONObject(i)
-                val title = sectionObj.getString("title")
-                val itemsArray = sectionObj.getJSONArray("items")
-                val items = mutableListOf<String>()
-                for (j in 0 until itemsArray.length()) {
-                    items.add(itemsArray.getString(j))
-                }
-                sections.add(ChangelogSection(title, items))
-            }
-        }
-
-        CachedChangelogData(
-            sections = sections,
-            image = cacheData.optString("image", null).takeIf { !it.isNullOrBlank() },
-            description = cacheData.optString("description", null).takeIf { !it.isNullOrBlank() },
-            warning = cacheData.optString("warning", null).takeIf { !it.isNullOrBlank() }
-        )
-    } catch (e: Exception) { null }
 }
