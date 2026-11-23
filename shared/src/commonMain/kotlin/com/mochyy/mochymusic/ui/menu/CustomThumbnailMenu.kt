@@ -14,10 +14,14 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.choose_from_library
+import com.mochyy.mochymusic.shared.resources.delete
+import com.mochyy.mochymusic.shared.resources.insert_photo
+import com.mochyy.mochymusic.shared.resources.remove_custom_image
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,11 +41,11 @@ fun CustomThumbnailMenu(
         item {
             ListItem(
                 headlineContent = {
-                    Text(text = stringResource(R.string.choose_from_library))
+                    Text(text = stringResource(Res.string.choose_from_library))
                 },
                 leadingContent = {
                     Icon(
-                        painter = painterResource(R.drawable.insert_photo),
+                        painter = painterResource(Res.drawable.insert_photo),
                         contentDescription = null,
                     )
                 },
@@ -54,11 +58,11 @@ fun CustomThumbnailMenu(
         item {
             ListItem(
                 headlineContent = {
-                    Text(text = stringResource(R.string.remove_custom_image))
+                    Text(text = stringResource(Res.string.remove_custom_image))
                 },
                 leadingContent = {
                     Icon(
-                        painter = painterResource(R.drawable.delete),
+                        painter = painterResource(Res.drawable.delete),
                         contentDescription = null,
                     )
                 },
