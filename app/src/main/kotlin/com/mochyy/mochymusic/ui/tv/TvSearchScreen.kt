@@ -51,6 +51,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -115,7 +116,7 @@ internal class TvSearchViewModel @Inject constructor(
 @Composable
 internal fun TvSearchScreen(
     viewModel: TvSearchViewModel = hiltViewModel(),
-    moods: MoodAndGenresViewModel = hiltViewModel(),
+    moods: MoodAndGenresViewModel = koinViewModel(),
 ) {
     val actions = LocalTvActions.current
     val history by viewModel.history.collectAsState()

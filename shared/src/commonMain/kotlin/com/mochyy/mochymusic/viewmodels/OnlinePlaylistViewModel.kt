@@ -2,23 +2,20 @@
 
 package com.mochyy.mochymusic.viewmodels
 
-import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.music.innertube.YouTube
+import com.mochyy.mochymusic.api.YouTubeRepository
+import com.mochyy.mochymusic.constants.HideVideoSongsKey
+import com.mochyy.mochymusic.db.MochyDatabase
+import com.mochyy.mochymusic.utils.PreferencesCache
+import com.mochyy.mochymusic.utils.ioDispatcher
 import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.YTItem
 import com.music.innertube.models.filterVideoSongs
-import com.mochyy.mochymusic.constants.HideVideoSongsKey
-import com.mochyy.mochymusic.db.MusicDatabase
-import com.mochyy.mochymusic.utils.dataStore
-import com.mochyy.mochymusic.utils.get
-import com.mochyy.mochymusic.utils.reportException
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -26,13 +23,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class OnlinePlaylistViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
+// Koin builds it (di/OnlineModule.kt); the playlist comes from the platform's YouTube facade
+class OnlinePlaylistViewModel(
+    private val youTube: YouTubeRepository,
+    private val preferences: DataStore<Preferences>,
+    database: MochyDatabase,
     savedStateHandle: SavedStateHandle,
-    database: MusicDatabase
 ) : ViewModel() {
     val playlistId = savedStateHandle.get<String>("playlistId")!!
 
@@ -49,7 +46,7 @@ class OnlinePlaylistViewModel @Inject constructor(
     private val _isLoadingMore = MutableStateFlow(false)
     val isLoadingMore = _isLoadingMore.asStateFlow()
 
-    val dbPlaylist = database.playlistByBrowseId(playlistId)
+    val dbPlaylist = database.playlistDao.playlistByBrowseId(playlistId)
         .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
     var continuation: String? = null
@@ -62,13 +59,13 @@ class OnlinePlaylistViewModel @Inject constructor(
     }
 
     private fun fetchInitialPlaylistData() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             _isLoading.value = true
             _error.value = null
             continuation = null
             proactiveLoadJob?.cancel()
 
-            YouTube.playlist(playlistId)
+            youTube.playlist(playlistId)
                 .onSuccess { playlistPage ->
                     playlist.value = playlistPage.playlist
                     playlistSongs.value = applySongFilters(playlistPage.songs)
@@ -81,14 +78,14 @@ class OnlinePlaylistViewModel @Inject constructor(
                 }.onFailure { throwable ->
                     _error.value = throwable.message ?: "Failed to load playlist"
                     _isLoading.value = false
-                    reportException(throwable)
+                    reportFailure(throwable)
                 }
         }
     }
 
     private fun startProactiveBackgroundLoading() {
         proactiveLoadJob?.cancel()
-        proactiveLoadJob = viewModelScope.launch(Dispatchers.IO) {
+        proactiveLoadJob = viewModelScope.launch(ioDispatcher) {
             var currentProactiveToken = continuation
             while (currentProactiveToken != null && isActive) {
 
@@ -97,7 +94,7 @@ class OnlinePlaylistViewModel @Inject constructor(
                     break
                 }
 
-                YouTube.playlistContinuation(currentProactiveToken)
+                youTube.playlistContinuation(currentProactiveToken)
                     .onSuccess { playlistContinuationPage ->
                         val currentSongs = playlistSongs.value.toMutableList()
                         currentSongs.addAll(playlistContinuationPage.songs)
@@ -106,7 +103,7 @@ class OnlinePlaylistViewModel @Inject constructor(
 
                         this@OnlinePlaylistViewModel.continuation = currentProactiveToken
                     }.onFailure { throwable ->
-                        reportException(throwable)
+                        reportFailure(throwable)
                         currentProactiveToken = null
                     }
             }
@@ -122,15 +119,15 @@ class OnlinePlaylistViewModel @Inject constructor(
         proactiveLoadJob?.cancel()
         _isLoadingMore.value = true
 
-        viewModelScope.launch(Dispatchers.IO) {
-            YouTube.playlistContinuation(tokenForManualLoad)
+        viewModelScope.launch(ioDispatcher) {
+            youTube.playlistContinuation(tokenForManualLoad)
                 .onSuccess { playlistContinuationPage ->
                     val currentSongs = playlistSongs.value.toMutableList()
                     currentSongs.addAll(playlistContinuationPage.songs)
                     playlistSongs.value = applySongFilters(currentSongs)
                     continuation = playlistContinuationPage.continuation
                 }.onFailure { throwable ->
-                    reportException(throwable)
+                    reportFailure(throwable)
                 }.also {
                     _isLoadingMore.value = false
 
@@ -147,7 +144,7 @@ class OnlinePlaylistViewModel @Inject constructor(
     }
 
     private fun applySongFilters(songs: List<SongItem>): List<SongItem> {
-        val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+        val hideVideoSongs = PreferencesCache.current(preferences)[HideVideoSongsKey] ?: false
         return songs
             .distinctBy { it.id }
             .filterVideoSongs(hideVideoSongs)

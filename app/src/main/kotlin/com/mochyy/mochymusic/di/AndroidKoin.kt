@@ -2,6 +2,7 @@ package com.mochyy.mochymusic.di
 
 import android.app.Application
 import com.mochyy.mochymusic.di.koin.onboardingModule
+import com.mochyy.mochymusic.di.koin.onlineAndroidModule
 import com.mochyy.mochymusic.ui.screens.settings.devspace.AppDevSpaceRepository
 import com.mochyy.mochymusic.ui.screens.settings.devspace.DevSpaceRepository
 import com.mochyy.mochymusic.utils.AndroidArtistPageSource
@@ -25,7 +26,8 @@ fun loadAndroidKoin(app: Application) {
             single<ArtistPageSource> { AndroidArtistPageSource }
             single<DevSpaceRepository> { AppDevSpaceRepository }
             viewModelOf(::ArtistSimilarViewModel)
-        }
+        },
+        onlineAndroidModule,
     )
     loadKoinModules(libraryAndroidModule(app))
     // onboarding's view model needs the application Context, so it is passed in rather than looked up

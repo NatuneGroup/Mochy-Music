@@ -79,7 +79,7 @@ private fun localPlaylist(args: Map<String, String>): PageSubject {
 
 @Composable
 private fun album(args: Map<String, String>): PageSubject {
-    val viewModel: AlbumViewModel = hiltViewModel()
+    val viewModel: AlbumViewModel = koinViewModel()
     val album by viewModel.albumWithSongs.collectAsState()
     val songs = rememberMetadata(album?.songs.orEmpty()) { list -> list.map { it.toMediaMetadata() } }
     return remember(album, songs, args) {
@@ -91,7 +91,7 @@ private fun album(args: Map<String, String>): PageSubject {
 
 @Composable
 private fun onlinePlaylist(args: Map<String, String>): PageSubject {
-    val viewModel: OnlinePlaylistViewModel = hiltViewModel()
+    val viewModel: OnlinePlaylistViewModel = koinViewModel()
     val playlist by viewModel.playlist.collectAsState()
     val items by viewModel.playlistSongs.collectAsState()
     val songs = rememberMetadata(items) { list -> list.map(SongItem::toMediaMetadata) }
@@ -103,7 +103,7 @@ private fun onlinePlaylist(args: Map<String, String>): PageSubject {
 
 @Composable
 private fun artist(args: Map<String, String>): PageSubject {
-    val viewModel: ArtistViewModel = hiltViewModel()
+    val viewModel: ArtistViewModel = koinViewModel()
     val page by viewModel.page.collectAsState()
     // the artist's first shelf of songs, the one their own page opens with
     val top = remember(page) { page?.sections?.firstOrNull { section -> section.items.any { it is SongItem } }?.items?.filterIsInstance<SongItem>().orEmpty() }

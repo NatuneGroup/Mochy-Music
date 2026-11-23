@@ -4,16 +4,16 @@ package com.mochyy.mochymusic.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.music.innertube.YouTube
+import com.mochyy.mochymusic.api.YouTubeRepository
 import com.music.innertube.pages.ChartsPage
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class ChartsViewModel @Inject constructor() : ViewModel() {
+// Koin builds it (di/OnlineModule.kt); charts come from the platform's YouTube facade
+class ChartsViewModel(
+    private val youTube: YouTubeRepository,
+) : ViewModel() {
     private val _chartsPage = MutableStateFlow<ChartsPage?>(null)
     val chartsPage = _chartsPage.asStateFlow()
 
@@ -28,7 +28,7 @@ class ChartsViewModel @Inject constructor() : ViewModel() {
             _isLoading.value = true
             _error.value = null
 
-            YouTube.getChartsPage()
+            youTube.getChartsPage()
                 .onSuccess { page ->
                     _chartsPage.value = page
                 }
@@ -44,7 +44,7 @@ class ChartsViewModel @Inject constructor() : ViewModel() {
         viewModelScope.launch {
             _chartsPage.value?.continuation?.let { continuation ->
                 _isLoading.value = true
-                YouTube.getChartsPage(continuation)
+                youTube.getChartsPage(continuation)
                     .onSuccess { newPage ->
                         _chartsPage.value = _chartsPage.value?.copy(
                             sections = _chartsPage.value?.sections.orEmpty() + newPage.sections,
