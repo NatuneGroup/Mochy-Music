@@ -82,6 +82,12 @@ kotlin {
             // Providers take an injected HttpClient; each platform picks the engine, timeouts and proxy.
             implementation(libs.ktor.client.core)
             implementation(libs.kotlinx.serialization.json)
+            // shared ViewModels and what they're given, the way Metrolist does it; api so the app and the
+            // launchers start Koin and call koinViewModel without naming Koin again
+            api(libs.cmp.lifecycle.viewmodel.savedstate)
+            api(libs.koin.core)
+            api(libs.koin.compose)
+            api(libs.koin.compose.viewmodel)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

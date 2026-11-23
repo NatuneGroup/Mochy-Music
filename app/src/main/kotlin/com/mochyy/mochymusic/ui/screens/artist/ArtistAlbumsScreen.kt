@@ -26,7 +26,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
 import com.mochyy.mochymusic.LocalPlayerConnection
@@ -43,6 +42,7 @@ import com.mochyy.mochymusic.ui.screens.library.indexSections
 import com.mochyy.mochymusic.ui.utils.backToMain
 import com.mochyy.mochymusic.viewmodels.ArtistAlbumsViewModel
 import kotlinx.coroutines.launch
+import org.koin.compose.viewmodel.koinViewModel
 
 /** the artist's albums in your library: big squares two up, or an A-Z list with the rail */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,7 +50,7 @@ import kotlinx.coroutines.launch
 fun ArtistAlbumsScreen(
     navController: NavController,
     @Suppress("UNUSED_PARAMETER") scrollBehavior: TopAppBarScrollBehavior,
-    viewModel: ArtistAlbumsViewModel = hiltViewModel(),
+    viewModel: ArtistAlbumsViewModel = koinViewModel(),
 ) {
     val menuState = LocalMenuState.current
     val haptic = LocalHapticFeedback.current
