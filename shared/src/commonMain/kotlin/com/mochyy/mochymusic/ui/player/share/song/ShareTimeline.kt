@@ -42,21 +42,22 @@ import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
-import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.song_share_seconds
 import com.mochyy.mochymusic.ui.player.share.ShareMuted
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
-internal val ShareYellow = Color(0xFFF7E35A)
+val ShareYellow = Color(0xFFF7E35A)
 
 private val TrackColor = Color(0xFF2C2C2E)
 private val StripHeight = 44.dp
@@ -73,7 +74,7 @@ private enum class Grab { Strip, Start, End }
 
 // the song, or a video, sliding under a window: the part inside the window is what plays, and the arrows at its ends make it longer or shorter
 @Composable
-internal fun ShareTimeline(
+fun ShareTimeline(
     totalMs: Long,
     startMs: Long,
     lengthMs: Long,
@@ -222,7 +223,7 @@ internal fun ShareTimeline(
                 },
         )
         Spacer(Modifier.height(6.dp))
-        val seconds = stringResource(R.string.song_share_seconds, (length / 1000f).roundToInt())
+        val seconds = stringResource(Res.string.song_share_seconds, (length / 1000f).roundToInt())
         // the start under the window's left end, its length under the right end, following both as they move
         Layout(
             content = {
@@ -248,9 +249,10 @@ private fun TimeLabel(text: String) {
     Text(text, fontFamily = InterFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, color = ShareMuted)
 }
 
-internal fun formatShareTime(ms: Long): String {
+fun formatShareTime(ms: Long): String {
     val seconds = (ms / 1000L).coerceAtLeast(0L)
-    return "%d:%02d".format(seconds / 60, seconds % 60)
+    // minutes, then seconds always two digits: what "%d:%02d" printed on Android, without String.format
+    return "${seconds / 60}:${(seconds % 60).toString().padStart(2, '0')}"
 }
 
 private fun DrawScope.drawTrack(fromX: Float, toX: Float) {
@@ -293,7 +295,7 @@ private fun DrawScope.drawArrow(x: Float, pointsLeft: Boolean) {
 }
 
 // the song on the strip: a soft block for each lyric line, or a tick every second when there are no lyrics
-internal fun DrawScope.drawSongStrip(lineStarts: List<Long>, totalMs: Long, timeToX: (Long) -> Float) {
+fun DrawScope.drawSongStrip(lineStarts: List<Long>, totalMs: Long, timeToX: (Long) -> Float) {
     val mid = size.height / 2f
     if (lineStarts.isEmpty()) {
         val tick = 1.dp.toPx()

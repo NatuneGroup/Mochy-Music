@@ -35,13 +35,13 @@ import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-internal val ShareMuted = Color(0xFF9A9AA0)
+val ShareMuted = Color(0xFF9A9AA0)
 
 // A picker row, shared with the flying line so it lands on exactly this.
-internal val ShareRowCorner = 16.dp
-internal val ShareRowPadH = 16.dp
-internal val ShareRowFontSize = 15.sp
-internal val ShareRowTextStyle = TextStyle(
+val ShareRowCorner = 16.dp
+val ShareRowPadH = 16.dp
+val ShareRowFontSize = 15.sp
+val ShareRowTextStyle = TextStyle(
     fontFamily = InterFontFamily,
     fontWeight = FontWeight.SemiBold,
     fontSize = ShareRowFontSize,
@@ -50,7 +50,7 @@ internal val ShareRowTextStyle = TextStyle(
 )
 
 /** A picked line's fill: the cover's two strongest colours, side to side across [width]. */
-internal fun pickedBrush(palette: List<Color>, width: Float = Float.POSITIVE_INFINITY): Brush {
+fun pickedBrush(palette: List<Color>, width: Float = Float.POSITIVE_INFINITY): Brush {
     val a = palette.getOrNull(0) ?: Color(0xFF5A5A5E)
     val b = palette.getOrNull(1) ?: a.copy(alpha = 0.7f)
     return Brush.horizontalGradient(listOf(a, b), startX = 0f, endX = width)
@@ -60,7 +60,7 @@ internal fun pickedBrush(palette: List<Color>, width: Float = Float.POSITIVE_INF
  * A picker row's surface: grey when free, filled with the cover's colours when picked, and only
  * outlined in them when picked past what a card holds, since only Cinematic can show those.
  */
-internal fun DrawScope.drawShareRowLook(
+fun DrawScope.drawShareRowLook(
     fill: Float,
     outline: Float,
     palette: List<Color>,
@@ -91,7 +91,7 @@ internal fun DrawScope.drawShareRowLook(
 }
 
 @Composable
-internal fun ShareTitle(
+fun ShareTitle(
     title: String,
     subtitle: String? = null,
     beta: Boolean = false,
@@ -122,6 +122,6 @@ internal fun ShareTitle(
 }
 
 /** A quick side-to-side shake, for a tap that can't do anything. */
-internal fun CoroutineScope.shake(offset: Animatable<Float, AnimationVector1D>) = launch {
+fun CoroutineScope.shake(offset: Animatable<Float, AnimationVector1D>) = launch {
     for (x in listOf(14f, -11f, 8f, -5f, 0f)) offset.animateTo(x, tween(45))
 }

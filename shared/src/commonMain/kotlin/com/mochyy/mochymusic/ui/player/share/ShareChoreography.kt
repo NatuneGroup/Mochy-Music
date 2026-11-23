@@ -34,7 +34,7 @@ private const val RowDuration = 380f
 private const val ReverseSpeed = 2f
 
 /** How far the held line zooms in as it lifts off the lyrics. */
-internal const val ShareLiftZoom = 1.07f
+const val ShareLiftZoom = 1.07f
 
 /** Rows above the held one sit this many rows down from the top when the picker opens. */
 private const val RowsAboveHeld = 3
@@ -42,7 +42,7 @@ private const val RowsAboveHeld = 3
 private val RowTravel = 40.dp
 
 @Stable
-internal class ShareChoreography(private val held: Int, val hasFlight: Boolean, lineCount: Int) {
+class ShareChoreography(private val held: Int, val hasFlight: Boolean, lineCount: Int) {
     /** The picker's list, opened with the held line a few rows down so lines can arrive from both sides. */
     val listState = LazyListState(firstVisibleItemIndex = (held - RowsAboveHeld).coerceIn(0, (lineCount - 1).coerceAtLeast(0)))
 
@@ -152,7 +152,7 @@ internal class ShareChoreography(private val held: Int, val hasFlight: Boolean, 
 private fun span(t: Float, from: Float, to: Float): Float = ((t - from) / (to - from)).coerceIn(0f, 1f)
 
 /** Slow at both ends, so it reads the same played forwards or backwards. */
-internal fun easeInOut(t: Float): Float = t * t * t * (t * (t * 6f - 15f) + 10f)
+fun easeInOut(t: Float): Float = t * t * t * (t * (t * 6f - 15f) + 10f)
 
 /** Arrives a touch past its place and settles back. */
 private fun easeOutBack(t: Float): Float {

@@ -44,17 +44,20 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.expand_more
+import com.mochyy.mochymusic.shared.resources.ps_share_move_song_above
+import com.mochyy.mochymusic.shared.resources.ps_share_move_song_under
+import com.mochyy.mochymusic.ui.component.RemoteFocus
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
-import com.mochyy.mochymusic.ui.component.RemoteFocus
 
 /** How the editor's boxes chase what they outline: quick, with a little give. */
 private val BoxSpring = spring<Rect>(dampingRatio = 0.72f, stiffness = 420f)
@@ -90,7 +93,7 @@ private class ChasingBox {
  * the shared image stays clean.
  */
 @Composable
-internal fun BoxScope.EditOutlines(
+fun BoxScope.EditOutlines(
     regions: ShareRegions,
     headerBelow: Boolean,
     onWords: () -> Unit,
@@ -187,8 +190,8 @@ private fun MoveSongArrow(header: ChasingBox, pad: Float, headerBelow: Boolean, 
             .clickable(onClick = onClick),
     ) {
         Icon(
-            painterResource(R.drawable.expand_more),
-            contentDescription = stringResource(if (headerBelow) R.string.ps_share_move_song_above else R.string.ps_share_move_song_under),
+            painterResource(Res.drawable.expand_more),
+            contentDescription = stringResource(if (headerBelow) Res.string.ps_share_move_song_above else Res.string.ps_share_move_song_under),
             tint = Color.White.copy(alpha = 0.7f),
             modifier = Modifier
                 .size(24.dp)

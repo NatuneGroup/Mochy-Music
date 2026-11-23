@@ -22,16 +22,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Stable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shadow
@@ -65,16 +60,6 @@ import kotlin.math.sqrt
 
 internal val ShareWidth = 360.dp
 internal val ShareHeight = 640.dp
-
-/**
- * The Cinematic editor outlines the song and the words; these are where they sit on the picture,
- * in its own coordinates, updated as they move. Null until laid out.
- */
-@Stable
-internal class ShareRegions {
-    var header by mutableStateOf<Rect?>(null)
-    var words by mutableStateOf<Rect?>(null)
-}
 
 // The Cinematic layout, on the 360 x 640 picture
 private val CinematicSide = 34.dp
