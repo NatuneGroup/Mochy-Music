@@ -6,6 +6,7 @@ package com.mochyy.mochymusic.ui.player.flamingo
 // transport glyphs are Flamingo's; its lyric and playing-list pages become the player's own lyrics
 // page and queue, opened from this style's header and bottom row.
 
+import com.mochyy.mochymusic.ui.player.styles.rememberStyleScrub
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -302,17 +303,16 @@ private fun FlamingoSeek(
     preview: Boolean,
 ) {
     val progress by connection.progressState.collectAsState()
-    var drag by remember { mutableStateOf<Float?>(null) }
+    val scrub = rememberStyleScrub(connection)
     val duration = progress.duration.coerceAtLeast(0L)
-    val shown = drag ?: progress.percentage.coerceIn(0f, 1f)
+    val shown = scrub.fraction ?: progress.percentage.coerceIn(0f, 1f)
     val interactive = LocalStyleInteractive.current
     Column(Modifier.fillMaxWidth()) {
         Slider(
             value = shown,
-            onValueChange = { if (interactive() && !preview) drag = it },
+            onValueChange = { if (interactive() && !preview) scrub.update(it) },
             onValueChangeFinished = {
-                drag?.let { if (interactive()) connection.seekTo((duration * it).toLong()) }
-                drag = null
+                scrub.finish(duration, commit = interactive())
             },
             enabled = !preview && duration > 0,
             thumb = { Spacer(Modifier.size(0.dp)) },
@@ -328,7 +328,7 @@ private fun FlamingoSeek(
             modifier = Modifier.fillMaxWidth().height(28.dp),
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            val position = drag?.let { (duration * it).toLong() } ?: progress.position
+            val position = scrub.fraction?.let { (duration * it).toLong() } ?: progress.position
             Text(makeTimeString(position), color = Color.White.copy(alpha = 0.55f), fontSize = 11.sp)
             Text("-" + makeTimeString((duration - position).coerceAtLeast(0L)), color = Color.White.copy(alpha = 0.55f), fontSize = 11.sp)
         }

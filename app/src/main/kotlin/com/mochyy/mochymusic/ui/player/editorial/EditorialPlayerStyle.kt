@@ -6,6 +6,7 @@ package com.mochyy.mochymusic.ui.player.editorial
 // title, a wide PLAY/PAUSE pill and the icon row under the wavy seek bar. Drawn here in Mochy's
 // own style spine, and its inline queue/lyrics panels become the player's own pages.
 
+import com.mochyy.mochymusic.ui.player.styles.rememberStyleScrub
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
@@ -557,17 +558,16 @@ private fun EditorialSeek(
     modifier: Modifier = Modifier,
 ) {
     val progress by connection.progressState.collectAsState()
-    var drag by remember { mutableStateOf<Float?>(null) }
+    val scrub = rememberStyleScrub(connection)
     val duration = progress.duration.coerceAtLeast(0L)
-    val shown = drag ?: progress.percentage.coerceIn(0f, 1f)
+    val shown = scrub.fraction ?: progress.percentage.coerceIn(0f, 1f)
     val interactive = LocalStyleInteractive.current
     Column(modifier) {
         Slider(
             value = shown,
-            onValueChange = { if (interactive() && !preview) drag = it },
+            onValueChange = { if (interactive() && !preview) scrub.update(it) },
             onValueChangeFinished = {
-                drag?.let { if (interactive()) connection.seekTo((duration * it).toLong()) }
-                drag = null
+                scrub.finish(duration, commit = interactive())
             },
             enabled = !preview && duration > 0,
             thumb = { Spacer(Modifier.size(0.dp)) },
@@ -583,7 +583,7 @@ private fun EditorialSeek(
             modifier = Modifier.fillMaxWidth().height(36.dp),
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            val position = drag?.let { (duration * it).toLong() } ?: progress.position
+            val position = scrub.fraction?.let { (duration * it).toLong() } ?: progress.position
             Text(makeTimeString(position), color = accent.copy(alpha = 0.6f), style = MaterialTheme.typography.labelMedium)
             Text("-" + makeTimeString((duration - position).coerceAtLeast(0L)), color = accent.copy(alpha = 0.6f), style = MaterialTheme.typography.labelMedium)
         }

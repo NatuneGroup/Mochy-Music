@@ -7,6 +7,7 @@ package com.mochyy.mochymusic.ui.player.spatialflow
 // inline lyrics overlay and queue drawer map onto the player's own pages; the haptics, share and
 // download chips have no Mochy equivalent and are left out rather than faked.
 
+import com.mochyy.mochymusic.ui.player.styles.rememberStyleScrub
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
@@ -247,17 +248,16 @@ private fun SpatialFlowSeek(
     preview: Boolean,
 ) {
     val progress by connection.progressState.collectAsState()
-    var drag by remember { mutableStateOf<Float?>(null) }
+    val scrub = rememberStyleScrub(connection)
     val duration = progress.duration.coerceAtLeast(0L)
-    val shown = drag ?: progress.percentage.coerceIn(0f, 1f)
+    val shown = scrub.fraction ?: progress.percentage.coerceIn(0f, 1f)
     val interactive = LocalStyleInteractive.current
     Column(Modifier.fillMaxWidth()) {
         Slider(
             value = shown,
-            onValueChange = { if (interactive() && !preview) drag = it },
+            onValueChange = { if (interactive() && !preview) scrub.update(it) },
             onValueChangeFinished = {
-                drag?.let { if (interactive()) connection.seekTo((duration * it).toLong()) }
-                drag = null
+                scrub.finish(duration, commit = interactive())
             },
             enabled = !preview && duration > 0,
             thumb = { Spacer(Modifier.size(0.dp)) },
@@ -273,7 +273,7 @@ private fun SpatialFlowSeek(
             modifier = Modifier.fillMaxWidth().height(36.dp),
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            val position = drag?.let { (duration * it).toLong() } ?: progress.position
+            val position = scrub.fraction?.let { (duration * it).toLong() } ?: progress.position
             Text(makeTimeString(position), color = secondary, style = MaterialTheme.typography.labelMedium)
             Text("-" + makeTimeString((duration - position).coerceAtLeast(0L)), color = secondary, style = MaterialTheme.typography.labelMedium)
         }
