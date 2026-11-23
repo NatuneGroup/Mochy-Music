@@ -4,7 +4,6 @@ package com.mochyy.mochymusic.modules.web
 
 import com.mochyy.mochymusic.module.ModuleField
 import com.mochyy.mochymusic.modules.skin.SkinGlass
-import java.io.File
 
 internal class ManifestSettings(manifest: WebModuleManifest, skip: Set<String> = emptySet()) {
 
@@ -33,29 +32,4 @@ internal class ManifestSettings(manifest: WebModuleManifest, skip: Set<String> =
         val now = current()
         return settings.fold(base) { glass, setting -> setting.glassAt(now[setting.key])?.let(glass::with) ?: glass }
     }
-}
-
-/** a slider's ends and its notch, [step] null for a smooth one */
-data class FieldRange(val start: Float, val end: Float, val step: Float?)
-
-/** a module whose settings include sliders, which mochy draws from its manifest; the module api itself only knows text, lists and switches */
-internal interface FieldRanges {
-    val ranges: Map<String, FieldRange>
-}
-
-/** a picture or font a module names: a link as it is, a path from the module's zip, or a path next to a link module's manifest */
-internal fun resolveModulePath(path: String?, files: File?, base: String?): Any? {
-    val name = path?.trim()?.takeIf { it.isNotEmpty() } ?: return null
-    if (name.startsWith("https://") || name.startsWith("http://")) return name
-    // plain string work, no disk: this runs while things draw, and a path can't climb out of the module's folder
-    val inside = name.trimStart('/').takeIf { ".." !in it.split('/') } ?: return null
-    if (files != null) return File(files, inside)
-    return base?.let { "$it/$inside" }
-}
-
-/** the same as text, the way the module api carries a picture: a link, or a file's own path */
-internal fun resolveModuleArt(path: String?, files: File?, base: String?): String? = when (val found = resolveModulePath(path, files, base)) {
-    is File -> found.path
-    is String -> found
-    else -> null
 }

@@ -54,6 +54,8 @@ internal class WebModule(
     files: File? = null,
 ) : SourceModule, LyricsModule, LookModule, MetadataModule, ModuleArt, ModuleFields, SkinSource, FieldRanges {
 
+    private val moduleFiles: ModuleFiles? = files?.let(::AndroidModuleFiles)
+
     private val siteName = runCatching { URI(base).host }.getOrNull().orEmpty()
 
     override val info = ModuleInfo(
@@ -64,11 +66,11 @@ internal class WebModule(
         author = manifest.author,
     )
 
-    override val skin: ModuleSkin? = SkinParser.parse(info.id, info.name, manifest.player, manifest.font, manifest.pages, files, base, manifest.actions, manifest.glass, manifest.players, manifest.bar, manifest.mini)
+    override val skin: ModuleSkin? = SkinParser.parse(info.id, info.name, manifest.player, manifest.font, manifest.pages, moduleFiles, base, manifest.actions, manifest.glass, manifest.players, manifest.bar, manifest.mini)
 
-    override val icon: String? = resolveModuleArt(manifest.icon, files, base)
+    override val icon: String? = resolveModuleArt(manifest.icon, moduleFiles, base)
 
-    override val banner: String? = resolveModuleArt(manifest.banner, files, base)
+    override val banner: String? = resolveModuleArt(manifest.banner, moduleFiles, base)
 
     override val adds: Set<ModuleFeature> = buildSet {
         if (manifest.playsSongs) add(ModuleFeature.AudioSource)

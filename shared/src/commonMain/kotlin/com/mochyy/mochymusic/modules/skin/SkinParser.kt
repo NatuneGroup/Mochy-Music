@@ -4,14 +4,14 @@ package com.mochyy.mochymusic.modules.skin
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.mochyy.mochymusic.modules.web.ModuleFiles
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
-import java.io.File
 
-internal object SkinParser {
+object SkinParser {
 
     /** null when the manifest brings none of these, or none of them made sense */
     fun parse(
@@ -20,7 +20,7 @@ internal object SkinParser {
         player: JsonElement?,
         font: JsonElement?,
         pages: JsonElement?,
-        files: File?,
+        files: ModuleFiles?,
         base: String?,
         actions: JsonElement? = null,
         glass: JsonElement? = null,

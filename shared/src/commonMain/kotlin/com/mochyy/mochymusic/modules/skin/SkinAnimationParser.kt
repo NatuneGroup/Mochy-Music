@@ -17,7 +17,8 @@ import kotlin.math.floor
 import kotlin.math.pow
 import kotlin.math.sin
 
-internal object SkinAnimationParser {
+// public for the app's parser test, which checks the easings it reads; only the skin parser uses it otherwise
+object SkinAnimationParser {
 
     /** the player's named keyframes: { "pop": [ { "at": 0, "scale": 0.6 }, ... ] } or css style { "pop": { "0%": {...}, "100%": {...} } } */
     fun library(element: JsonElement?): Map<String, SkinKeyframes> =

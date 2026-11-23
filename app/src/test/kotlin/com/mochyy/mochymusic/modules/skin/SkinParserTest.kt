@@ -3,6 +3,7 @@ package com.mochyy.mochymusic.modules.skin
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.mochyy.mochymusic.constants.PlayerBackgroundStyle
+import com.mochyy.mochymusic.modules.web.AndroidModuleFiles
 import com.mochyy.mochymusic.modules.web.WebModuleManifest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -17,7 +18,7 @@ class SkinParserTest {
 
     private fun skin(text: String, files: File? = null, base: String? = null): ModuleSkin? {
         val m = manifest(text)
-        return SkinParser.parse("local.test", "Test", m.player, m.font, m.pages, files, base, m.actions, m.glass, m.players, m.bar, m.mini)
+        return SkinParser.parse("local.test", "Test", m.player, m.font, m.pages, files?.let(::AndroidModuleFiles), base, m.actions, m.glass, m.players, m.bar, m.mini)
     }
 
     private val vinyl = """

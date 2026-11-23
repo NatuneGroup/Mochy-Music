@@ -16,7 +16,7 @@ object ModuleMenu {
         private set
 
     // set on every refresh of the switches; the same list again changes nothing, so the menu doesn't redraw for it
-    internal fun publish(skins: List<ModuleSkin>) {
+    fun publish(skins: List<ModuleSkin>) {
         val next = skins.flatMap { skin -> skin.actions.map { ModuleMenuAction(skin.moduleId, skin, it) } }
         if (next.map { it.moduleId to it.action } != actions.map { it.moduleId to it.action }) actions = next
     }
