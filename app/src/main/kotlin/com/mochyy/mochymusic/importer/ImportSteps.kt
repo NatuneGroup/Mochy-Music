@@ -52,7 +52,7 @@ internal class ImportSteps(
     val record = PlaylistSourceRecord(database)
 
     /** a matcher for one run: it uses the versions the user picked and notes what it finds */
-    fun newMatcher() = TrackMatcher(ImportMatches.get(context), source)
+    fun newMatcher() = TrackMatcher(ImportMatches(AndroidImportMatchStore(context)), source)
 
     suspend fun runImport(parsed: ParsedImport, options: ImportOptions) {
         val matcher = newMatcher()

@@ -2,12 +2,8 @@
 
 package com.mochyy.mochymusic.importer
 
-import com.music.innertube.YouTube
 import com.music.innertube.models.Artist
-import com.music.innertube.utils.completed
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.okhttp.OkHttp
-import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.HttpResponse
@@ -24,16 +20,7 @@ object LinkImporter {
 
     internal val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    private val client by lazy {
-        HttpClient(OkHttp) {
-            install(HttpTimeout) {
-                connectTimeoutMillis = 15_000
-                requestTimeoutMillis = 30_000
-                socketTimeoutMillis = 30_000
-            }
-            expectSuccess = false
-        }
-    }
+    private val client: HttpClient by lazy { createImporterHttpClient() }
 
     private const val USER_AGENT =
         "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Mobile Safari/537.36"
@@ -70,7 +57,7 @@ object LinkImporter {
     /** short links redirect to the real page; some go through an html page that holds the real url */
     private suspend fun resolveShortLink(url: String): String {
         val response = get(url)
-        val finalUrl = response.call.request.url.toString()
+        val finalUrl = response.request.url.toString()
         if (listOf(SPOTIFY_REGEX, DEEZER_REGEX, YT_LIST_REGEX).any { it.containsMatchIn(finalUrl) }) return finalUrl
         val body = runCatching { response.bodyAsText() }.getOrDefault("")
         SPOTIFY_REGEX.find(body)?.let { return "https://open.spotify.com/${it.groupValues[1]}/${it.groupValues[2]}" }
@@ -136,7 +123,7 @@ object LinkImporter {
             val title = obj.string("title") ?: return@mapNotNull null
             ImportedTrack(
                 title = title,
-                artist = obj.string("subtitle").orEmpty().replace(' ', ' '),
+                artist = obj.string("subtitle").orEmpty().replace('\u00A0', ' '),
                 album = albumName,
                 durationMs = obj.long("duration"),
                 sourceId = obj.string("uri")?.takeIf { it.startsWith("spotify:track:") },
@@ -154,7 +141,7 @@ object LinkImporter {
             .maxByOrNull { it.long("width") ?: 0 }
             ?.string("url")
         // the embed names the owner (an album's artist) but has no link to them, fetchSpotify adds that
-        val owner = entity.string("subtitle")?.replace(' ', ' ')
+        val owner = entity.string("subtitle")?.replace('\u00A0', ' ')
         return ParsedImport(
             likedSongs = emptyList(),
             playlists = mapOf(name to tracks),
@@ -165,7 +152,7 @@ object LinkImporter {
         )
     }
 
-    internal const val SPOTIFY_EMBED_LIMIT = 100
+    const val SPOTIFY_EMBED_LIMIT = 100
 
     // apple music: the web page embeds its own data as serialized-server-data
 
@@ -315,7 +302,7 @@ object LinkImporter {
 
     suspend fun fetchYouTubePlaylist(playlistId: String): ParsedImport {
         if (playlistId.startsWith("RD")) throw LinkImportException("That's a YouTube mix, which changes every time — save it as a playlist first.")
-        val page = YouTube.playlist(playlistId).completed().getOrElse {
+        val page = ImporterYouTube.playlist(playlistId).getOrElse {
             throw LinkImportException("Couldn't open that YouTube playlist. Is it public or unlisted?")
         }
         val tracks = page.songs.map { it.toImportedTrack() }
@@ -330,7 +317,7 @@ object LinkImporter {
     }
 
     private suspend fun fetchYouTubeAlbum(browseId: String): ParsedImport {
-        val page = YouTube.album(browseId).getOrElse {
+        val page = ImporterYouTube.album(browseId).getOrElse {
             throw LinkImportException("Couldn't open that YouTube Music album.")
         }
         val tracks = page.songs.map { it.toImportedTrack() }
@@ -347,7 +334,7 @@ object LinkImporter {
     /** the channel's picture comes from its own page; youtube's own lists have no channel id, so just a name */
     private suspend fun youTubeAuthor(channel: Artist): PlaylistAuthor {
         val id = channel.id
-        val avatar = id?.let { optional { YouTube.artist(it).getOrNull()?.artist?.thumbnail } }
+        val avatar = id?.let { optional { ImporterYouTube.artistThumbnail(it).getOrNull() } }
         return PlaylistAuthor(channel.name, avatar, id?.let { "https://music.youtube.com/channel/$it" })
     }
 

@@ -3,7 +3,7 @@
 package com.mochyy.mochymusic.importer
 
 /** one artist tag as the artists it names, so a song by two artists shows up on both their pages */
-internal object LocalArtistNames {
+object LocalArtistNames {
     // always two artists: "A; B", "A / B", "A feat. B", "A (ft. B)"
     private val AlwaysApart = Regex("""\s*(?:;|\u0000|\s/\s|\(?\b(?:feat\.?|ft\.|featuring)\s)\s*""", RegexOption.IGNORE_CASE)
 
