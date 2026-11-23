@@ -12,18 +12,13 @@ import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 
-const val GithubOwner = "realidkroo"
-const val GithubRepo = "Mochy-Music"
+// GithubOwner, GithubRepo, InstagramUrl, ThreadsUrl and DiscordUrl live in :shared
+// (core/updater/ProjectLinks.kt), with the dev space pages that read them.
 
 const val GithubProfileUrl = "https://github.com/$GithubOwner"
 const val GithubRepoUrl = "https://github.com/$GithubOwner/$GithubRepo"
-const val InstagramUrl = "https://www.instagram.com/furfurrfoxx/"
-// Threads names follow the Instagram one
-const val ThreadsUrl = "https://www.threads.net/@furfurrfoxx"
-// dev spaces hides the discord row while this is blank
-const val DiscordUrl = "https://discord.gg/NTmqVphbRY"
 
-// Where updates come from: this build's own signed releases. The Github* names above stay the
+// Where updates come from: this build's own signed releases. The Github* names stay the
 // credit to Mochy by realidkroo (About, support, Discord, Developer space); an APK from there is
 // signed with another key and can never install over this one, so only update checks use these.
 const val UpdateOwner = "NatuneGroup"
