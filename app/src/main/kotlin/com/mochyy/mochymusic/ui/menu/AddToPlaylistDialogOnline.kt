@@ -62,6 +62,7 @@ import com.mochyy.mochymusic.ui.component.SortHeader
 import com.mochyy.mochymusic.utils.rememberEnumPreference
 import com.mochyy.mochymusic.utils.rememberPreference
 import com.mochyy.mochymusic.utils.reportException
+import com.mochyy.mochymusic.LocalSyncUtils
 import com.mochyy.mochymusic.viewmodels.PlaylistsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -82,6 +83,7 @@ fun AddToPlaylistDialogOnline(
     viewModel: PlaylistsViewModel = hiltViewModel()
 ) {
     val database = LocalDatabase.current
+    val syncUtils = LocalSyncUtils.current
     val coroutineScope = rememberCoroutineScope()
     val viewStateMap = remember { mutableStateMapOf<String, ItemsPage?>() }
     val (sortType, onSortTypeChange) = rememberEnumPreference(
@@ -327,9 +329,12 @@ fun AddToPlaylistDialogOnline(
                                                         withContext(Dispatchers.IO) {
                                                             try {
                                                                 database.insert(firstSongMedia)
+                                                                val liked = firstSongEnt.toggleLike()
                                                                 database.query {
-                                                                    update(firstSongEnt.toggleLike())
+                                                                    update(liked)
                                                                 }
+                                                                // toggleLike itself no longer reaches YouTube, so imports push the like here
+                                                                syncUtils.likeSong(liked)
                                                             } catch (e: Exception) {
                                                                 Timber.tag("Exception inserting song in database:")
                                                                     .e(e.toString())
