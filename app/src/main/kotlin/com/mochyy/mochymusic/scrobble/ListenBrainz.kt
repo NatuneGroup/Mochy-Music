@@ -16,6 +16,7 @@ object ListenBrainz {
     // built on the first song, from the app's one settings store
     @Volatile private var engine: ListenBrainzEngine? = null
 
+    @Synchronized
     private fun engineOf(context: Context): ListenBrainzEngine =
         engine ?: ListenBrainzEngine(
             preferences = context.applicationContext.dataStore,
