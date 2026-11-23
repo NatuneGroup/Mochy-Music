@@ -413,7 +413,7 @@ private fun videoQualityItem(videoQualitySheet: ((VideoQuality, (VideoQuality) -
     return SettingsItem(
         title = { Text(title) },
         highlightKey = "Video quality",
-        descriptionText = qualityLabel(quality),
+        descriptionText = videoQualityName(quality),
         detail = stringResource(Res.string.video_quality_settings_desc),
         searchText = title,
         // the app's HD mark is material-icons-extended, which the shared module doesn't carry
@@ -422,14 +422,6 @@ private fun videoQualityItem(videoQualitySheet: ((VideoQuality, (VideoQuality) -
         isVisible = videoQualitySheet != null,
         onClick = { videoQualitySheet?.invoke(quality, onQuality) },
     )
-}
-
-// how a quality reads on the row, as VideoQualitySheet's videoQualityName does it in the app
-@Composable
-private fun qualityLabel(quality: VideoQuality): String = when {
-    quality == VideoQuality.AUTO -> stringResource(Res.string.video_quality_auto)
-    quality.shortSide >= 2160 -> stringResource(Res.string.video_quality_4k)
-    else -> stringResource(Res.string.video_quality_size, quality.shortSide)
 }
 
 @Composable

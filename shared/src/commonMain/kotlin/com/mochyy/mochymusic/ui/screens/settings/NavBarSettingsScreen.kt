@@ -88,20 +88,32 @@ fun NavBarSettingsScreen(
 /** a saved tab and whether the bar shows it */
 private data class NavTabRow(val tab: NavTab, val shown: Boolean)
 
-private fun navTabRows(saved: String, tabs: List<NavTab>): List<NavTabRow> {
-    val rows = mutableListOf<NavTabRow>()
+/**
+ * NavTabsKey's stored format, the one place it is read and written: routes in bar order, a hidden tab
+ * prefixed with "-" ("home,-search,library"). Unknown routes are skipped, a route seen twice keeps its
+ * first place, and a tab the saved value doesn't name yet goes at the end, shown. The app's bar
+ * (AppNavigation.navTabSlots) and this page both go through these two.
+ */
+fun <T> decodeNavTabOrder(saved: String, tabs: List<T>, route: (T) -> String): List<Pair<T, Boolean>> {
+    val rows = mutableListOf<Pair<T, Boolean>>()
     saved.split(',').filter { it.isNotBlank() }.forEach { token ->
-        val tab = tabs.firstOrNull { it.route == token.removePrefix("-") } ?: return@forEach
-        if (rows.none { it.tab.route == tab.route }) rows += NavTabRow(tab, shown = !token.startsWith("-"))
+        val tab = tabs.firstOrNull { route(it) == token.removePrefix("-") } ?: return@forEach
+        if (rows.none { route(it.first) == route(tab) }) rows += tab to !token.startsWith("-")
     }
     tabs.forEach { tab ->
-        if (rows.none { it.tab.route == tab.route }) rows += NavTabRow(tab, shown = true)
+        if (rows.none { route(it.first) == route(tab) }) rows += tab to true
     }
     return rows
 }
 
+fun <T> encodeNavTabOrder(rows: List<Pair<T, Boolean>>, route: (T) -> String): String =
+    rows.joinToString(",") { (tab, shown) -> if (shown) route(tab) else "-${route(tab)}" }
+
+private fun navTabRows(saved: String, tabs: List<NavTab>): List<NavTabRow> =
+    decodeNavTabOrder(saved, tabs) { it.route }.map { (tab, shown) -> NavTabRow(tab, shown) }
+
 private fun encodeNavTabs(rows: List<NavTabRow>): String =
-    rows.joinToString(",") { if (it.shown) it.tab.route else "-${it.tab.route}" }
+    encodeNavTabOrder(rows.map { it.tab to it.shown }) { it.route }
 
 private fun List<NavTabRow>.swapped(from: Int, to: Int): List<NavTabRow> =
     toMutableList().also { it[from] = this[to]; it[to] = this[from] }
