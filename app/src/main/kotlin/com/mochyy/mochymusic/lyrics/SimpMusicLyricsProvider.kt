@@ -7,7 +7,6 @@ import com.music.simpmusic.SimpMusicLyrics
 object SimpMusicLyricsProvider : LyricsProvider {
     override val name = "SimpMusic"
 
-
     override suspend fun getLyrics(
         id: String,
         title: String,

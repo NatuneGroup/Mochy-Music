@@ -12,7 +12,6 @@ class ModuleLyricsProvider(private val module: LyricsModule) : LyricsProvider {
 
     val displayName: String get() = module.info.name
 
-
     override suspend fun getLyrics(
         id: String,
         title: String,

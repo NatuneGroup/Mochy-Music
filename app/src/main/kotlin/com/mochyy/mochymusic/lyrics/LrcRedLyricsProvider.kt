@@ -8,7 +8,6 @@ import com.mochyy.mochymusic.betterlyrics.TTMLParser
 object LrcRedLyricsProvider : LyricsProvider {
     override val name = "LrcRed"
 
-
     // lrc.red speaks the same ttml as apple music, so the better lyrics parser keeps the word timing, singers and background vocals
     override suspend fun getLyrics(
         id: String,

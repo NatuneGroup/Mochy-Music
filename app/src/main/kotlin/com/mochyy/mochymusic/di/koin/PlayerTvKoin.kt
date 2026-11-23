@@ -7,6 +7,7 @@ import com.mochyy.mochymusic.lyrics.AndroidLyricsFileReader
 import com.mochyy.mochymusic.lyrics.AndroidLyricsNetwork
 import com.mochyy.mochymusic.lyrics.LyricsHelper
 import com.mochyy.mochymusic.lyrics.LyricsProviderRegistry
+import com.mochyy.mochymusic.lyrics.PaxSenixLyricsProvider
 import com.mochyy.mochymusic.playback.CachedSongs
 import com.mochyy.mochymusic.ui.tv.TvSearchViewModel
 import com.mochyy.mochymusic.ui.tv.TvSongsViewModel
@@ -43,6 +44,8 @@ val playerTvModule = module {
     // unscoped in Hilt too - every view model that asked was given its own instance and its own
     // in-memory lyrics cache; a factory keeps it exactly that way
     factory {
+        // Paxsenix needs the app version for its user agent before its first lookup
+        PaxSenixLyricsProvider.initialize(androidContext())
         LyricsHelper(
             catalog = LyricsProviderRegistry,
             preferences = androidContext().dataStore,

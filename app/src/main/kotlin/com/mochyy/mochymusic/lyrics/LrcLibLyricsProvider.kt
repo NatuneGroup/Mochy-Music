@@ -7,7 +7,6 @@ import com.music.lrclib.LrcLib
 object LrcLibLyricsProvider : LyricsProvider {
     override val name = "LrcLib"
 
-
     override suspend fun getLyrics(
         id: String,
         title: String,

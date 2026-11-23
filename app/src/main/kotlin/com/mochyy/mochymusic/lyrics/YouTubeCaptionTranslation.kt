@@ -27,8 +27,9 @@ object YouTubeCaptionTranslation {
         val matchAudio: (suspend (videoId: String) -> SongVideoMap?)? = null,
     )
 
-    // what a stored youtube translation is filed under, kept apart from google's and the ai's
-    fun storedLanguageTag(targetLanguage: String): String = "yt:$targetLanguage"
+    // what a stored youtube translation is filed under, kept apart from google's and the ai's;
+    // the shared translate flow reads the same tag
+    fun storedLanguageTag(targetLanguage: String): String = youTubeTranslationLanguageTag(targetLanguage)
 
     private class Found(val lines: List<String?>?, val atMs: Long = SystemClock.elapsedRealtime())
 

@@ -7,7 +7,6 @@ import com.music.youlyplus.YouLyPlus
 object YouLyPlusLyricsProvider : LyricsProvider {
     override val name = "YouLyPlus"
 
-
     override suspend fun getLyrics(
         id: String,
         title: String,

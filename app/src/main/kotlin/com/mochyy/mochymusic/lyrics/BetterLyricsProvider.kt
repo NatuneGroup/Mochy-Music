@@ -7,7 +7,6 @@ import com.mochyy.mochymusic.betterlyrics.BetterLyrics
 object BetterLyricsProvider : LyricsProvider {
     override val name = "BetterLyrics"
 
-
     override suspend fun getLyrics(
         id: String,
         title: String,
