@@ -160,6 +160,11 @@ class CrashHandler private constructor(
 
 /** feeds Timber into [CrashLog]'s ring buffer in every build; never throws */
 class CrashLogTree : timber.log.Timber.Tree() {
+    // release had no Timber tree at all, so a log call cost nothing; recording every debug line from
+    // the player threads would put a format and a lock on each one. Info and up is what a report needs.
+    override fun isLoggable(tag: String?, priority: Int): Boolean =
+        com.mochyy.mochymusic.BuildConfig.DEBUG || priority >= android.util.Log.INFO
+
     override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
         try {
             val level = when (priority) {

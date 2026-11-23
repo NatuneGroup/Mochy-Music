@@ -16,13 +16,16 @@ object CrashLog {
     internal const val CAPACITY = 4000
 
     private val buffer: Array<String?> = arrayOfNulls(CAPACITY)
+    // one formatter, used only under this object's lock: SimpleDateFormat isn't thread-safe, and
+    // building one per log line was most of the cost of recording it
+    private val lineTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
     private var index = 0
     private var count = 0
 
     @Synchronized
     fun record(level: Char, tag: String, message: String, error: Throwable?) {
         val line = buildString {
-            append(timestamp()).append(' ').append(level).append(' ').append(tag).append(": ").append(message)
+            append(lineTime.format(Date())).append(' ').append(level).append(' ').append(tag).append(": ").append(message)
             if (error != null) append('\n').append(error.stackTraceString())
         }
         buffer[index] = line

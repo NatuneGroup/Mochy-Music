@@ -109,6 +109,15 @@ fun PlaybackDiagnosticsScreen(navController: NavController) {
                         iconShape = CircleShape,
                         onClick = { PlaybackLogManager.clearLogs() },
                     ),
+                    // here rather than in Experimental: this page stays Android-only while the
+                    // Experimental page moves to shared code, and the share sheet is an Android intent
+                    SettingsItem(
+                        title = { Text(stringResource(R.string.crash_share_title)) },
+                        descriptionText = stringResource(R.string.crash_share_row_desc),
+                        icon = painterResource(R.drawable.bug_report),
+                        iconShape = CircleShape,
+                        onClick = { com.mochyy.mochymusic.utils.CrashHandler.shareLatestCrash(context) },
+                    ),
                 ),
         )
 

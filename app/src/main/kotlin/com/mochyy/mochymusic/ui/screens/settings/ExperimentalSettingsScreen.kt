@@ -36,7 +36,6 @@ import com.mochyy.mochymusic.ui.component.SettingsGroup
 import com.mochyy.mochymusic.ui.component.SettingsGroupStyle
 import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
 import com.mochyy.mochymusic.ui.component.SettingsItem
-import com.mochyy.mochymusic.utils.CrashHandler
 import com.mochyy.mochymusic.utils.dataStore
 import com.mochyy.mochymusic.utils.rememberEnumPreference
 import com.mochyy.mochymusic.utils.rememberPreference
@@ -321,16 +320,6 @@ fun ExperimentalSettingsScreen(navController: NavController) {
                             icon = painterResource(R.drawable.info),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
                             onClick = { navController.navigate("playback_diagnostics") }
-                        )
-                    )
-                    add(
-                        SettingsItem(
-                            title = { Text(stringResource(R.string.crash_share_title)) },
-                            highlightKey = "Crash report",
-                            descriptionText = stringResource(R.string.crash_share_row_desc),
-                            icon = painterResource(R.drawable.bug_report),
-                            iconShape = androidx.compose.foundation.shape.CircleShape,
-                            onClick = { CrashHandler.shareLatestCrash(context) }
                         )
                     )
                     add(
