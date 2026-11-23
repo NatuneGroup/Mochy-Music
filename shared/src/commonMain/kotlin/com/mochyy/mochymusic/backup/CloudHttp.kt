@@ -14,8 +14,8 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
-import io.ktor.client.statement.contentLength
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.Parameters
 import io.ktor.http.contentType
@@ -102,11 +102,11 @@ internal fun sizeOf(path: Path): Long = FileSystem.SYSTEM.metadataOrNull(path)?.
 
 /** progress as a share of [total], the way every cloud reports it */
 internal fun progressReporter(total: Long, onProgress: (Float) -> Unit): (Long) -> Unit =
-    { sent -> onProgress((sent.toDouble() / total).toFloat().coerceIn(0f, 1f)) }
+    { sent -> if (total > 0) onProgress((sent.toDouble() / total).toFloat().coerceIn(0f, 1f)) }
 
 /** streams a download into [into], with [expected] as the size when the server doesn't say */
 internal suspend fun HttpResponse.saveTo(into: Path, expected: Long, onProgress: (Float) -> Unit) {
-    val total = contentLength()?.takeIf { it > 0 } ?: expected
+    val total = headers[HttpHeaders.ContentLength]?.toLongOrNull()?.takeIf { it > 0 } ?: expected
     val handle = FileSystem.SYSTEM.openReadWrite(into)
     try {
         handle.resize(0)

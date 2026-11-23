@@ -54,9 +54,11 @@ class CloudAccountStore @Inject constructor(
     }
 
     /** changes the saved account in place, for new tokens and the last backup's stamp; does nothing once signed out */
-    override suspend fun update(change: (CloudAccount) -> CloudAccount) = withContext(Dispatchers.IO) {
-        loaded.await()
-        writing.withLock { _account.value?.let { write(change(it)) } }
+    override suspend fun update(change: (CloudAccount) -> CloudAccount) {
+        withContext(Dispatchers.IO) {
+            loaded.await()
+            writing.withLock { _account.value?.let { write(change(it)) } }
+        }
     }
 
     private fun read(): CloudAccount? = runCatching {
