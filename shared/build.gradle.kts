@@ -56,7 +56,15 @@ kotlin {
         }
     }
 
+    applyDefaultHierarchyTemplate()
+
     sourceSets {
+        // desktop and iOS: what Room can run there (the music database without Android's blocking DAO)
+        val nonAndroidMain = create("nonAndroidMain") {
+            dependsOn(commonMain.get())
+        }
+        getByName("desktopMain").dependsOn(nonAndroidMain)
+        iosMain.get().dependsOn(nonAndroidMain)
         commonMain.dependencies {
             api(project(":shared:preferences"))
             api(project(":shared:theme"))
@@ -122,6 +130,15 @@ dependencies {
     add("kspIosArm64", libs.room.compiler)
     add("kspIosSimulatorArm64", libs.room.compiler)
 }
+
+// The desktop/iOS InternalDatabase exports its schema here, never to app/schemas: Fast checks diffs it
+// against app/schemas so the two entity lists can't drift, and app/schemas stays Android's own export.
+val roomSchemas = layout.buildDirectory.dir("schemas")
+ksp {
+    arg("room.schemaLocation", roomSchemas.get().asFile.path)
+}
+// declared, so a build-cache hit restores the export along with the generated code
+tasks.matching { it.name == "kspKotlinDesktop" }.configureEach { outputs.dir(roomSchemas) }
 
 val prepareIosFonts = tasks.register<Sync>("prepareIosFonts") {
     from(rootProject.layout.projectDirectory.dir("app/src/main/res/font")) {

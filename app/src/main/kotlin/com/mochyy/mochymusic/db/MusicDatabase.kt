@@ -151,10 +151,13 @@ const val MusicDatabaseVersion = 45
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
-abstract class InternalDatabase : RoomDatabase() {
+abstract class InternalDatabase : RoomDatabase(), MochyDatabase {
     abstract val dao: DatabaseDao
-    abstract val speedDialDao: SpeedDialDao
-    abstract val suspendingDao: SuspendingDao
+    abstract override val speedDialDao: SpeedDialDao
+    abstract override val suspendingDao: SuspendingDao
+    override val songDao: SongDao get() = dao
+    override val playlistDao: PlaylistDao get() = dao
+    override val historyDao: HistoryDao get() = dao
 
     companion object {
         const val DB_NAME = "mochy.db"
