@@ -10,17 +10,14 @@
 // the giant words, the avatar, the logo, the card - is a set of Animatables in StoryState; each page
 // gets an enter and exit 0..1 and lays itself out from those. All of it is read in draw/layer
 // lambdas, so a running story redraws without recomposing.
+//
+// The shared story takes what only the platform can do through RecapStoryPlatform (picture loads,
+// palettes, the mesh, the ID card face, the snippet player). Android's dialog window that holds it
+// is app's RecapStoryHost.kt.
 
 package com.mochyy.mochymusic.ui.screens.recap
 
-import androidx.compose.ui.unit.IntSize
-import android.os.SystemClock
-import com.mochyy.mochymusic.ui.component.rememberDeviceTilt
-import android.graphics.drawable.ColorDrawable
-import android.os.Build
-import android.view.WindowManager
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -28,7 +25,6 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -46,12 +42,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.Stable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -63,7 +54,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -83,76 +73,33 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionOnScreen
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.window.DialogWindowProvider
-import androidx.core.view.WindowCompat
 import coil3.compose.AsyncImage
-import coil3.imageLoader
-import coil3.request.ImageRequest
-import com.mochyy.mochymusic.LocalPlayerConnection
-import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.ic_mochy_mark
 import com.mochyy.mochymusic.ui.component.BlurEffectCache
+import com.mochyy.mochymusic.ui.component.monotonicMillis
 import com.mochyy.mochymusic.ui.screens.setup.onboarding.IdCardAspect
-import com.mochyy.mochymusic.ui.screens.setup.onboarding.ProfileIdCard
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import com.mochyy.mochymusic.ui.utils.resize
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
+import org.jetbrains.compose.resources.painterResource
 import kotlin.math.abs
 import kotlin.math.max
 
-// ---------------------------------------------------------------------------------------------
-// What the story is about, and where it grows from
-
-@Immutable
-internal class RecapStoryData(
-    override val stats: ListeningStats,
-    override val monthProgress: Int,
-    val username: String,
-    val photo: Any?,
-    val cardNumber: String,
-    val joinedText: String,
-    val joinedDate: LocalDate,
-    override val allTimeMs: Long,
-) : RecapStorySource {
-    override val name: String get() = username.trim().ifEmpty { "you" }
-    /** "October" - or "2026" when a forced recap had to fall back to the whole year. */
-    override val monthName: String get() = stats.range.label
-    override val artists: List<RecapArtist> = stats.topArtists.take(10)
-    override val songs: List<RecapSong> = stats.topSongs
-    override val heroArtist: RecapArtist? = artists.firstOrNull()
-    override val heroSong: RecapSong? = songs.firstOrNull()
-
-    /** Monday = 0. */
-    override val favouriteDay: Int = stats.weekdayMs.indices.maxByOrNull { stats.weekdayMs[it] } ?: 0
-    override val favouriteDayMs: Long = stats.weekdayMs.getOrElse(favouriteDay) { 0L }
-    override val runnerUpMs: Long = stats.weekdayMs.filterIndexed { i, _ -> i != favouriteDay }.maxOrNull() ?: 0L
-
-    // the journey page shows the joined date with DateLong, which is a java.time formatter
-    override val joinedDateText: String = DateLong.format(joinedDate)
-}
-
 /** Screen-space (px) positions of the page the story starts from and goes back into. */
 @Immutable
-internal class RecapAnchors(
+class RecapAnchors(
     /** The card on the expanded page, where the story picks it up. */
     val expandedCard: Rect,
     /** The card in the collapsed header, where the story leaves it. */
@@ -168,100 +115,22 @@ internal enum class StoryGesture { SwipeLeft, SwipeDown, Tap }
 // a page has been up at least this long before a tap moves the story on
 private const val MinPageMillis = 350L
 
-// ---------------------------------------------------------------------------------------------
-// The window
-
 /**
- * Shows the recap over everything. [onCovered]: the story now hides the page completely, so the
- * page may reset itself underneath. [onReturned]: the story is drawing exactly the collapsed header,
- * so the page should show its own card again. [onClosed]: the window is going away.
+ * The story itself, drawn over whatever the platform put behind it. [data] is what it's about and
+ * [photo] the picture of the listener; [platform] supplies the loads, the mesh, the card face and the
+ * snippet player. Stays up until the script ends or [exitRequests] is taken after the page is covered.
  */
 @Composable
-internal fun RecapStoryHost(
-    data: RecapStoryData,
+fun RecapStory(
+    data: RecapStorySource,
+    photo: Any?,
     anchors: RecapAnchors,
-    payload: String,
-    caption: String,
-    onCovered: () -> Unit,
-    onReturned: () -> Unit,
-    onClosed: () -> Unit,
-) {
-    val exitRequests = remember { Channel<Unit>(Channel.CONFLATED) }
-    Dialog(
-        onDismissRequest = { exitRequests.trySend(Unit) },
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = false,
-            dismissOnClickOutside = false,
-        ),
-    ) {
-        val window = (LocalView.current.parent as? DialogWindowProvider)?.window
-        SideEffect {
-            window?.run {
-                setWindowAnimations(0)
-                setDimAmount(0f)
-                clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-                setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
-                setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT)
-                // without this flag the system paints both bars solid black behind a dialog, whatever
-                // their colour is set to; with it (and the translucent flags off) they show the story
-                @Suppress("DEPRECATION")
-                clearFlags(
-                    WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS or
-                        WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION,
-                )
-                addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
-                addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN)
-                @Suppress("DEPRECATION")
-                statusBarColor = android.graphics.Color.TRANSPARENT
-                @Suppress("DEPRECATION")
-                navigationBarColor = android.graphics.Color.TRANSPARENT
-                if (Build.VERSION.SDK_INT >= 28) {
-                    attributes = attributes.also {
-                        it.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-                    }
-                }
-                if (Build.VERSION.SDK_INT >= 29) isNavigationBarContrastEnforced = false
-                // a dialog's window is laid out between the status and navigation bars by default,
-                // which left both bars black over the story; this takes it to the screen's edges
-                if (Build.VERSION.SDK_INT >= 30) {
-                    attributes = attributes.also { it.fitInsetsTypes = 0 }
-                } else {
-                    addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-                }
-                WindowCompat.setDecorFitsSystemWindows(this, false)
-                WindowCompat.getInsetsController(this, decorView).apply {
-                    isAppearanceLightStatusBars = false
-                    isAppearanceLightNavigationBars = false
-                }
-            }
-        }
-
-        // the real queue stops while the recap plays its own snippets, and picks up after
-        val playerConnection = LocalPlayerConnection.current
-        DisposableEffect(playerConnection) {
-            val player = playerConnection?.player
-            val wasPlaying = player?.isPlaying == true
-            player?.pause()
-            onDispose { if (wasPlaying) player?.play() }
-        }
-
-        RecapStory(data, anchors, payload, caption, exitRequests, onCovered, onReturned, onClosed)
-    }
-}
-
-@Composable
-private fun RecapStory(
-    data: RecapStoryData,
-    anchors: RecapAnchors,
-    payload: String,
-    caption: String,
+    platform: RecapStoryPlatform,
     exitRequests: Channel<Unit>,
     onCovered: () -> Unit,
     onReturned: () -> Unit,
     onClosed: () -> Unit,
 ) {
-    val context = LocalContext.current
     val density = LocalDensity.current
     val haptics = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
@@ -271,7 +140,7 @@ private fun RecapStory(
     val currentOnReturned by rememberUpdatedState(onReturned)
     val currentOnClosed by rememberUpdatedState(onClosed)
     val gestures = remember { Channel<StoryGesture>(Channel.CONFLATED) }
-    val snippet = remember { RecapSnippetPlayer(context, scope) }
+    val snippet = remember(scope) { platform.snippets(scope) }
     DisposableEffect(snippet) { onDispose { snippet.release() } }
 
     var origin by remember { mutableStateOf<Offset?>(null) }
@@ -327,10 +196,10 @@ private fun RecapStory(
         LaunchedEffect(data) {
             val urls = data.artists.map { it.thumbnailUrl } + data.songs.map { it.thumbnailUrl } + data.heroSong?.artistThumbnailUrl
             urls.filterNotNull().distinct().forEach { url ->
-                context.imageLoader.enqueue(ImageRequest.Builder(context).data(url.resize(544, 544)).build())
+                platform.prefetch(url.resize(544, 544))
             }
-            director.artistPalette = RecapPalettes.extract(context, data.heroArtist?.thumbnailUrl ?: data.heroSong?.thumbnailUrl)
-            director.songPalette = RecapPalettes.extract(context, data.heroSong?.thumbnailUrl)
+            director.artistPalette = platform.paletteOf(data.heroArtist?.thumbnailUrl ?: data.heroSong?.thumbnailUrl)
+            director.songPalette = platform.paletteOf(data.heroSong?.thumbnailUrl)
         }
 
         LaunchedEffect(director) {
@@ -439,7 +308,7 @@ private fun RecapStory(
                             }
                         },
                 )
-                MeshGradient(palette = { s.palette() }, time = time, alpha = { s.mesh.value }, modifier = Modifier.fillMaxSize())
+                platform.Mesh(palette = { s.palette() }, time = time, alpha = { s.mesh.value }, modifier = Modifier.fillMaxSize())
                 Spacer(
                     modifier = Modifier
                         .fillMaxSize()
@@ -450,8 +319,8 @@ private fun RecapStory(
                 StoryPages(s, data, time, textColorsOf = { it.textColors() })
 
                 StoryLogo(s)
-                StoryAvatar(s, data)
-                StoryCard(s, data, payload, caption, time, cardWidth = startCard.width)
+                StoryAvatar(s, data, photo)
+                platform.CardFace(s, time, cardWidth = startCard.width)
             }
         }
     }
@@ -469,7 +338,7 @@ private suspend fun animateDragBack(s: StoryState) {
 private fun StoryLogo(s: StoryState) {
     val geo = s.geo
     Icon(
-        painter = painterResource(R.drawable.ic_mochy_mark),
+        painter = painterResource(Res.drawable.ic_mochy_mark),
         contentDescription = null,
         tint = Color.White,
         modifier = Modifier
@@ -496,7 +365,7 @@ private fun Modifier.layoutAtOrigin(): Modifier = this.then(
 private const val AvatarBaseDp = 160
 
 @Composable
-private fun StoryAvatar(s: StoryState, data: RecapStoryData) {
+private fun StoryAvatar(s: StoryState, data: RecapStorySource, photo: Any?) {
     Box(
         modifier = Modifier
             .requiredSize(AvatarBaseDp.dp)
@@ -519,9 +388,9 @@ private fun StoryAvatar(s: StoryState, data: RecapStoryData) {
             .background(Color(0xFFE8E8E8)),
         contentAlignment = Alignment.Center,
     ) {
-        if (data.photo != null) {
+        if (photo != null) {
             AsyncImage(
-                model = data.photo,
+                model = photo,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
@@ -538,55 +407,14 @@ private fun StoryAvatar(s: StoryState, data: RecapStoryData) {
     }
 }
 
-@Composable
-private fun StoryCard(s: StoryState, data: RecapStoryData, payload: String, caption: String, time: RecapTime, cardWidth: Float) {
-    val density = LocalDensity.current
-    val widthDp = with(density) { cardWidth.toDp() }
-    val deviceTilt = rememberDeviceTilt()
-    Box(
-        modifier = Modifier
-            .requiredSize(widthDp, widthDp / IdCardAspect)
-            .layoutAtOrigin()
-            .graphicsLayer {
-                translationX = s.cardX.value
-                translationY = s.cardY.value
-                rotationZ = s.cardRot.value
-                rotationX = deviceTilt.rotationX
-                rotationY = deviceTilt.rotationY
-                alpha = s.cardAlpha.value
-                cameraDistance = 16f * this.density
-            },
-    ) {
-        if (s.cardBack) {
-            IdCardBack(
-                username = data.username,
-                payload = payload,
-                caption = caption,
-                scratch = null,
-                time = time,
-                scan = { s.scan.value },
-                verdict = { ScanVerdict.Valid },
-            )
-        } else {
-            ProfileIdCard(
-                username = data.username,
-                photo = data.photo,
-                cardNumber = data.cardNumber,
-                joinedText = data.joinedText,
-                showIdCardOf = true,
-            )
-        }
-    }
-}
-
 // ---------------------------------------------------------------------------------------------
 // The script
 
 internal class StoryDirector(
     private val s: StoryState,
-    private val data: RecapStoryData,
+    private val data: RecapStorySource,
     private val gestures: Channel<StoryGesture>,
-    private val snippet: RecapSnippetPlayer,
+    private val snippet: RecapSnippets,
     private val haptic: (HapticFeedbackType) -> Unit,
     private val startCard: Rect,
     private val headerCard: Rect,
@@ -639,12 +467,12 @@ internal class StoryDirector(
         // taps made while the page was still coming in don't count
         while (gestures.tryReceive().isSuccess) Unit
         s.swipeOpen = StoryGesture.SwipeLeft in kinds
-        val openedAt = SystemClock.uptimeMillis()
+        val openedAt = monotonicMillis()
         try {
             while (true) {
                 val gesture = gestures.receive()
                 // nor does the second half of a double tap landing just as the page settled
-                if (gesture in kinds && SystemClock.uptimeMillis() - openedAt >= MinPageMillis) break
+                if (gesture in kinds && monotonicMillis() - openedAt >= MinPageMillis) break
             }
         } finally {
             s.swipeOpen = false
@@ -744,7 +572,7 @@ internal class StoryDirector(
 
     private suspend fun weekday() {
         showPage(P_WEEKDAY)
-        val dayWord = java.time.DayOfWeek.of(data.favouriteDay + 1).displayName().uppercase()
+        val dayWord = StatisticsFormatter().fullWeekday(data.favouriteDay + 1).uppercase()
         together(
             { s.pages[P_MONTH].exit.go(1f, 650, FastOutSlowInEasing) },
             { s.avatarTo(P_WEEKDAY, 950, delayMs = 100) },
@@ -936,5 +764,3 @@ internal class StoryDirector(
         returnToPage()
     }
 }
-
-internal val DateLong: DateTimeFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)

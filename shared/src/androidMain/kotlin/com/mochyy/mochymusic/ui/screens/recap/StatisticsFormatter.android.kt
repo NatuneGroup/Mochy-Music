@@ -19,6 +19,9 @@ internal actual class StatisticsFormatter actual constructor() {
     actual fun shortMonth(month: Int): String =
         Month.of(month).getDisplayName(JavaTextStyle.SHORT, locale)
 
+    actual fun fullWeekday(isoDay: Int): String =
+        DayOfWeek.of(isoDay).getDisplayName(JavaTextStyle.FULL, locale)
+
     actual fun narrowWeekday(isoDay: Int): String =
         DayOfWeek.of(isoDay).getDisplayName(JavaTextStyle.NARROW, locale)
 
