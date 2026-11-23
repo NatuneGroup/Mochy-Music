@@ -38,6 +38,7 @@ internal fun PlayerStyleContent(
         PlayerStyle.METROLIST_VINTAGE -> MetrolistPlayerStyle(actions, modifier, preview, vintage = true)
         PlayerStyle.EDITORIAL -> com.mochyy.mochymusic.ui.player.editorial.EditorialPlayerStyle(actions, modifier, preview)
         PlayerStyle.FLAMINGO -> com.mochyy.mochymusic.ui.player.flamingo.FlamingoPlayerStyle(actions, modifier, preview)
+        PlayerStyle.BITCHORD -> com.mochyy.mochymusic.ui.player.bitchord.BitChordPlayerStyle(actions, modifier, preview)
         PlayerStyle.MODULE -> ModulePlayerStyle(actions, modifier, preview)
         // the flagship family is drawn by the flagship player itself (StyleFamily.Flagship)
         PlayerStyle.FLAGSHIP, PlayerStyle.CLASSIC, PlayerStyle.TURNTABLE -> Unit

@@ -692,6 +692,8 @@ enum class PlayerStyle(
     EDITORIAL("Editorial", "Editorial", PlayerStyleTraits(turnable = true)),
     // Flamingo's album page: the floating-light backdrop, the big sleeve and its bare transport
     FLAMINGO("Flamingo", "Flamingo", PlayerStyleTraits(turnable = true)),
+    // BitChord's full-bleed sleeve hero, credits row and oversized play glyph
+    BITCHORD("BitChord", "BitChord"),
     // a look module's own player, drawn from its layout; kept last so the others keep their places, and only offered while such a module is on
     MODULE("Module", "Module", PlayerStyleTraits(turnable = true));
 
@@ -736,6 +738,7 @@ enum class PlayerStyle(
             listOf(METROLIST, METROLIST_VINTAGE),
             listOf(EDITORIAL),
             listOf(FLAMINGO),
+            listOf(BITCHORD),
         )
     }
 }
