@@ -10,30 +10,30 @@ internal object StageNative {
     /** loads the library the first time the room is wanted, so nobody else pays for it */
     val loaded: Boolean by lazy { runCatching { System.loadLibrary("mochystage") }.isSuccess }
 
-    // the parameter array's layout, the same as engine.h
-    const val Enabled = 0
-    const val Mode = 1
-    const val RoomWidth = 2
-    const val RoomDepth = 3
-    const val RoomHeight = 4
-    const val Absorption = 5
-    const val Damping = 6
-    const val RoomAmount = 7
-    const val ListenerX = 8
-    const val ListenerY = 9
-    const val ListenerZ = 10
-    const val ListenerYaw = 11
-    const val Master = 12
-    const val Objects = 13
-    const val ObjectStride = 5
-    // each kind of sound (StageSource, in order) has this many slots; an object's slot is kind * Copies + copy
-    const val Copies = 4
-    const val Kinds = 6
-    const val ObjectCount = Kinds * Copies
-    const val ParamCount = Objects + ObjectCount * ObjectStride
+    // the parameter array's layout is shared with StageSettings (StageLayout.kt), the same as engine.h;
+    // these aliases keep the names the UI already uses
+    const val Enabled = StageLayout.Enabled
+    const val Mode = StageLayout.Mode
+    const val RoomWidth = StageLayout.RoomWidth
+    const val RoomDepth = StageLayout.RoomDepth
+    const val RoomHeight = StageLayout.RoomHeight
+    const val Absorption = StageLayout.Absorption
+    const val Damping = StageLayout.Damping
+    const val RoomAmount = StageLayout.RoomAmount
+    const val ListenerX = StageLayout.ListenerX
+    const val ListenerY = StageLayout.ListenerY
+    const val ListenerZ = StageLayout.ListenerZ
+    const val ListenerYaw = StageLayout.ListenerYaw
+    const val Master = StageLayout.Master
+    const val Objects = StageLayout.Objects
+    const val ObjectStride = StageLayout.ObjectStride
+    const val Copies = StageLayout.Copies
+    const val Kinds = StageLayout.Kinds
+    const val ObjectCount = StageLayout.ObjectCount
+    const val ParamCount = StageLayout.ParamCount
 
-    const val ModeHeadphones = 0f
-    const val ModeSpeakers = 1f
+    const val ModeHeadphones = StageLayout.ModeHeadphones
+    const val ModeSpeakers = StageLayout.ModeSpeakers
 
     external fun loadHrtf(data: ByteArray): Boolean
     external fun create(sampleRate: Int, channels: Int): Long

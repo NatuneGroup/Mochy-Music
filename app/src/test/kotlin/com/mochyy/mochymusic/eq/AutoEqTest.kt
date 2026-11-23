@@ -1,6 +1,7 @@
 package com.mochyy.mochymusic.eq
 
 import com.mochyy.mochymusic.eq.audio.ResponseCurve
+import com.mochyy.mochymusic.eq.autoeq.AutoEqCatalog
 import com.mochyy.mochymusic.eq.autoeq.AutoEqFitter
 import com.mochyy.mochymusic.eq.autoeq.AutoEqMeasurement
 import com.mochyy.mochymusic.eq.autoeq.AutoEqRepository
@@ -21,11 +22,11 @@ class AutoEqTest {
     private fun resource(name: String): String =
         requireNotNull(javaClass.classLoader?.getResource("autoeq/$name")) { "missing fixture $name" }.readText()
 
-    private val models by lazy { AutoEqRepository.parseIndex(resource("INDEX.md")) }
+    private val models by lazy { AutoEqCatalog.parseIndex(resource("INDEX.md")) }
 
     private fun xm5(): AutoEqMeasurement {
         val entry = models.first { it.name == "Sony WH-1000XM5" }.entries.first { it.source == "oratory1990" }
-        return AutoEqRepository.parseMeasurement(entry, resource("Sony WH-1000XM5.csv"), resource("Sony WH-1000XM5 ParametricEQ.txt"))
+        return AutoEqCatalog.parseMeasurement(entry, resource("Sony WH-1000XM5.csv"), resource("Sony WH-1000XM5 ParametricEQ.txt"))
     }
 
     @Test

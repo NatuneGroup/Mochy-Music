@@ -8,15 +8,6 @@ import androidx.media3.extractor.metadata.vorbis.VorbisComment
 import kotlin.math.min
 import kotlin.math.pow
 
-enum class ReplayGainMode { Track, Album }
-
-/** how replaygain is applied: which of the file's two gains, and a preamp on top */
-data class ReplayGainParams(
-    val mode: ReplayGainMode = ReplayGainMode.Track,
-    /** monochrome's default: replaygain's 89 db reference sits a little quiet for phones */
-    val preampDb: Float = 3f,
-)
-
 /** one player's song replaygain from its file (monochrome flacs, many local files), read from vorbis comments on track change; it can only bring a song down and never takes a peak past full scale */
 class ReplayGainTags {
     @Volatile var trackGain: Float? = null

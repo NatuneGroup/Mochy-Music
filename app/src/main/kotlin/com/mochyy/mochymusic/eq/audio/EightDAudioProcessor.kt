@@ -14,13 +14,6 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
-data class EightDParams(
-    val enabled: Boolean = false,
-    val rotationSpeedHz: Float = 0.15f,
-    val depth: Float = 0.85f,
-    val reverbLevel: Float = 0.4f,
-)
-
 // pans the song slowly around the head, the 8d card in audio fx sets how fast and how far
 @UnstableApi
 class EightDAudioProcessor(private val audioFx: AudioFxService) : BaseAudioProcessor() {

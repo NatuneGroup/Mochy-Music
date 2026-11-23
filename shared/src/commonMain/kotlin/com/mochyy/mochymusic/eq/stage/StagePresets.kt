@@ -2,8 +2,14 @@
 
 package com.mochyy.mochymusic.eq.stage
 
-import androidx.annotation.StringRes
-import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.stage_preset_around
+import com.mochyy.mochymusic.shared.resources.stage_preset_front_row
+import com.mochyy.mochymusic.shared.resources.stage_preset_hall
+import com.mochyy.mochymusic.shared.resources.stage_preset_living
+import com.mochyy.mochymusic.shared.resources.stage_preset_on_stage
+import com.mochyy.mochymusic.shared.resources.stage_preset_studio
+import org.jetbrains.compose.resources.StringResource
 
 /** ready-made rooms: where everything sits, where you sit, and the room around it */
 object StagePresets {
@@ -11,7 +17,7 @@ object StagePresets {
 
     class Preset(
         val id: String,
-        @StringRes val name: Int,
+        val name: StringResource,
         val objects: List<StageObject>,
         val listener: StageListener,
         val roomSize: Float,
@@ -33,7 +39,7 @@ object StagePresets {
 
     val Default = Preset(
         id = DefaultId,
-        name = R.string.stage_preset_studio,
+        name = Res.string.stage_preset_studio,
         objects = layout(
             vocal = at(0f, 0.42f, 0.45f), center = at(0f, 0.4f, 0.52f),
             left = at(-0.62f, 0.4f, 0.42f), right = at(0.62f, 0.4f, 0.42f),
@@ -49,7 +55,7 @@ object StagePresets {
         Default,
         Preset(
             id = "living",
-            name = R.string.stage_preset_living,
+            name = Res.string.stage_preset_living,
             objects = layout(
                 vocal = at(0f, 0.38f, 0.6f), center = at(0f, 0.3f, 0.7f),
                 left = at(-0.8f, 0.36f, 0.6f), right = at(0.8f, 0.36f, 0.6f),
@@ -62,7 +68,7 @@ object StagePresets {
         ),
         Preset(
             id = "front_row",
-            name = R.string.stage_preset_front_row,
+            name = Res.string.stage_preset_front_row,
             objects = layout(
                 vocal = at(0f, 0.3f, 0.55f), center = at(0f, 0.25f, 0.75f),
                 left = at(-0.45f, 0.28f, 0.6f), right = at(0.45f, 0.28f, 0.6f),
@@ -75,7 +81,7 @@ object StagePresets {
         ),
         Preset(
             id = "on_stage",
-            name = R.string.stage_preset_on_stage,
+            name = Res.string.stage_preset_on_stage,
             objects = layout(
                 vocal = at(0f, 0.3f, 0.25f), center = at(0f, 0.25f, -0.45f),
                 left = at(-0.7f, 0.28f, 0.05f), right = at(0.7f, 0.28f, 0.05f),
@@ -88,7 +94,7 @@ object StagePresets {
         ),
         Preset(
             id = "around",
-            name = R.string.stage_preset_around,
+            name = Res.string.stage_preset_around,
             objects = layout(
                 vocal = at(0f, 0.38f, 0.5f), center = at(0f, 0.9f, 0.1f),
                 left = at(-0.75f, 0.38f, -0.35f), right = at(0.75f, 0.38f, -0.35f),
@@ -101,7 +107,7 @@ object StagePresets {
         ),
         Preset(
             id = "hall",
-            name = R.string.stage_preset_hall,
+            name = Res.string.stage_preset_hall,
             objects = layout(
                 vocal = at(0f, 0.2f, 0.55f), center = at(0f, 0.18f, 0.7f),
                 left = at(-0.4f, 0.2f, 0.6f), right = at(0.4f, 0.2f, 0.6f),
