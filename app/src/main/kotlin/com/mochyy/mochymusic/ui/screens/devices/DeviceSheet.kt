@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.link.DeviceKind
 import com.mochyy.mochymusic.link.phone.PairedDevice
+import com.mochyy.mochymusic.link.phone.tell
 import com.mochyy.mochymusic.ui.component.DefaultDialog
 import com.mochyy.mochymusic.ui.component.PopupSheetHandle
 import com.mochyy.mochymusic.ui.component.PopupSheetState
