@@ -53,7 +53,6 @@ import androidx.compose.ui.unit.sp
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.text.Normalizer
 import kotlin.math.exp
 import kotlin.math.roundToInt
 
@@ -107,16 +106,6 @@ private val JamoToRow: Map<Char, Int> = mapOf(
     'ㅅ' to 6, 'ㅆ' to 6, 'ㅇ' to 7, 'ㅈ' to 8, 'ㅉ' to 8, 'ㅊ' to 9, 'ㅋ' to 10, 'ㅌ' to 11, 'ㅍ' to 12, 'ㅎ' to 13,
 )
 
-/**
- * Chinese titles go by the pinyin of their first character, which only ICU knows. Built the first
- * time a Chinese title shows up, never for a library without one.
- */
-private val chineseIndex by lazy {
-    runCatching {
-        android.icu.text.AlphabeticIndex<Any>(android.icu.util.ULocale.SIMPLIFIED_CHINESE).buildImmutableIndex()
-    }.getOrNull()
-}
-
 private fun isKana(c: Char): Boolean = c in '぀'..'ヿ' || c in 'ㇰ'..'ㇿ' || c in 'ｦ'..'ﾝ'
 
 /** The hiragana row a kana belongs to; katakana is read as its hiragana. */
@@ -143,50 +132,64 @@ private fun kanaRow(c: Char): Int {
 fun indexSectionOf(title: String): IndexSection {
     val trimmed = title.trim()
     if (trimmed.isEmpty()) return SymbolSection
-    val firstCodePoint = trimmed.codePointAt(0)
+    val firstCharacter = firstCharacterOf(trimmed)
     // NFKC folds full-width Latin (Ａ) and half-width kana (ｶ) into the forms everything else uses.
-    val folded = Normalizer.normalize(String(Character.toChars(firstCodePoint)), Normalizer.Form.NFKC)
+    val folded = normalizeNfkc(firstCharacter)
     if (folded.isEmpty()) return SymbolSection
-    val cp = folded.codePointAt(0)
-    val script = runCatching { Character.UnicodeScript.of(cp) }.getOrNull() ?: return SymbolSection
+    // The script's name as java.lang.Character.UnicodeScript spells it; null where it isn't known.
+    val script = unicodeScriptNameOf(codePointOf(folded)) ?: return SymbolSection
     return when (script) {
-        Character.UnicodeScript.LATIN -> {
+        "LATIN" -> {
             // É files under E: the letter without its accent.
-            val base = Normalizer.normalize(folded, Normalizer.Form.NFD).first().uppercaseChar()
+            val base = normalizeNfd(folded).first().uppercaseChar()
             if (base in 'A'..'Z') IndexSection(IndexScript.LATIN, base - 'A', base.toString()) else SymbolSection
         }
-        Character.UnicodeScript.HIRAGANA, Character.UnicodeScript.KATAKANA -> {
+        "HIRAGANA", "KATAKANA" -> {
             val row = kanaRow(folded[0])
             IndexSection(IndexScript.JAPANESE, row, KanaRowLabels[row])
         }
-        Character.UnicodeScript.HANGUL -> {
+        "HANGUL" -> {
             val c = folded[0]
             val row = if (c in '가'..'힣') HangulInitialToRow[(c - '가') / 588] else JamoToRow[c] ?: 0
             IndexSection(IndexScript.KOREAN, row, HangulInitialLabels[row])
         }
-        Character.UnicodeScript.HAN -> {
+        "HAN" -> {
             // Kanji and hanzi share code points; kana anywhere in the title says it's Japanese.
             if (trimmed.any(::isKana)) {
                 IndexSection(IndexScript.JAPANESE, KanjiRow, KanaRowLabels[KanjiRow])
             } else {
-                val index = chineseIndex
-                val bucket = index?.getBucketIndex(folded) ?: 0
-                val pinyin = index?.getBucket(bucket)?.label.orEmpty()
+                val pinyin = pinyinBucketOf(folded)
                 // Labelled for now by its pinyin initial; the list relabels each section with the
                 // first character actually in it (see [indexSections]).
-                IndexSection(IndexScript.CHINESE, bucket, pinyin.ifBlank { folded })
+                IndexSection(IndexScript.CHINESE, pinyin.bucket, pinyin.label.ifBlank { folded })
             }
         }
-        Character.UnicodeScript.CYRILLIC -> alphabetSection(IndexScript.CYRILLIC, folded)
-        Character.UnicodeScript.GREEK -> alphabetSection(IndexScript.GREEK, folded)
-        Character.UnicodeScript.ARABIC -> alphabetSection(IndexScript.ARABIC, folded)
-        Character.UnicodeScript.HEBREW -> alphabetSection(IndexScript.HEBREW, folded)
-        Character.UnicodeScript.THAI -> alphabetSection(IndexScript.THAI, folded)
-        Character.UnicodeScript.DEVANAGARI, Character.UnicodeScript.BENGALI, Character.UnicodeScript.TAMIL,
-        Character.UnicodeScript.TELUGU, Character.UnicodeScript.KANNADA, Character.UnicodeScript.MALAYALAM,
-        Character.UnicodeScript.GUJARATI, Character.UnicodeScript.GURMUKHI, Character.UnicodeScript.ORIYA,
+        "CYRILLIC" -> alphabetSection(IndexScript.CYRILLIC, folded)
+        "GREEK" -> alphabetSection(IndexScript.GREEK, folded)
+        "ARABIC" -> alphabetSection(IndexScript.ARABIC, folded)
+        "HEBREW" -> alphabetSection(IndexScript.HEBREW, folded)
+        "THAI" -> alphabetSection(IndexScript.THAI, folded)
+        "DEVANAGARI", "BENGALI", "TAMIL", "TELUGU", "KANNADA", "MALAYALAM", "GUJARATI", "GURMUKHI", "ORIYA",
         -> alphabetSection(IndexScript.INDIC, folded)
         else -> SymbolSection
+    }
+}
+
+/** The first character of [text] as Java reads it: a surrogate pair (most emoji and rarer kanji) is one character. */
+private fun firstCharacterOf(text: String): String =
+    if (text.length > 1 && text[0].code in 0xD800..0xDBFF && text[1].code in 0xDC00..0xDFFF) {
+        text.substring(0, 2)
+    } else {
+        text.substring(0, 1)
+    }
+
+/** The code point at the start of [text], as String.codePointAt(0) gives it. */
+private fun codePointOf(text: String): Int {
+    val high = text[0].code
+    return if (text.length > 1 && high in 0xD800..0xDBFF && text[1].code in 0xDC00..0xDFFF) {
+        0x10000 + ((high - 0xD800) shl 10) + (text[1].code - 0xDC00)
+    } else {
+        high
     }
 }
 
