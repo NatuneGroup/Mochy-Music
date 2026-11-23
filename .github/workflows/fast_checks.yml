@@ -39,7 +39,7 @@ jobs:
       # the crossmix package isn't in yet: CrossmixTest's "blends stay short" fails on dev (found
       # 2026-11-23, when this step first ran them) and needs a look at the planner first
       - name: CrossMix app unit tests
-        run: ./gradlew --console=plain :app:testArm64FossDebugUnitTest --tests 'com.mochyy.mochymusic.crossmix.AnalysisQueueTest' --tests 'com.mochyy.mochymusic.crossmix.CrossmixAnalysisCacheTest' --warning-mode summary
+        run: ./gradlew --console=plain :app:testArm64FossDebugUnitTest --tests 'com.mochyy.mochymusic.crossmix.CrossmixTest' --warning-mode summary
       - name: Database schema
         run: |
           git add --intent-to-add app/schemas
