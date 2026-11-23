@@ -395,7 +395,7 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable("cipher_settings") {
-        com.mochyy.mochymusic.ui.screens.settings.CipherSettingsScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.AndroidCipherSettingsScreen(navController = navController)
     }
 
     composable("playback_diagnostics") {
