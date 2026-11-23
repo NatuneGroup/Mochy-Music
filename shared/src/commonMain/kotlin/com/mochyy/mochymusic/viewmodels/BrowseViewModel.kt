@@ -5,17 +5,15 @@ package com.mochyy.mochymusic.viewmodels
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.music.innertube.YouTube
+import com.mochyy.mochymusic.api.YouTubeRepository
 import com.music.innertube.models.YTItem
-import com.mochyy.mochymusic.utils.reportException
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class BrowseViewModel @Inject constructor(
-    savedStateHandle: SavedStateHandle
+// Koin builds it (di/OnlineModule.kt); browse comes from the platform's YouTube facade
+class BrowseViewModel(
+    private val youTube: YouTubeRepository,
+    savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     private val browseId: String? = savedStateHandle.get<String>("browseId")
 
@@ -25,14 +23,14 @@ class BrowseViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             browseId?.let {
-                YouTube.browse(browseId, null).onSuccess { result ->
+                youTube.browse(browseId, null).onSuccess { result ->
 
                     title.value = result.title
 
                     val allItems = result.items.flatMap { it.items }
                     items.value = allItems
                 }.onFailure {
-                    reportException(it)
+                    reportFailure(it)
                 }
             }
         }

@@ -27,6 +27,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -62,7 +63,7 @@ private fun Song.tvTrack() = TvTrack(
 )
 
 @Composable
-internal fun TvAlbumScreen(viewModel: AlbumViewModel = hiltViewModel(), transformKey: String? = null) {
+internal fun TvAlbumScreen(viewModel: AlbumViewModel = koinViewModel(), transformKey: String? = null) {
     val album by viewModel.albumWithSongs.collectAsState()
     val player = LocalPlayerConnection.current
     val current = album
@@ -90,7 +91,7 @@ internal fun TvAlbumScreen(viewModel: AlbumViewModel = hiltViewModel(), transfor
 }
 
 @Composable
-internal fun TvOnlinePlaylistScreen(viewModel: OnlinePlaylistViewModel = hiltViewModel(), transformKey: String? = null) {
+internal fun TvOnlinePlaylistScreen(viewModel: OnlinePlaylistViewModel = koinViewModel(), transformKey: String? = null) {
     val playlist by viewModel.playlist.collectAsState()
     val songs by viewModel.playlistSongs.collectAsState()
     val loading by viewModel.isLoading.collectAsState()

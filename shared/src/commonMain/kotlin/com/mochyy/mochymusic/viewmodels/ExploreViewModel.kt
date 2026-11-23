@@ -2,41 +2,36 @@
 
 package com.mochyy.mochymusic.viewmodels
 
-import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.music.innertube.YouTube
+import com.mochyy.mochymusic.api.YouTubeRepository
+import com.mochyy.mochymusic.constants.HideExplicitKey
+import com.mochyy.mochymusic.db.MochyDatabase
+import com.mochyy.mochymusic.utils.PreferencesCache
+import com.mochyy.mochymusic.utils.ioDispatcher
 import com.music.innertube.models.filterExplicit
 import com.music.innertube.pages.ExplorePage
-import com.mochyy.mochymusic.constants.HideExplicitKey
-import com.mochyy.mochymusic.db.MusicDatabase
-import com.mochyy.mochymusic.utils.dataStore
-import com.mochyy.mochymusic.utils.get
-import com.mochyy.mochymusic.utils.reportException
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class ExploreViewModel
-@Inject
-constructor(
-    @ApplicationContext val context: Context,
-    val database: MusicDatabase,
+// Koin builds it (di/OnlineModule.kt); the page comes from the platform's YouTube facade
+class ExploreViewModel(
+    private val youTube: YouTubeRepository,
+    private val database: MochyDatabase,
+    private val preferences: DataStore<Preferences>,
 ) : ViewModel() {
     val explorePage = MutableStateFlow<ExplorePage?>(null)
 
     private suspend fun load() {
-        YouTube
+        youTube
             .explore()
             .onSuccess { page ->
                 val artists: MutableMap<Int, String> = mutableMapOf()
                 val favouriteArtists: MutableMap<Int, String> = mutableMapOf()
-                database.allArtistsByPlayTime().first().let { list ->
+                database.historyDao.allArtistsByPlayTime().first().let { list ->
                     var favIndex = 0
                     for ((artistsIndex, artist) in list.withIndex()) {
                         artists[artistsIndex] = artist.id
@@ -61,15 +56,15 @@ constructor(
                                         }
                                     } ?: Int.MAX_VALUE
                                 firstArtistKey
-                            }.filterExplicit(context.dataStore.get(HideExplicitKey, false)),
+                            }.filterExplicit(PreferencesCache.current(preferences)[HideExplicitKey] ?: false),
                     )
             }.onFailure {
-                reportException(it)
+                reportFailure(it)
             }
     }
 
     init {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             load()
         }
     }

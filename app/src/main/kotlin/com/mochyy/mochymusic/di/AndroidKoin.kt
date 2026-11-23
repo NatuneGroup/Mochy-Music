@@ -1,5 +1,6 @@
 package com.mochyy.mochymusic.di
 
+import com.mochyy.mochymusic.di.koin.onlineAndroidModule
 import com.mochyy.mochymusic.ui.screens.settings.devspace.AppDevSpaceRepository
 import com.mochyy.mochymusic.ui.screens.settings.devspace.DevSpaceRepository
 import com.mochyy.mochymusic.utils.AndroidArtistPageSource
@@ -22,6 +23,7 @@ fun loadAndroidKoin() {
             single<ArtistPageSource> { AndroidArtistPageSource }
             single<DevSpaceRepository> { AppDevSpaceRepository }
             viewModelOf(::ArtistSimilarViewModel)
-        }
+        },
+        onlineAndroidModule,
     )
 }
