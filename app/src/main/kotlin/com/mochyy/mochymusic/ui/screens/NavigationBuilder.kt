@@ -461,7 +461,18 @@ fun NavGraphBuilder.navigationBuilder(
         com.mochyy.mochymusic.ui.screens.settings.InternetSettingsScreen(navController = navController)
     }
     composable(com.mochyy.mochymusic.ui.screens.settings.AiTranslatorSettingsRoute) {
-        com.mochyy.mochymusic.ui.screens.settings.AiTranslatorSettingsScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.AiTranslatorSettingsScreen(
+            navController = navController,
+            targets = com.mochyy.mochymusic.ui.player.menu.rememberTranslationTargets(),
+            languagePicker = { title, selected, onPick, onDismiss ->
+                com.mochyy.mochymusic.ui.player.menu.LanguagePickerSheet(
+                    title = title,
+                    selected = selected,
+                    onPick = onPick,
+                    onDismiss = onDismiss,
+                )
+            },
+        )
     }
     composable(com.mochyy.mochymusic.ui.screens.settings.ProxySettingsRoute) {
         com.mochyy.mochymusic.ui.screens.settings.ProxySettingsScreen(navController = navController)

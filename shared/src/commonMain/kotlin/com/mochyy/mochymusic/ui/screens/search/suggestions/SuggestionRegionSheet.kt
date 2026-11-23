@@ -21,13 +21,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.suggestion_choose_region
+import com.mochyy.mochymusic.shared.resources.suggestion_countries_regions
+import com.mochyy.mochymusic.shared.resources.suggestion_search_desc
+import com.mochyy.mochymusic.shared.resources.suggestion_search_regions
+import com.mochyy.mochymusic.shared.resources.suggestion_selected_desc
+import com.mochyy.mochymusic.shared.resources.suggestion_system
+import com.mochyy.mochymusic.shared.resources.suggestion_system_default
 import com.mochyy.mochymusic.constants.SuggestionRegionSlugToName
 import com.mochyy.mochymusic.ui.component.RemoteFocus
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,7 +63,7 @@ fun SuggestionRegionSheet(
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = stringResource(R.string.suggestion_choose_region),
+                text = stringResource(Res.string.suggestion_choose_region),
                 style = MaterialTheme.typography.labelLarge,
             )
 
@@ -68,11 +75,11 @@ fun SuggestionRegionSheet(
                         onSearch = {},
                         expanded = false,
                         onExpandedChange = {},
-                        placeholder = { Text(stringResource(R.string.suggestion_search_regions)) },
+                        placeholder = { Text(stringResource(Res.string.suggestion_search_regions)) },
                         leadingIcon = {
                             Icon(
                                 Icons.Default.Search,
-                                contentDescription = stringResource(R.string.suggestion_search_desc),
+                                contentDescription = stringResource(Res.string.suggestion_search_desc),
                             )
                         },
                     )
@@ -95,7 +102,7 @@ fun SuggestionRegionSheet(
             ) {
                 item {
                     Text(
-                        text = stringResource(R.string.suggestion_system),
+                        text = stringResource(Res.string.suggestion_system),
                         style = MaterialTheme.typography.titleSmall,
                         modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
                     )
@@ -103,7 +110,7 @@ fun SuggestionRegionSheet(
                 item {
                     val isSelected = currentRegionSlug == "system"
                     RegionListItem(
-                        headlineContent = { Text(stringResource(R.string.suggestion_system_default)) },
+                        headlineContent = { Text(stringResource(Res.string.suggestion_system_default)) },
                         selected = isSelected,
                         items = 1,
                         index = 0,
@@ -124,7 +131,7 @@ fun SuggestionRegionSheet(
 
                 item {
                     Text(
-                        text = stringResource(R.string.suggestion_countries_regions),
+                        text = stringResource(Res.string.suggestion_countries_regions),
                         style = MaterialTheme.typography.titleSmall,
                         modifier =
                             Modifier.padding(
@@ -213,7 +220,7 @@ fun RegionListItem(
                 {
                     Icon(
                         Icons.Default.Check,
-                        contentDescription = stringResource(R.string.suggestion_selected_desc),
+                        contentDescription = stringResource(Res.string.suggestion_selected_desc),
                     )
                 }
             } else {
