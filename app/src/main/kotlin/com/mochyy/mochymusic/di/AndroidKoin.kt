@@ -1,5 +1,7 @@
 package com.mochyy.mochymusic.di
 
+import android.content.Context
+import com.mochyy.mochymusic.di.koin.onboardingModule
 import com.mochyy.mochymusic.ui.screens.settings.devspace.AppDevSpaceRepository
 import com.mochyy.mochymusic.ui.screens.settings.devspace.DevSpaceRepository
 import com.mochyy.mochymusic.utils.AndroidArtistPageSource
@@ -16,7 +18,7 @@ import org.koin.dsl.module
  * Every Android-only binding goes here, so the shared appModule keeps one shape on every platform.
  * Loaded right after startMochyKoin in App.onCreate, before any composition asks for the view model.
  */
-fun loadAndroidKoin() {
+fun loadAndroidKoin(application: Context) {
     loadKoinModules(
         module {
             single<ArtistPageSource> { AndroidArtistPageSource }
@@ -24,4 +26,6 @@ fun loadAndroidKoin() {
             viewModelOf(::ArtistSimilarViewModel)
         }
     )
+    // onboarding's view model needs the application Context, so it is passed in rather than looked up
+    loadKoinModules(onboardingModule(application))
 }
