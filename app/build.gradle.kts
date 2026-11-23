@@ -463,7 +463,6 @@ dependencies {
     implementation(project(":providers:innertube"))
     implementation(project(":providers:kugou"))
     implementation(project(":providers:lrclib"))
-    implementation(project(":providers:lastfm"))
     implementation(project(":providers:betterlyrics"))
     implementation(project(":providers:simpmusic"))
     implementation(project(":providers:youlyplus"))
