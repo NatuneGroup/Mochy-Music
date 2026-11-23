@@ -2,9 +2,6 @@
 
 package com.mochyy.mochymusic.ui.screens.setup.onboarding
 
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
-import com.mochyy.mochymusic.ui.component.rememberDeviceTilt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.WindowInsets
@@ -12,11 +9,6 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.runtime.remember
-import com.mochyy.mochymusic.ui.component.BlurDirection
-import com.mochyy.mochymusic.ui.component.GlassState
-import com.mochyy.mochymusic.ui.component.ProgressiveGlassBackground
-import com.mochyy.mochymusic.ui.component.glassRoot
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -51,31 +43,135 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.importer.account.AccountImportState
 import com.mochyy.mochymusic.importer.account.AccountService
 import com.mochyy.mochymusic.importer.account.RemotePlaylist
-import com.mochyy.mochymusic.importer.transfer.TransferManifest
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.backup
+import com.mochyy.mochymusic.shared.resources.check
+import com.mochyy.mochymusic.shared.resources.download
+import com.mochyy.mochymusic.shared.resources.favorite
+import com.mochyy.mochymusic.shared.resources.library_music
+import com.mochyy.mochymusic.shared.resources.link
+import com.mochyy.mochymusic.shared.resources.onb_ai_filter_desc
+import com.mochyy.mochymusic.shared.resources.onb_ai_filter_title
+import com.mochyy.mochymusic.shared.resources.onb_all_set
+import com.mochyy.mochymusic.shared.resources.onb_auto_crossfade_desc
+import com.mochyy.mochymusic.shared.resources.onb_auto_crossfade_title
+import com.mochyy.mochymusic.shared.resources.onb_blur_warning_body
+import com.mochyy.mochymusic.shared.resources.onb_bringing_over
+import com.mochyy.mochymusic.shared.resources.onb_choose_what_to_import
+import com.mochyy.mochymusic.shared.resources.onb_continue
+import com.mochyy.mochymusic.shared.resources.onb_disable_blur
+import com.mochyy.mochymusic.shared.resources.onb_go_back
+import com.mochyy.mochymusic.shared.resources.onb_import
+import com.mochyy.mochymusic.shared.resources.onb_import_and_sync
+import com.mochyy.mochymusic.shared.resources.onb_import_ask_subtitle
+import com.mochyy.mochymusic.shared.resources.onb_import_backup_desc
+import com.mochyy.mochymusic.shared.resources.onb_import_backup_title
+import com.mochyy.mochymusic.shared.resources.onb_import_count
+import com.mochyy.mochymusic.shared.resources.onb_import_desc
+import com.mochyy.mochymusic.shared.resources.onb_import_from_link
+import com.mochyy.mochymusic.shared.resources.onb_import_from_link_desc
+import com.mochyy.mochymusic.shared.resources.onb_import_mode_subtitle
+import com.mochyy.mochymusic.shared.resources.onb_import_previous_desc
+import com.mochyy.mochymusic.shared.resources.onb_import_previous_title
+import com.mochyy.mochymusic.shared.resources.onb_import_title
+import com.mochyy.mochymusic.shared.resources.onb_just_import
+import com.mochyy.mochymusic.shared.resources.onb_last_one
+import com.mochyy.mochymusic.shared.resources.onb_last_one_subtitle
+import com.mochyy.mochymusic.shared.resources.onb_measured
+import com.mochyy.mochymusic.shared.resources.onb_never_store
+import com.mochyy.mochymusic.shared.resources.onb_next
+import com.mochyy.mochymusic.shared.resources.onb_next_lower
+import com.mochyy.mochymusic.shared.resources.onb_no_continue
+import com.mochyy.mochymusic.shared.resources.onb_nothing_in_account
+import com.mochyy.mochymusic.shared.resources.onb_open_sign_in
+import com.mochyy.mochymusic.shared.resources.onb_or
+import com.mochyy.mochymusic.shared.resources.onb_playlists
+import com.mochyy.mochymusic.shared.resources.onb_plays
+import com.mochyy.mochymusic.shared.resources.onb_profile_title
+import com.mochyy.mochymusic.shared.resources.onb_provider_apple_desc
+import com.mochyy.mochymusic.shared.resources.onb_provider_setup_body
+import com.mochyy.mochymusic.shared.resources.onb_provider_setup_subtitle
+import com.mochyy.mochymusic.shared.resources.onb_provider_setup_title
+import com.mochyy.mochymusic.shared.resources.onb_provider_spotify_desc
+import com.mochyy.mochymusic.shared.resources.onb_provider_tidal_desc
+import com.mochyy.mochymusic.shared.resources.onb_provider_youtube_desc
+import com.mochyy.mochymusic.shared.resources.onb_reading_export
+import com.mochyy.mochymusic.shared.resources.onb_reading_progress
+import com.mochyy.mochymusic.shared.resources.onb_restart_once
+import com.mochyy.mochymusic.shared.resources.onb_restarting
+import com.mochyy.mochymusic.shared.resources.onb_restore_counts
+import com.mochyy.mochymusic.shared.resources.onb_restore_progress
+import com.mochyy.mochymusic.shared.resources.onb_select_all
+import com.mochyy.mochymusic.shared.resources.onb_select_none
+import com.mochyy.mochymusic.shared.resources.onb_select_provider
+import com.mochyy.mochymusic.shared.resources.onb_selected
+import com.mochyy.mochymusic.shared.resources.onb_set_photo
+import com.mochyy.mochymusic.shared.resources.onb_sign_in_again
+import com.mochyy.mochymusic.shared.resources.onb_signed_in_as
+import com.mochyy.mochymusic.shared.resources.onb_skip
+import com.mochyy.mochymusic.shared.resources.onb_songs
+import com.mochyy.mochymusic.shared.resources.onb_stop
+import com.mochyy.mochymusic.shared.resources.onb_sync_bring_history_desc
+import com.mochyy.mochymusic.shared.resources.onb_sync_bring_history_title
+import com.mochyy.mochymusic.shared.resources.onb_sync_launch_desc
+import com.mochyy.mochymusic.shared.resources.onb_sync_launch_title
+import com.mochyy.mochymusic.shared.resources.onb_sync_new_playlists_desc
+import com.mochyy.mochymusic.shared.resources.onb_sync_new_playlists_title
+import com.mochyy.mochymusic.shared.resources.onb_sync_push_plays_desc
+import com.mochyy.mochymusic.shared.resources.onb_sync_push_plays_title
+import com.mochyy.mochymusic.shared.resources.onb_sync_subtitle
+import com.mochyy.mochymusic.shared.resources.onb_sync_title
+import com.mochyy.mochymusic.shared.resources.onb_try_again
+import com.mochyy.mochymusic.shared.resources.onb_username_hint
+import com.mochyy.mochymusic.shared.resources.onb_username_prompt
+import com.mochyy.mochymusic.shared.resources.onb_warning
+import com.mochyy.mochymusic.shared.resources.onb_what_to_import
+import com.mochyy.mochymusic.shared.resources.onb_yes
+import com.mochyy.mochymusic.shared.resources.onboarding_phone_internals
+import com.mochyy.mochymusic.shared.resources.person
+import com.mochyy.mochymusic.shared.resources.playlist_add
+import com.mochyy.mochymusic.shared.resources.restore
+import com.mochyy.mochymusic.shared.resources.tune
+import com.mochyy.mochymusic.shared.resources.warning
 import com.mochyy.mochymusic.viewmodels.TransferStep
 import com.mochyy.mochymusic.viewmodels.YouTubeSyncChoices
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
+
+/** how many of each an export holds, for the restore page's subtitle */
+class RestoreCounts(val songs: Int, val playlists: Int, val plays: Int)
+
+/**
+ * The blur warning page's backdrop blur: Android hands in the app's glass renderer so the band under
+ * the buttons blurs the page behind it, other platforms leave it out and get the plain fade.
+ */
+class OnbGlass(
+    /** applied to the page so the band can sample what's behind it */
+    val root: Modifier,
+    /** draws the band's blurred backdrop */
+    val backdrop: @Composable (Modifier) -> Unit,
+)
 
 // ---- 1. import? ----
 
 @Composable
-internal fun ImportAskPage(onYes: () -> Unit, onSkip: () -> Unit) {
+fun ImportAskPage(onYes: () -> Unit, onSkip: () -> Unit) {
     OnboardingPage(
-        badge = { PageBadge(painterResource(R.drawable.download)) },
-        title = stringResource(R.string.onb_import_title),
-        subtitle = stringResource(R.string.onb_import_ask_subtitle),
+        badge = { PageBadge(painterResource(Res.drawable.download)) },
+        title = stringResource(Res.string.onb_import_title),
+        subtitle = stringResource(Res.string.onb_import_ask_subtitle),
         footer = {
-            OnbButton(stringResource(R.string.onb_yes), onClick = onYes)
-            OnbButton(stringResource(R.string.onb_skip), onClick = onSkip, style = OnbButtonStyle.Secondary)
+            OnbButton(stringResource(Res.string.onb_yes), onClick = onYes)
+            OnbButton(stringResource(Res.string.onb_skip), onClick = onSkip, style = OnbButtonStyle.Secondary)
         },
     )
 }
@@ -83,7 +179,7 @@ internal fun ImportAskPage(onYes: () -> Unit, onSkip: () -> Unit) {
 // ---- 2. which kind ----
 
 @Composable
-internal fun ImportModePage(
+fun ImportModePage(
     onPreviousData: () -> Unit,
     onImport: () -> Unit,
     onBackup: () -> Unit,
@@ -91,28 +187,28 @@ internal fun ImportModePage(
     backupError: String?,
 ) {
     OnboardingPage(
-        badge = { PageBadge(painterResource(R.drawable.download)) },
-        title = stringResource(R.string.onb_import_title),
-        subtitle = stringResource(R.string.onb_import_mode_subtitle),
-        footer = { OnbButton(stringResource(R.string.onb_go_back), onClick = onBack, style = OnbButtonStyle.Secondary) },
+        badge = { PageBadge(painterResource(Res.drawable.download)) },
+        title = stringResource(Res.string.onb_import_title),
+        subtitle = stringResource(Res.string.onb_import_mode_subtitle),
+        footer = { OnbButton(stringResource(Res.string.onb_go_back), onClick = onBack, style = OnbButtonStyle.Secondary) },
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             OnbChoiceCard(
-                icon = painterResource(R.drawable.restore),
-                title = stringResource(R.string.onb_import_previous_title),
-                description = stringResource(R.string.onb_import_previous_desc),
+                icon = painterResource(Res.drawable.restore),
+                title = stringResource(Res.string.onb_import_previous_title),
+                description = stringResource(Res.string.onb_import_previous_desc),
                 onClick = onPreviousData,
             )
             OnbChoiceCard(
-                icon = painterResource(R.drawable.playlist_add),
-                title = stringResource(R.string.onb_import),
-                description = stringResource(R.string.onb_import_desc),
+                icon = painterResource(Res.drawable.playlist_add),
+                title = stringResource(Res.string.onb_import),
+                description = stringResource(Res.string.onb_import_desc),
                 onClick = onImport,
             )
             OnbChoiceCard(
-                icon = painterResource(R.drawable.backup),
-                title = stringResource(R.string.onb_import_backup_title),
-                description = stringResource(R.string.onb_import_backup_desc),
+                icon = painterResource(Res.drawable.backup),
+                title = stringResource(Res.string.onb_import_backup_title),
+                description = stringResource(Res.string.onb_import_backup_desc),
                 onClick = onBackup,
             )
             if (backupError != null) {
@@ -125,21 +221,21 @@ internal fun ImportModePage(
 // ---- 2b. bringing previous data over ----
 
 @Composable
-internal fun RestoringPage(step: TransferStep, manifest: TransferManifest?) {
+fun RestoringPage(step: TransferStep, counts: RestoreCounts?) {
     val done = step is TransferStep.Done
     val progress = if (done) 1f else (step as? TransferStep.Working)?.progress ?: 0f
     OnboardingPage(
-        badge = { PageBadge(painterResource(if (done) R.drawable.check else R.drawable.restore)) },
-        title = if (done) stringResource(R.string.onb_all_set) else stringResource(R.string.onb_bringing_over),
+        badge = { PageBadge(painterResource(if (done) Res.drawable.check else Res.drawable.restore)) },
+        title = if (done) stringResource(Res.string.onb_all_set) else stringResource(Res.string.onb_bringing_over),
         subtitle = when {
-            done -> stringResource(R.string.onb_restart_once)
-            manifest != null -> stringResource(
-                R.string.onb_restore_counts,
-                pluralStringResource(R.plurals.onb_songs, manifest.songs, manifest.songs),
-                pluralStringResource(R.plurals.onb_playlists, manifest.playlists, manifest.playlists),
-                pluralStringResource(R.plurals.onb_plays, manifest.plays, manifest.plays),
+            done -> stringResource(Res.string.onb_restart_once)
+            counts != null -> stringResource(
+                Res.string.onb_restore_counts,
+                pluralStringResource(Res.plurals.onb_songs, counts.songs, counts.songs),
+                pluralStringResource(Res.plurals.onb_playlists, counts.playlists, counts.playlists),
+                pluralStringResource(Res.plurals.onb_plays, counts.plays, counts.plays),
             )
-            else -> stringResource(R.string.onb_reading_export)
+            else -> stringResource(Res.string.onb_reading_export)
         },
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -153,7 +249,7 @@ internal fun RestoringPage(step: TransferStep, manifest: TransferManifest?) {
                     .clip(CircleShape),
             )
             Text(
-                if (done) stringResource(R.string.onb_restarting) else stringResource(R.string.onb_restore_progress, (progress * 100).toInt()),
+                if (done) stringResource(Res.string.onb_restarting) else stringResource(Res.string.onb_restore_progress, (progress * 100).toInt()),
                 color = Onb.Subtitle,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -166,18 +262,18 @@ internal fun RestoringPage(step: TransferStep, manifest: TransferManifest?) {
 
 /** onPasteLink adds the "or import from a playlist link" choice under the providers */
 @Composable
-internal fun ProviderListPage(onPick: (AccountService) -> Unit, onBack: () -> Unit, onPasteLink: (() -> Unit)? = null) {
+fun ProviderListPage(onPick: (AccountService) -> Unit, onBack: () -> Unit, onPasteLink: (() -> Unit)? = null) {
     OnboardingPage(
-        badge = { PageBadge(painterResource(R.drawable.library_music)) },
-        title = stringResource(R.string.onb_select_provider),
-        footer = { OnbButton(stringResource(R.string.onb_go_back), onClick = onBack, style = OnbButtonStyle.Secondary) },
+        badge = { PageBadge(painterResource(Res.drawable.library_music)) },
+        title = stringResource(Res.string.onb_select_provider),
+        footer = { OnbButton(stringResource(Res.string.onb_go_back), onClick = onBack, style = OnbButtonStyle.Secondary) },
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             listOf(
-                AccountService.SPOTIFY to stringResource(R.string.onb_provider_spotify_desc),
-                AccountService.APPLE_MUSIC to stringResource(R.string.onb_provider_apple_desc),
-                AccountService.YOUTUBE_MUSIC to stringResource(R.string.onb_provider_youtube_desc),
-                AccountService.TIDAL to stringResource(R.string.onb_provider_tidal_desc),
+                AccountService.SPOTIFY to stringResource(Res.string.onb_provider_spotify_desc),
+                AccountService.APPLE_MUSIC to stringResource(Res.string.onb_provider_apple_desc),
+                AccountService.YOUTUBE_MUSIC to stringResource(Res.string.onb_provider_youtube_desc),
+                AccountService.TIDAL to stringResource(Res.string.onb_provider_tidal_desc),
             ).forEach { (service, description) ->
                 OnbCard(modifier = Modifier.fillMaxWidth(), onClick = { onPick(service) }, shape = RoundedCornerShape(20.dp)) {
                     Row(
@@ -200,11 +296,11 @@ internal fun ProviderListPage(onPick: (AccountService) -> Unit, onBack: () -> Un
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        PageBadge(painterResource(R.drawable.link))
+                        PageBadge(painterResource(Res.drawable.link))
                         Spacer(Modifier.width(14.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(stringResource(R.string.onb_import_from_link), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                            Text(stringResource(R.string.onb_import_from_link_desc), color = Onb.Muted, fontSize = 12.sp, maxLines = 2)
+                            Text(stringResource(Res.string.onb_import_from_link), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text(stringResource(Res.string.onb_import_from_link_desc), color = Onb.Muted, fontSize = 12.sp, maxLines = 2)
                         }
                     }
                 }
@@ -224,7 +320,7 @@ private fun OrDivider() {
     ) {
         Box(Modifier.weight(1f).height(1.dp).background(Onb.Card))
         Text(
-            text = stringResource(R.string.onb_or),
+            text = stringResource(Res.string.onb_or),
             color = Onb.Muted,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
@@ -237,7 +333,7 @@ private fun OrDivider() {
 // ---- 4. setup (instructions, the browser sheet opens over this) ----
 
 @Composable
-internal fun ProviderSetupPage(
+fun ProviderSetupPage(
     service: AccountService,
     state: AccountImportState?,
     browserOpen: Boolean,
@@ -247,18 +343,18 @@ internal fun ProviderSetupPage(
 ) {
     OnboardingPage(
         badge = { ProviderSquircle(service, size = 40.dp) },
-        title = stringResource(R.string.onb_provider_setup_title, service.label),
-        subtitle = stringResource(R.string.onb_provider_setup_subtitle),
+        title = stringResource(Res.string.onb_provider_setup_title, service.label),
+        subtitle = stringResource(Res.string.onb_provider_setup_subtitle),
         footer = {
             when (state) {
                 is AccountImportState.Failed -> OnbButton(
-                    if (state.signedOut) stringResource(R.string.onb_sign_in_again) else stringResource(R.string.onb_try_again),
+                    if (state.signedOut) stringResource(Res.string.onb_sign_in_again) else stringResource(Res.string.onb_try_again),
                     onClick = onRetry,
                 )
                 is AccountImportState.Loading, is AccountImportState.Choosing -> Unit
-                else -> if (!browserOpen) OnbButton(stringResource(R.string.onb_open_sign_in), onClick = onOpenBrowser)
+                else -> if (!browserOpen) OnbButton(stringResource(Res.string.onb_open_sign_in), onClick = onOpenBrowser)
             }
-            OnbButton(stringResource(R.string.onb_go_back), onClick = onBack, style = OnbButtonStyle.Secondary)
+            OnbButton(stringResource(Res.string.onb_go_back), onClick = onBack, style = OnbButtonStyle.Secondary)
         },
     ) {
         when (state) {
@@ -269,7 +365,7 @@ internal fun ProviderSetupPage(
             }
             is AccountImportState.Failed -> Text(state.message, color = Color(0xFFFF8A80), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             else -> Text(
-                stringResource(R.string.onb_provider_setup_body, service.label),
+                stringResource(Res.string.onb_provider_setup_body, service.label),
                 color = Onb.Muted,
                 fontSize = 14.sp,
             )
@@ -280,7 +376,7 @@ internal fun ProviderSetupPage(
 // ---- 5. what to sync or import ----
 
 @Composable
-internal fun WhatToSyncPage(
+fun WhatToSyncPage(
     service: AccountService,
     state: AccountImportState?,
     onToggle: (String) -> Unit,
@@ -295,28 +391,28 @@ internal fun WhatToSyncPage(
     val selectedCount = choosing?.selected?.size ?: 0
     OnboardingPage(
         badge = { ProviderSquircle(service, size = 40.dp) },
-        title = stringResource(R.string.onb_what_to_import),
-        subtitle = choosing?.accountName?.let { stringResource(R.string.onb_signed_in_as, it) },
+        title = stringResource(Res.string.onb_what_to_import),
+        subtitle = choosing?.accountName?.let { stringResource(Res.string.onb_signed_in_as, it) },
         scrollable = false,
         footer = {
             if (reading != null) {
-                OnbButton(stringResource(R.string.onb_stop), onClick = onCancelReading, style = OnbButtonStyle.Secondary)
+                OnbButton(stringResource(Res.string.onb_stop), onClick = onCancelReading, style = OnbButtonStyle.Secondary)
             } else {
                 OnbButton(
                     text = when {
-                        selectedCount == 0 -> stringResource(R.string.onb_choose_what_to_import)
-                        service == AccountService.YOUTUBE_MUSIC -> stringResource(R.string.onb_next)
-                        else -> stringResource(R.string.onb_import_count, selectedCount)
+                        selectedCount == 0 -> stringResource(Res.string.onb_choose_what_to_import)
+                        service == AccountService.YOUTUBE_MUSIC -> stringResource(Res.string.onb_next)
+                        else -> stringResource(Res.string.onb_import_count, selectedCount)
                     },
                     enabled = selectedCount > 0,
                     onClick = onConfirm,
                 )
-                OnbButton(stringResource(R.string.onb_go_back), onClick = onBack, style = OnbButtonStyle.Secondary)
+                OnbButton(stringResource(Res.string.onb_go_back), onClick = onBack, style = OnbButtonStyle.Secondary)
             }
         },
     ) {
         if (reading != null) {
-            Text(stringResource(R.string.onb_reading_progress, reading.label, reading.done + 1, reading.total), color = Onb.Subtitle, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(Res.string.onb_reading_progress, reading.label, reading.done + 1, reading.total), color = Onb.Subtitle, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(10.dp))
             LinearProgressIndicator(
                 progress = { reading.done.toFloat() / reading.total.coerceAtLeast(1) },
@@ -329,7 +425,7 @@ internal fun WhatToSyncPage(
         if (choosing == null) return@OnboardingPage
         val allSelected = selectedCount == choosing.playlists.size && selectedCount > 0
         Text(
-            text = if (allSelected) stringResource(R.string.onb_select_none) else stringResource(R.string.onb_select_all),
+            text = if (allSelected) stringResource(Res.string.onb_select_none) else stringResource(Res.string.onb_select_all),
             color = Onb.Subtitle,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
@@ -350,7 +446,7 @@ internal fun WhatToSyncPage(
             ) {
                 if (choosing.playlists.isEmpty()) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
-                        Text(stringResource(R.string.onb_nothing_in_account), color = Onb.Muted, fontSize = 14.sp)
+                        Text(stringResource(Res.string.onb_nothing_in_account), color = Onb.Muted, fontSize = 14.sp)
                     }
                 }
                 items(choosing.playlists, key = { it.id }) { playlist ->
@@ -389,7 +485,7 @@ private fun CoverTile(playlist: RemotePlaylist, selected: Boolean, onClick: () -
                         .background(Brush.linearGradient(listOf(Color(0xFF5B5B66), Color(0xFF1F1F24)))),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(painterResource(R.drawable.favorite), contentDescription = null, tint = Color.White, modifier = Modifier.size(48.dp))
+                    Icon(painterResource(Res.drawable.favorite), contentDescription = null, tint = Color.White, modifier = Modifier.size(48.dp))
                 }
                 playlist.coverUrl != null -> AsyncImage(
                     model = playlist.coverUrl,
@@ -416,13 +512,13 @@ private fun CoverTile(playlist: RemotePlaylist, selected: Boolean, onClick: () -
                         .background(Color.White),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(painterResource(R.drawable.check), contentDescription = stringResource(R.string.onb_selected), tint = Color.Black, modifier = Modifier.size(18.dp))
+                    Icon(painterResource(Res.drawable.check), contentDescription = stringResource(Res.string.onb_selected), tint = Color.Black, modifier = Modifier.size(18.dp))
                 }
             }
         }
         Spacer(Modifier.height(8.dp))
         Text(playlist.name, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        val songCount = playlist.trackCount?.let { pluralStringResource(R.plurals.onb_songs, it, it) }
+        val songCount = playlist.trackCount?.let { pluralStringResource(Res.plurals.onb_songs, it, it) }
         val detail = listOfNotNull(songCount, playlist.subtitle).joinToString(" · ")
         if (detail.isNotEmpty()) Text(detail, color = Onb.Muted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
@@ -431,7 +527,7 @@ private fun CoverTile(playlist: RemotePlaylist, selected: Boolean, onClick: () -
 // ---- 6. youtube only: also keep it in sync? ----
 
 @Composable
-internal fun SyncOptionsPage(
+fun SyncOptionsPage(
     choices: YouTubeSyncChoices,
     onChange: (YouTubeSyncChoices) -> Unit,
     reading: AccountImportState.Reading?,
@@ -441,12 +537,12 @@ internal fun SyncOptionsPage(
 ) {
     OnboardingPage(
         badge = { ProviderSquircle(AccountService.YOUTUBE_MUSIC, size = 40.dp) },
-        title = stringResource(R.string.onb_sync_title),
-        subtitle = stringResource(R.string.onb_sync_subtitle),
+        title = stringResource(Res.string.onb_sync_title),
+        subtitle = stringResource(Res.string.onb_sync_subtitle),
         footer = {
             if (reading != null) {
                 Text(
-                    stringResource(R.string.onb_reading_progress, reading.label, reading.done + 1, reading.total),
+                    stringResource(Res.string.onb_reading_progress, reading.label, reading.done + 1, reading.total),
                     color = Onb.Subtitle,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -454,34 +550,34 @@ internal fun SyncOptionsPage(
                     overflow = TextOverflow.Ellipsis,
                 )
             } else {
-                OnbButton(stringResource(R.string.onb_import_and_sync), onClick = onSync)
-                OnbButton(stringResource(R.string.onb_just_import), onClick = onJustImport, style = OnbButtonStyle.Secondary)
-                OnbButton(stringResource(R.string.onb_go_back), onClick = onBack, style = OnbButtonStyle.Secondary)
+                OnbButton(stringResource(Res.string.onb_import_and_sync), onClick = onSync)
+                OnbButton(stringResource(Res.string.onb_just_import), onClick = onJustImport, style = OnbButtonStyle.Secondary)
+                OnbButton(stringResource(Res.string.onb_go_back), onClick = onBack, style = OnbButtonStyle.Secondary)
             }
         },
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             OnbToggleCard(
-                title = stringResource(R.string.onb_sync_launch_title),
-                description = stringResource(R.string.onb_sync_launch_desc),
+                title = stringResource(Res.string.onb_sync_launch_title),
+                description = stringResource(Res.string.onb_sync_launch_desc),
                 checked = choices.syncOnLaunch,
                 onCheckedChange = { onChange(choices.copy(syncOnLaunch = it)) },
             )
             OnbToggleCard(
-                title = stringResource(R.string.onb_sync_new_playlists_title),
-                description = stringResource(R.string.onb_sync_new_playlists_desc),
+                title = stringResource(Res.string.onb_sync_new_playlists_title),
+                description = stringResource(Res.string.onb_sync_new_playlists_desc),
                 checked = choices.newPlaylistsToYouTube,
                 onCheckedChange = { onChange(choices.copy(newPlaylistsToYouTube = it)) },
             )
             OnbToggleCard(
-                title = stringResource(R.string.onb_sync_push_plays_title),
-                description = stringResource(R.string.onb_sync_push_plays_desc),
+                title = stringResource(Res.string.onb_sync_push_plays_title),
+                description = stringResource(Res.string.onb_sync_push_plays_desc),
                 checked = choices.reportPlays,
                 onCheckedChange = { onChange(choices.copy(reportPlays = it)) },
             )
             OnbToggleCard(
-                title = stringResource(R.string.onb_sync_bring_history_title),
-                description = stringResource(R.string.onb_sync_bring_history_desc),
+                title = stringResource(Res.string.onb_sync_bring_history_title),
+                description = stringResource(Res.string.onb_sync_bring_history_desc),
                 checked = choices.copyHistory,
                 onCheckedChange = { onChange(choices.copy(copyHistory = it)) },
             )
@@ -492,7 +588,7 @@ internal fun SyncOptionsPage(
 // ---- 7. profile ----
 
 @Composable
-internal fun ProfilePage(
+fun ProfilePage(
     username: String,
     onUsernameChange: (String) -> Unit,
     photo: Any?,
@@ -500,58 +596,56 @@ internal fun ProfilePage(
     cardNumber: String,
     joinedText: String,
     onNext: () -> Unit,
+    /** the platform's lean for the card; Android passes the phone's tilt, others leave it still */
+    cardModifier: Modifier = Modifier,
 ) {
     OnboardingPage(
-        badge = { PageBadge(painterResource(R.drawable.person)) },
-        title = stringResource(R.string.onb_profile_title),
+        badge = { PageBadge(painterResource(Res.drawable.person)) },
+        title = stringResource(Res.string.onb_profile_title),
         footer = {
             Text(
-                stringResource(R.string.onb_never_store),
+                stringResource(Res.string.onb_never_store),
                 color = Onb.Faint,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 4.dp),
             )
-            OnbButton(stringResource(R.string.onb_next), onClick = onNext, enabled = username.isNotBlank())
+            OnbButton(stringResource(Res.string.onb_next), onClick = onNext, enabled = username.isNotBlank())
         },
     ) {
-        Text(stringResource(R.string.onb_username_prompt), color = Onb.Muted, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(Res.string.onb_username_prompt), color = Onb.Muted, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(10.dp))
-        OnbTextField(value = username, onValueChange = { onUsernameChange(it.take(32)) }, placeholder = stringResource(R.string.onb_username_hint))
+        OnbTextField(value = username, onValueChange = { onUsernameChange(it.take(32)) }, placeholder = stringResource(Res.string.onb_username_hint))
         Spacer(Modifier.height(24.dp))
-        Text(stringResource(R.string.onb_set_photo), color = Onb.Muted, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(Res.string.onb_set_photo), color = Onb.Muted, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(12.dp))
-        val deviceTilt = rememberDeviceTilt()
         ProfileIdCard(
             username = username,
             photo = photo,
             cardNumber = cardNumber,
             joinedText = joinedText,
             onPhotoClick = onPhotoClick,
-            modifier = Modifier.graphicsLayer {
-                rotationX = deviceTilt.rotationX
-                rotationY = deviceTilt.rotationY
-                cameraDistance = 14f * density
-            },
+            modifier = cardModifier,
         )
     }
 }
 
 @Composable
-internal fun BlurWarningPage(
+fun BlurWarningPage(
     disableBlur: Boolean,
     onDisableBlurChange: (Boolean) -> Unit,
     detected: String?,
     onContinue: () -> Unit,
+    /** Android hands in the app's glass so the band blurs the page; other platforms leave it out */
+    glass: OnbGlass? = null,
 ) {
-    val glass = remember { GlassState() }
     val navBar = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val side = rememberSidePadding(maxWidth)
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .glassRoot(glass),
+                .then(glass?.root ?: Modifier),
         ) {
             Column(
                 modifier = Modifier
@@ -561,12 +655,12 @@ internal fun BlurWarningPage(
                     .padding(top = Onb.TopClearance + 18.dp),
             ) {
                 Column(modifier = Modifier.padding(horizontal = side)) {
-                    PageBadge(painterResource(R.drawable.warning))
+                    PageBadge(painterResource(Res.drawable.warning))
                     Spacer(Modifier.height(22.dp))
-                    Text(stringResource(R.string.onb_warning), color = Onb.Title, fontSize = 34.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold, letterSpacing = OnbTitleTracking)
+                    Text(stringResource(Res.string.onb_warning), color = Onb.Title, fontSize = 34.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold, letterSpacing = OnbTitleTracking)
                     Spacer(Modifier.height(10.dp))
                     Text(
-                        stringResource(R.string.onb_blur_warning_body),
+                        stringResource(Res.string.onb_blur_warning_body),
                         color = Onb.Subtitle,
                         fontSize = 18.sp,
                         lineHeight = 23.sp,
@@ -575,8 +669,8 @@ internal fun BlurWarningPage(
                     )
                     Spacer(Modifier.height(22.dp))
                     OnbToggleCard(
-                        title = stringResource(R.string.onb_disable_blur),
-                        description = detected?.let { stringResource(R.string.onb_measured, it) } ?: "",
+                        title = stringResource(Res.string.onb_disable_blur),
+                        description = detected?.let { stringResource(Res.string.onb_measured, it) } ?: "",
                         checked = disableBlur,
                         onCheckedChange = onDisableBlurChange,
                         leading = { Box(Modifier.size(22.dp).clip(CircleShape).background(Onb.Badge)) },
@@ -584,7 +678,7 @@ internal fun BlurWarningPage(
                     Spacer(Modifier.height(18.dp))
                 }
                 Image(
-                    painter = painterResource(R.drawable.onboarding_phone_internals),
+                    painter = painterResource(Res.drawable.onboarding_phone_internals),
                     contentDescription = null,
                     contentScale = ContentScale.FillWidth,
                     alignment = Alignment.TopCenter,
@@ -602,13 +696,7 @@ internal fun BlurWarningPage(
                 .fillMaxWidth()
                 .height(132.dp + navBar),
         ) {
-            ProgressiveGlassBackground(
-                state = glass,
-                maxBlurRadius = { 30f },
-                direction = BlurDirection.TopToBottom,
-                steps = 3,
-                modifier = Modifier.matchParentSize(),
-            )
+            if (glass != null) glass.backdrop(Modifier.matchParentSize())
             val progressiveBar = com.mochyy.mochymusic.ui.component.rememberProgressiveBlur()
             Box(
                 modifier = Modifier
@@ -622,7 +710,7 @@ internal fun BlurWarningPage(
                     ),
             )
             OnbButton(
-                text = if (disableBlur) stringResource(R.string.onb_continue) else stringResource(R.string.onb_no_continue),
+                text = if (disableBlur) stringResource(Res.string.onb_continue) else stringResource(Res.string.onb_no_continue),
                 onClick = onContinue,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -637,7 +725,7 @@ internal fun BlurWarningPage(
 // ---- 10. last one ----
 
 @Composable
-internal fun LastOnePage(
+fun LastOnePage(
     autoCrossfade: Boolean,
     onAutoCrossfadeChange: (Boolean) -> Unit,
     aiArtistFilter: Boolean,
@@ -645,22 +733,22 @@ internal fun LastOnePage(
     onNext: () -> Unit,
 ) {
     OnboardingPage(
-        badge = { PageBadge(painterResource(R.drawable.tune)) },
-        title = stringResource(R.string.onb_last_one),
-        subtitle = stringResource(R.string.onb_last_one_subtitle),
-        footer = { OnbButton(stringResource(R.string.onb_next_lower), onClick = onNext) },
+        badge = { PageBadge(painterResource(Res.drawable.tune)) },
+        title = stringResource(Res.string.onb_last_one),
+        subtitle = stringResource(Res.string.onb_last_one_subtitle),
+        footer = { OnbButton(stringResource(Res.string.onb_next_lower), onClick = onNext) },
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             OnbToggleCard(
-                title = stringResource(R.string.onb_auto_crossfade_title),
-                description = stringResource(R.string.onb_auto_crossfade_desc),
+                title = stringResource(Res.string.onb_auto_crossfade_title),
+                description = stringResource(Res.string.onb_auto_crossfade_desc),
                 checked = autoCrossfade,
                 onCheckedChange = onAutoCrossfadeChange,
                 header = { CrossfadeBanner() },
             )
             OnbToggleCard(
-                title = stringResource(R.string.onb_ai_filter_title),
-                description = stringResource(R.string.onb_ai_filter_desc),
+                title = stringResource(Res.string.onb_ai_filter_title),
+                description = stringResource(Res.string.onb_ai_filter_desc),
                 checked = aiArtistFilter,
                 onCheckedChange = onAiArtistFilterChange,
             )
