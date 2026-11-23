@@ -28,24 +28,44 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.mochyy.mochymusic.R
-import com.mochyy.mochymusic.importer.LinkImporter
+import com.mochyy.mochymusic.importer.ImportSource
 import com.mochyy.mochymusic.importer.ParsedImport
 import com.mochyy.mochymusic.importer.PlaylistAuthor
-import com.mochyy.mochymusic.ui.screens.library.ImportSourceIcon
+import com.mochyy.mochymusic.importer.account.AccountService
+import com.mochyy.mochymusic.importer.detectLinkSource
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.library_music
+import com.mochyy.mochymusic.shared.resources.link
+import com.mochyy.mochymusic.shared.resources.onb_go_back
+import com.mochyy.mochymusic.shared.resources.onb_link_by
+import com.mochyy.mochymusic.shared.resources.onb_link_clear
+import com.mochyy.mochymusic.shared.resources.onb_link_hint
+import com.mochyy.mochymusic.shared.resources.onb_link_import_songs
+import com.mochyy.mochymusic.shared.resources.onb_link_paste
+import com.mochyy.mochymusic.shared.resources.onb_link_read
+import com.mochyy.mochymusic.shared.resources.onb_link_reading
+import com.mochyy.mochymusic.shared.resources.onb_link_reading_body
+import com.mochyy.mochymusic.shared.resources.onb_link_source_songs
+import com.mochyy.mochymusic.shared.resources.onb_link_subtitle
+import com.mochyy.mochymusic.shared.resources.onb_link_title
+import com.mochyy.mochymusic.shared.resources.onb_link_unknown
+import com.mochyy.mochymusic.shared.resources.onb_songs
+import com.mochyy.mochymusic.shared.resources.queue_music
+import com.mochyy.mochymusic.ui.screens.search.SearchColors
 import com.mochyy.mochymusic.viewmodels.PendingImport
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
-internal fun LinkImportPage(
+fun LinkImportPage(
     link: String,
     onLinkChange: (String) -> Unit,
     pending: PendingImport,
@@ -56,24 +76,24 @@ internal fun LinkImportPage(
     val ready = pending as? PendingImport.Ready
     val reading = pending is PendingImport.Loading
     // just a few contains() checks, so it's fine to redo as the user types
-    val recognised = remember(link) { LinkImporter.detect(link) != null }
+    val recognised = remember(link) { detectLinkSource(link) != null }
 
     OnboardingPage(
-        badge = { PageBadge(painterResource(R.drawable.link)) },
-        title = stringResource(R.string.onb_link_title),
-        subtitle = stringResource(R.string.onb_link_subtitle),
+        badge = { PageBadge(painterResource(Res.drawable.link)) },
+        title = stringResource(Res.string.onb_link_title),
+        subtitle = stringResource(Res.string.onb_link_subtitle),
         footer = {
             if (ready != null) {
                 val songs = ready.parsed.totalSongs
-                OnbButton(pluralStringResource(R.plurals.onb_link_import_songs, songs, songs), onClick = { onImport(ready.parsed) })
+                OnbButton(pluralStringResource(Res.plurals.onb_link_import_songs, songs, songs), onClick = { onImport(ready.parsed) })
             } else {
                 OnbButton(
-                    text = stringResource(if (reading) R.string.onb_link_reading else R.string.onb_link_read),
+                    text = stringResource(if (reading) Res.string.onb_link_reading else Res.string.onb_link_read),
                     enabled = recognised && !reading,
                     onClick = onRead,
                 )
             }
-            OnbButton(stringResource(R.string.onb_go_back), onClick = onBack, style = OnbButtonStyle.Secondary)
+            OnbButton(stringResource(Res.string.onb_go_back), onClick = onBack, style = OnbButtonStyle.Secondary)
         },
     ) {
         LinkField(link = link, onLinkChange = onLinkChange, onDone = { if (recognised && !reading && ready == null) onRead() })
@@ -82,12 +102,12 @@ internal fun LinkImportPage(
             is PendingImport.Loading -> Row(verticalAlignment = Alignment.CenterVertically) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
                 Spacer(Modifier.width(12.dp))
-                Text(stringResource(R.string.onb_link_reading_body), color = Onb.Subtitle, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(Res.string.onb_link_reading_body), color = Onb.Subtitle, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             }
             is PendingImport.Failed -> Text(pending.message, color = Color(0xFFFF8A80), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             is PendingImport.Ready -> LinkPreviewCard(pending.parsed)
             PendingImport.Idle -> if (link.isNotBlank() && !recognised) {
-                Text(stringResource(R.string.onb_link_unknown), color = Onb.Muted, fontSize = 14.sp)
+                Text(stringResource(Res.string.onb_link_unknown), color = Onb.Muted, fontSize = 14.sp)
             }
         }
     }
@@ -100,13 +120,13 @@ private fun LinkField(link: String, onLinkChange: (String) -> Unit, onDone: () -
     OnbTextField(
         value = link,
         onValueChange = onLinkChange,
-        placeholder = stringResource(R.string.onb_link_hint),
+        placeholder = stringResource(Res.string.onb_link_hint),
         keyboardType = KeyboardType.Uri,
         onDone = onDone,
         trailing = {
             val showPaste = link.isEmpty()
             Text(
-                text = stringResource(if (showPaste) R.string.onb_link_paste else R.string.onb_link_clear),
+                text = stringResource(if (showPaste) Res.string.onb_link_paste else Res.string.onb_link_clear),
                 color = Color.White,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
@@ -145,7 +165,7 @@ private fun LinkPreviewCard(parsed: ParsedImport) {
                     if (cover != null) {
                         AsyncImage(model = cover, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                     } else {
-                        Icon(painterResource(R.drawable.queue_music), contentDescription = null, tint = Onb.Muted, modifier = Modifier.size(32.dp))
+                        Icon(painterResource(Res.drawable.queue_music), contentDescription = null, tint = Onb.Muted, modifier = Modifier.size(32.dp))
                     }
                 }
                 Spacer(Modifier.width(14.dp))
@@ -153,12 +173,12 @@ private fun LinkPreviewCard(parsed: ParsedImport) {
                     Text(name, color = Color.White, fontSize = 17.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         parsed.provider?.let { source ->
-                            ImportSourceIcon(source, size = 18.dp)
+                            SourceBadge(source, size = 18.dp)
                             Spacer(Modifier.width(6.dp))
                         }
-                        val songs = pluralStringResource(R.plurals.onb_songs, parsed.totalSongs, parsed.totalSongs)
+                        val songs = pluralStringResource(Res.plurals.onb_songs, parsed.totalSongs, parsed.totalSongs)
                         Text(
-                            text = parsed.provider?.let { stringResource(R.string.onb_link_source_songs, it.label, songs) } ?: songs,
+                            text = parsed.provider?.let { stringResource(Res.string.onb_link_source_songs, it.label, songs) } ?: songs,
                             color = Onb.Muted,
                             fontSize = 12.sp,
                             maxLines = 1,
@@ -197,12 +217,42 @@ private fun AuthorRow(author: PlaylistAuthor) {
         }
         Spacer(Modifier.width(8.dp))
         Text(
-            text = stringResource(R.string.onb_link_by, author.name),
+            text = stringResource(Res.string.onb_link_by, author.name),
             color = Onb.Subtitle,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+    }
+}
+
+/** the link's service icon, or a neutral squircle with a note for a source with no icon of ours */
+@Composable
+private fun SourceBadge(source: ImportSource, size: Dp) {
+    val service = when (source) {
+        ImportSource.SPOTIFY -> AccountService.SPOTIFY
+        ImportSource.APPLE_MUSIC -> AccountService.APPLE_MUSIC
+        ImportSource.TIDAL -> AccountService.TIDAL
+        ImportSource.YOUTUBE_MUSIC -> AccountService.YOUTUBE_MUSIC
+        ImportSource.DEEZER, ImportSource.SOUNDCLOUD, ImportSource.OTHER -> null
+    }
+    if (service != null) {
+        ProviderSquircle(service, size = size)
+    } else {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(size)
+                .clip(SquircleShape)
+                .background(SearchColors.TileHigh),
+        ) {
+            Icon(
+                painter = painterResource(Res.drawable.library_music),
+                contentDescription = source.label,
+                tint = SearchColors.Secondary,
+                modifier = Modifier.size(size * 0.5f),
+            )
+        }
     }
 }

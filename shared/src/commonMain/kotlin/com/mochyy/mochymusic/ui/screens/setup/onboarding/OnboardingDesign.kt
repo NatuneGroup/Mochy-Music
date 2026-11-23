@@ -55,7 +55,7 @@ import com.mochyy.mochymusic.ui.component.AppSwitch
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import com.mochyy.mochymusic.ui.component.RemoteFocus
 
-internal object Onb {
+object Onb {
     val Page = Color(0xFF1C1C1C)
     val Card = Color(0xFF2C2C2C)
     val CardPressed = Color(0xFF353535)
@@ -76,7 +76,7 @@ internal object Onb {
 }
 
 /** title tracking as tight as home's headings, the old looser values made them read wider than the text around them */
-internal val OnbTitleTracking = (-0.04).em
+val OnbTitleTracking = (-0.04).em
 internal val OnbSubtitleTracking = (-0.035).em
 
 /** side padding that shrinks on very narrow screens or big display-size settings */
@@ -85,7 +85,7 @@ internal fun rememberSidePadding(maxWidth: Dp): Dp = remember(maxWidth) { if (ma
 
 /** one onboarding page, content scrolls when it doesn't fit and footer stays pinned above the navigation bar */
 @Composable
-internal fun OnboardingPage(
+fun OnboardingPage(
     badge: @Composable () -> Unit,
     title: String,
     subtitle: String? = null,
@@ -151,7 +151,7 @@ internal fun OnboardingPage(
 
 /** the light circle top-left of every page, holding the page's own glyph */
 @Composable
-internal fun PageBadge(icon: Painter, size: Dp = 40.dp) {
+fun PageBadge(icon: Painter, size: Dp = 40.dp) {
     Box(
         modifier = Modifier
             .size(size)
@@ -163,11 +163,11 @@ internal fun PageBadge(icon: Painter, size: Dp = 40.dp) {
     }
 }
 
-internal enum class OnbButtonStyle { Primary, Secondary }
+enum class OnbButtonStyle { Primary, Secondary }
 
 /** the pill buttons, pressing dips the pill like the app's other buttons */
 @Composable
-internal fun OnbButton(
+fun OnbButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -205,7 +205,7 @@ internal fun OnbButton(
 
 /** round single-line field, for the username on the profile pages and the import's playlist link */
 @Composable
-internal fun OnbTextField(
+fun OnbTextField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,

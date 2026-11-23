@@ -2,7 +2,6 @@
 
 package com.mochyy.mochymusic.ui.screens.setup.onboarding
 
-import androidx.compose.ui.res.stringResource
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import androidx.compose.animation.core.withInfiniteAnimationFrameNanos
 import androidx.compose.foundation.Canvas
@@ -49,7 +48,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onPlaced
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -57,21 +55,30 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.add
+import com.mochyy.mochymusic.shared.resources.edit
+import com.mochyy.mochymusic.shared.resources.onb_add_profile_picture
+import com.mochyy.mochymusic.shared.resources.onb_card_id_of
+import com.mochyy.mochymusic.shared.resources.onb_card_of_name
+import com.mochyy.mochymusic.shared.resources.onb_card_profile_usr
+import com.mochyy.mochymusic.shared.resources.onb_profile_picture
 import kotlinx.coroutines.flow.first
 
 /** width to height of the card, from the mock (332 x 176) */
-internal const val IdCardAspect = 1.89f
+const val IdCardAspect = 1.89f
 
 /** the name the card shows, shared with the profile page so the two always say the same thing */
-internal fun idCardName(username: String): String = username.trim().ifEmpty { "{username}" }
+fun idCardName(username: String): String = username.trim().ifEmpty { "{username}" }
 
 /** where the card's photo, name and number are, read only while drawing so the profile page can fly copies without recomposing */
-internal class IdCardAnchors {
+class IdCardAnchors {
     var root: LayoutCoordinates? = null
     var photo: LayoutCoordinates? = null
     var name: LayoutCoordinates? = null
@@ -84,7 +91,7 @@ internal class IdCardAnchors {
 }
 
 @Composable
-internal fun ProfileIdCard(
+fun ProfileIdCard(
     username: String,
     photo: Any?,
     cardNumber: String,
@@ -134,7 +141,7 @@ internal fun ProfileIdCard(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = stringResource(R.string.onb_card_profile_usr, cardNumber),
+                        text = stringResource(Res.string.onb_card_profile_usr, cardNumber),
                         color = mutedText,
                         fontFamily = FontFamily.Monospace,
                         fontSize = (unit.value * 11f).sp,
@@ -158,14 +165,14 @@ internal fun ProfileIdCard(
                         if (photo != null) {
                             AsyncImage(
                                 model = photo,
-                                contentDescription = stringResource(R.string.onb_profile_picture),
+                                contentDescription = stringResource(Res.string.onb_profile_picture),
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize(),
                             )
                         } else if (onPhotoClick != null) {
                             Icon(
-                                painterResource(R.drawable.add),
-                                contentDescription = stringResource(R.string.onb_add_profile_picture),
+                                painterResource(Res.drawable.add),
+                                contentDescription = stringResource(Res.string.onb_add_profile_picture),
                                 tint = Color.White.copy(alpha = 0.7f),
                                 modifier = Modifier.size(unit * 34f),
                             )
@@ -175,7 +182,7 @@ internal fun ProfileIdCard(
                     Column(modifier = Modifier.weight(1f)) {
                         if (showIdCardOf) {
                             Text(
-                                stringResource(R.string.onb_card_id_of),
+                                stringResource(Res.string.onb_card_id_of),
                                 color = mutedText,
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = (unit.value * 10f).sp,
@@ -213,7 +220,7 @@ internal fun ProfileIdCard(
                 Spacer(Modifier.weight(1f))
             }
             MarqueeStrip(
-                text = stringResource(R.string.onb_card_of_name, name),
+                text = stringResource(Res.string.onb_card_of_name, name),
                 color = if (silver) Color(0xFF2B2B30).copy(alpha = 0.75f) else Color(0xFF8A8A8A),
                 background = if (silver) Color.Black.copy(alpha = 0.18f) else Color(0xFF1B1B1B),
                 modifier = Modifier
@@ -230,7 +237,7 @@ internal fun ProfileIdCard(
 @Composable
 private fun EditHint(tint: Color, size: Dp, alpha: () -> Float) {
     Icon(
-        painter = painterResource(R.drawable.edit),
+        painter = painterResource(Res.drawable.edit),
         contentDescription = null,
         tint = tint,
         modifier = Modifier
@@ -255,7 +262,7 @@ private const val MarqueePeriodNanos = 5_200_000_000f
 
 /** vertical text rotated a quarter turn and sliding downward forever, drawn not recomposed, holds still while running is false */
 @Composable
-internal fun MarqueeStrip(
+fun MarqueeStrip(
     text: String,
     color: Color,
     background: Color,

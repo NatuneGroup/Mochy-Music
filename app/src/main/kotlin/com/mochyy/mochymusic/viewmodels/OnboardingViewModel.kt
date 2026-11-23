@@ -42,14 +42,6 @@ import java.time.format.FormatStyle
 import javax.inject.Inject
 import kotlin.random.Random
 
-/** What the "Import & sync" options page sets. */
-data class YouTubeSyncChoices(
-    val syncOnLaunch: Boolean = true,
-    val newPlaylistsToYouTube: Boolean = true,
-    val reportPlays: Boolean = true,
-    val copyHistory: Boolean = true,
-)
-
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
     @ApplicationContext private val context: Context,

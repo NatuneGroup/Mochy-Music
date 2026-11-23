@@ -233,10 +233,10 @@ object ResourceBridge {
         }
 
         val drawables = File(out, "drawable").apply { mkdirs() }
-        // plain vectors from drawable/ and the density-independent rasters from drawable-nodpi/ (the
-        // integration brand marks are webp files); density and version folders are left out. A nodpi
-        // raster is copied only when shared code names it: those are large pictures (onboarding art,
-        // mascots), and every copy ships a second time inside the APK next to the Android one
+        // plain vectors from drawable/ and the density-independent rasters from drawable-nodpi/ (brand
+        // marks, onboarding art); density and version folders are left out, and drawable/ is read first
+        // so a name in both keeps the copy it already had. A nodpi raster is copied only when shared code
+        // names it: those are large pictures, and every copy ships a second time inside the APK
         val usedInShared = sharedSources.flatMap { file -> SharedDrawableRef.findAll(file.readText()).map { it.groupValues[1] } }.toSet()
         listOf(res.resolve("drawable"), res.resolve("drawable-nodpi")).forEach { source ->
             source.listFiles().orEmpty().forEach { file ->
