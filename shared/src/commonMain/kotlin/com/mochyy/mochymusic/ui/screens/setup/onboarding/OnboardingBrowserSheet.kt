@@ -46,6 +46,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mochyy.mochymusic.importer.account.AccountService
 import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.close
+import com.mochyy.mochymusic.shared.resources.onb_close
+import com.mochyy.mochymusic.shared.resources.onb_sign_in_to
 import com.mochyy.mochymusic.ui.component.SheetGrabber
 import com.mochyy.mochymusic.ui.component.rememberSheetGrabberBend
 import kotlinx.coroutines.launch
