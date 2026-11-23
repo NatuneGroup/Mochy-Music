@@ -31,6 +31,12 @@ object DesktopRoutes {
     const val DesktopWindow = "desktop_window_settings"
     const val About = "desktop_about"
 
+    // the online pages: YouTube Music's explore, any browse id, and one album or playlist
+    const val Explore = "desktop_explore"
+    const val Charts = "desktop_charts"
+    const val Browse = "desktop_browse/{browseId}?params={params}"
+    const val Collection = "desktop_collection/{kind}/{id}"
+
     // shared settings pages with an exported route constant
     const val Playback = PlaybackSettingsRoute
     const val NowPlayingSettings = NowPlayingSettingsRoute
@@ -71,6 +77,17 @@ object DesktopRoutes {
 
     fun unavailable(route: String): String =
         "$Unavailable?route=${java.net.URLEncoder.encode(route, "UTF-8")}"
+
+    /** a moods-and-genres chip or any other browse endpoint, with its params when it has them */
+    fun browse(browseId: String, params: String? = null): String =
+        "desktop_browse/${encode(browseId)}?params=${encode(params.orEmpty())}"
+
+    // the collection page's two kinds, as the route writes them (CollectionKind.fromRoute reads them back)
+    fun album(browseId: String): String = "desktop_collection/album/${encode(browseId)}"
+
+    fun playlist(playlistId: String): String = "desktop_collection/playlist/${encode(playlistId)}"
+
+    private fun encode(value: String): String = java.net.URLEncoder.encode(value, "UTF-8")
 
     // Android-only pages the shared settings rows still link to. Desktop registers a page that says so
     // instead of letting the navigation call fail.

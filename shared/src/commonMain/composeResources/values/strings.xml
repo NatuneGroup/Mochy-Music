@@ -71,4 +71,7 @@
     <string name="desktop_about_body">A music player with its own player styles, built for desktop, iPhone and Android from one shared app.</string>
     <string name="desktop_about_source">Source code</string>
     <string name="desktop_about_license">Licence</string>
+    <string name="desktop_online_failed">Couldn’t reach YouTube Music. Check your connection and try again.</string>
+    <string name="desktop_online_empty">Nothing here yet.</string>
+    <string name="desktop_online_loading">Loading…</string>
 </resources>

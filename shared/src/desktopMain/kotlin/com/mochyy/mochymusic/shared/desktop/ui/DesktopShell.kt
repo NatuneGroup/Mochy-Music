@@ -41,6 +41,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.mochyy.mochymusic.constants.NavTabsKey
 import com.mochyy.mochymusic.shared.desktop.navigation.DesktopRoutes
 import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.discover_tune
+import com.mochyy.mochymusic.shared.resources.explore
 import com.mochyy.mochymusic.shared.resources.music_history
 import com.mochyy.mochymusic.shared.resources.rc_stats_title
 import com.mochyy.mochymusic.shared.ui.shell.ShellTab
@@ -108,6 +110,13 @@ internal fun DesktopShell(
                             )
                         }
                         Spacer(Modifier.weight(1f))
+                        // the online pages sit beside the tabs, like the stats shortcut under them
+                        DesktopTabButton(
+                            title = stringResource(Res.string.explore),
+                            icon = Res.drawable.discover_tune,
+                            active = route == DesktopRoutes.Explore,
+                            onClick = { navController.navigate(DesktopRoutes.Explore) { launchSingleTop = true } },
+                        )
                         DesktopTabButton(
                             title = stringResource(Res.string.rc_stats_title),
                             icon = Res.drawable.music_history,
@@ -137,6 +146,12 @@ internal fun DesktopShell(
                             onClick = { select(tab) },
                         )
                     }
+                    DesktopTabButton(
+                        title = stringResource(Res.string.explore),
+                        icon = Res.drawable.discover_tune,
+                        active = route == DesktopRoutes.Explore,
+                        onClick = { navController.navigate(DesktopRoutes.Explore) { launchSingleTop = true } },
+                    )
                     DesktopTabButton(
                         title = stringResource(Res.string.rc_stats_title),
                         icon = Res.drawable.music_history,
