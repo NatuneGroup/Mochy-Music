@@ -76,16 +76,6 @@ class MusicDatabase(
     override val suspendingDao: SuspendingDao
         get() = delegate.suspendingDao
 
-    // DatabaseDao's own artistSongs, spelled out because MochyDatabase now has a default with the same name
-    override fun artistSongs(
-        artistId: String,
-        sortType: ArtistSongSortType,
-        descending: Boolean,
-        fromTimeStamp: Long?,
-        toTimeStamp: Long?,
-        limit: Int,
-    ): Flow<List<Song>> =
-        delegate.dao.artistSongs(artistId, sortType, descending, fromTimeStamp, toTimeStamp, limit)
 
     /**
      * Pins [item], evicting the oldest pin first if that would push the count past
