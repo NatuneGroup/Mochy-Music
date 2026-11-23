@@ -63,23 +63,23 @@ import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import kotlin.math.roundToInt
 import com.mochyy.mochymusic.ui.component.RemoteFocus
 
-internal val StorageCard = Color(0xFF1C1C1E)
-internal val StorageTrack = Color(0xFF3A3A3C)
-internal val StorageMuted = Color(0xFF8E8E93)
-internal val StorageDanger = Color(0xFFF07A70)
+val StorageCard = Color(0xFF1C1C1E)
+val StorageTrack = Color(0xFF3A3A3C)
+val StorageMuted = Color(0xFF8E8E93)
+val StorageDanger = Color(0xFFF07A70)
 
-internal val MochyGreen = Color(0xFF86EF7F)
-internal val OthersGrey = Color(0xFF6E6E73)
-internal val CacheOrange = Color(0xFFF5B26B)
-internal val DatabaseRed = Color(0xFFEE6E5E)
-internal val CoversYellow = Color(0xFFE9D86A)
-internal val AppDataBlue = Color(0xFF6878F0)
+val MochyGreen = Color(0xFF86EF7F)
+val OthersGrey = Color(0xFF6E6E73)
+val CacheOrange = Color(0xFFF5B26B)
+val DatabaseRed = Color(0xFFEE6E5E)
+val CoversYellow = Color(0xFFE9D86A)
+val AppDataBlue = Color(0xFF6878F0)
 
 private val Emphasized = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 
 private val SliderHeight = 32.dp
 
-internal fun storageText(
+fun storageText(
     size: Float,
     weight: FontWeight = FontWeight.Bold,
     color: Color = Color.White,
@@ -87,7 +87,7 @@ internal fun storageText(
 ) = TextStyle(fontFamily = InterFontFamily, fontWeight = weight, fontSize = size.sp, letterSpacing = tracking.sp, color = color)
 
 /** bytes the way android's own storage screen writes them: powers of 1000, one decimal past 10 */
-internal fun formatSize(bytes: Long): String {
+fun formatSize(bytes: Long): String {
     val units = listOf("B", "KB", "MB", "GB", "TB")
     var value = bytes.coerceAtLeast(0L).toDouble()
     var unit = 0
@@ -95,12 +95,14 @@ internal fun formatSize(bytes: Long): String {
         value /= 1000
         unit++
     }
-    val number = if (value >= 10 || unit == 0) value.roundToInt().toString() else String.format("%.1f", value)
+    // one decimal past 10, by integer arithmetic: common Kotlin has no locale-aware %.1f
+    val tenths = (value * 10).roundToInt()
+    val number = if (value >= 10 || unit == 0) value.roundToInt().toString() else "${tenths / 10}.${tenths % 10}"
     return "$number ${units[unit]}"
 }
 
 @Composable
-internal fun StorageCardColumn(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+fun StorageCardColumn(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -111,11 +113,11 @@ internal fun StorageCardColumn(modifier: Modifier = Modifier, content: @Composab
     )
 }
 
-internal class BarPart(val color: Color, val bytes: Long)
+class BarPart(val color: Color, val bytes: Long)
 
 /** a rounded bar split into parts over total bytes, a part too small to see still gets a sliver so nothing on the legend is missing */
 @Composable
-internal fun UsageBar(parts: List<BarPart>, total: Long, modifier: Modifier = Modifier) {
+fun UsageBar(parts: List<BarPart>, total: Long, modifier: Modifier = Modifier) {
     val grow = remember { Animatable(0f) }
     val ready = total > 0
     LaunchedEffect(ready) { if (ready) grow.animateTo(1f, tween(1100, easing = Emphasized)) }
@@ -152,7 +154,7 @@ internal fun UsageBar(parts: List<BarPart>, total: Long, modifier: Modifier = Mo
 }
 
 @Composable
-internal fun LegendSwatch(color: Color, modifier: Modifier = Modifier) {
+fun LegendSwatch(color: Color, modifier: Modifier = Modifier) {
     Box(
         modifier
             .size(20.dp)
@@ -163,7 +165,7 @@ internal fun LegendSwatch(color: Color, modifier: Modifier = Modifier) {
 
 /** a legend line under a bar: the colour, what it is, and how big it is on the right */
 @Composable
-internal fun LegendRow(color: Color, label: String, size: String?) {
+fun LegendRow(color: Color, label: String, size: String?) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         LegendSwatch(color)
         Spacer(Modifier.width(10.dp))
@@ -184,7 +186,7 @@ internal fun LegendRow(color: Color, label: String, size: String?) {
 
 // a thick pill the white fill grows across with a small grip at its end, snapping to steps with a haptic tick on each
 @Composable
-internal fun StepSlider(
+fun StepSlider(
     steps: List<Int>,
     value: Int,
     onValueChange: (Int) -> Unit,
@@ -261,7 +263,7 @@ internal fun StepSlider(
 
 /** a full-width pill with its label in the middle, danger ones are written in red */
 @Composable
-internal fun StorageActionButton(
+fun StorageActionButton(
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,

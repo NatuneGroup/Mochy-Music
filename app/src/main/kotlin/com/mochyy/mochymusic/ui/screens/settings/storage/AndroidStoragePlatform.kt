@@ -1,115 +1,91 @@
-// StorageViewModel.kt
+// Android’s side of the shared storage page: media3 downloads, the ExoPlayer cache, SAF folders and the app's files.
 
-package com.mochyy.mochymusic.viewmodels
+package com.mochyy.mochymusic.ui.screens.settings.storage
 
 import android.content.Context
+import android.net.Uri
 import android.os.Environment
 import android.os.StatFs
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadService
 import coil3.SingletonImageLoader
+import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.db.MusicDatabase
-import com.mochyy.mochymusic.db.entities.Song
 import com.mochyy.mochymusic.playback.CachedSongs
+import com.mochyy.mochymusic.playback.DownloadExporter
 import com.mochyy.mochymusic.playback.DownloadUtil
 import com.mochyy.mochymusic.playback.ExoDownloadService
-import com.mochyy.mochymusic.playback.DownloadExporter
-import com.mochyy.mochymusic.playback.ExportChoice
-import com.mochyy.mochymusic.playback.ExportStep
-import com.mochyy.mochymusic.playback.MoveStep
+import com.mochyy.mochymusic.playback.ExportChoice as AppExportChoice
+import com.mochyy.mochymusic.playback.ExportLayout as AppExportLayout
+import com.mochyy.mochymusic.playback.ExportStep as AppExportStep
+import com.mochyy.mochymusic.playback.MoveStep as AppMoveStep
 import com.mochyy.mochymusic.playback.StorageMover
 import com.mochyy.mochymusic.playback.StoragePlace
 import com.mochyy.mochymusic.playback.StoragePlaces
 import com.mochyy.mochymusic.playback.StoredKind
-import com.mochyy.mochymusic.R
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
+import com.mochyy.mochymusic.viewmodels.CanvasGifStats
+import com.mochyy.mochymusic.viewmodels.DownloadedSong
+import com.mochyy.mochymusic.viewmodels.DriveUsage
+import com.mochyy.mochymusic.viewmodels.ExportChoice
+import com.mochyy.mochymusic.viewmodels.ExportLayout
+import com.mochyy.mochymusic.viewmodels.ExportStep
+import com.mochyy.mochymusic.viewmodels.MoveStep
+import com.mochyy.mochymusic.viewmodels.PlaceChoice
+import com.mochyy.mochymusic.viewmodels.StorageKind
+import com.mochyy.mochymusic.viewmodels.StoragePlaceInfo
+import com.mochyy.mochymusic.viewmodels.StoragePlatform
+import com.mochyy.mochymusic.viewmodels.StorageUsage
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import javax.inject.Inject
 
-/** one drive mochy keeps things on, for its own overall card */
-data class DriveUsage(
-    val label: String,
-    val isPhone: Boolean,
-    val total: Long,
-    val free: Long,
-    /** what mochy has on this drive */
-    val mochy: Long,
-) {
-    val othersUsed: Long get() = (total - free - mochy).coerceAtLeast(0L)
-}
-
-/** How much room Mochy takes, in the four parts the Storage page shows, and every drive it sits on. */
-data class StorageUsage(
-    /** the phone first, then any memory card holding downloads or the cache */
-    val drives: List<DriveUsage>,
-    /** songs streamed and kept for next time, cover pictures, and other throwaway files */
-    val cache: Long,
-    /** downloaded songs only: covers saved for local files count as app data, so importing a folder never looks like a download */
-    val downloads: Long,
-    val database: Long,
-    /** cover pictures saved out of local audio files, the only thing local imports leave on the phone besides the library rows */
-    val localCovers: Long,
-    /** the app itself and its settings, everything not counted above */
-    val appData: Long,
-) {
-    val mochy: Long get() = cache + downloads + database + localCovers + appData
-    val phone: DriveUsage get() = drives.first()
-}
-
-/** A finished download, with what it costs on the phone. */
-data class DownloadedSong(
-    val song: Song,
-    val bytes: Long,
-    /** when the download finished, ms since 1970 */
-    val downloadedAt: Long,
-)
-
-/** the drives one kind of folder could go to, where it is now, and how much a move would copy */
-data class PlaceChoice(
-    val places: List<StoragePlace>,
-    val current: StoragePlace,
-    val bytesToMove: Long,
-)
-
+/** the app's folders, downloads and caches, behind the shared storage page's contract */
 @OptIn(ExperimentalCoroutinesApi::class)
-@HiltViewModel
-class StorageViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
+class AndroidStoragePlatform(
+    private val context: Context,
     private val database: MusicDatabase,
     private val cachedSongs: CachedSongs,
     private val downloadUtil: DownloadUtil,
     private val mover: StorageMover,
     private val exporter: DownloadExporter,
-) : ViewModel() {
+) : StoragePlatform {
 
-    val moveStep: StateFlow<MoveStep> = mover.step
-    val exportStep: StateFlow<ExportStep> = exporter.step
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    private val _usage = MutableStateFlow<StorageUsage?>(null)
-    val usage: StateFlow<StorageUsage?> = _usage.asStateFlow()
+    // the folder the user just picked, kept so the move uses the exact place the sheet measured
+    private var lastPicked: StoragePlace? = null
 
-    /** True while something is being deleted, so the buttons can't be tapped twice. */
-    private val _busy = MutableStateFlow(false)
-    val busy: StateFlow<Boolean> = _busy.asStateFlow()
+    override val moveStep: StateFlow<MoveStep> = mover.step
+        .map { step ->
+            when (step) {
+                is AppMoveStep.Idle -> MoveStep.Idle
+                is AppMoveStep.Working -> MoveStep.Working(step.kind.toShared(), step.progress)
+                is AppMoveStep.Failed -> MoveStep.Failed(step.kind.toShared(), step.message)
+            }
+        }
+        .stateIn(scope, SharingStarted.Eagerly, MoveStep.Idle)
 
-    /** Every finished download, newest first; the sheet sorts it however it likes. */
-    val downloads: StateFlow<List<DownloadedSong>?> = downloadUtil.downloads
+    override val exportStep: StateFlow<ExportStep> = exporter.step
+        .map { step ->
+            when (step) {
+                is AppExportStep.Idle -> ExportStep.Idle
+                is AppExportStep.Working -> ExportStep.Working(step.done, step.total)
+                is AppExportStep.Done -> ExportStep.Done(step.songs, step.skipped)
+                is AppExportStep.Failed -> ExportStep.Failed(step.message)
+            }
+        }
+        .stateIn(scope, SharingStarted.Eagerly, ExportStep.Idle)
+
+    override val downloads: StateFlow<List<DownloadedSong>?> = downloadUtil.downloads
         .map { all -> all.values.filter { it.state == Download.STATE_COMPLETED } }
         .distinctUntilChanged { old, new -> old.map { it.request.id } == new.map { it.request.id } }
         .mapLatest { done ->
@@ -120,15 +96,11 @@ class StorageViewModel @Inject constructor(
                 DownloadedSong(song, download.bytesDownloaded.coerceAtLeast(0L), download.updateTimeMs)
             }.sortedByDescending { it.downloadedAt }
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+        .stateIn(scope, SharingStarted.WhileSubscribed(5_000), null)
 
-    /** Walks Mochy's folders again. The page calls it on open and whenever the downloads change. */
-    fun measure() {
-        viewModelScope.launch { _usage.value = withContext(Dispatchers.IO) { readUsage() } }
-    }
+    override suspend fun measure(): StorageUsage = withContext(Dispatchers.IO) { readUsage() }
 
-    /** Songs kept from streaming and every cover picture. Downloads and the library stay. */
-    fun clearCaches() = runBusy {
+    override suspend fun clearCaches() {
         cachedSongs.clear().join()
         withContext(Dispatchers.IO) { com.mochyy.mochymusic.discord.CanvasGifStore.clear(context) }
         SingletonImageLoader.get(context).let { loader ->
@@ -137,53 +109,61 @@ class StorageViewModel @Inject constructor(
         }
     }
 
-    /** Deletes the cover pictures saved for local songs. The songs and their files stay. */
-    fun clearLocalCovers() = runBusy {
+    override suspend fun clearLocalCovers() {
         com.mochyy.mochymusic.importer.LocalArtwork.clearAll(context, database)
     }
 
-    fun removeAllDownloads() = runBusy {
+    override suspend fun removeAllDownloads() {
         DownloadService.sendRemoveAllDownloads(context, ExoDownloadService::class.java, false)
-        // the service deletes in the background; give it a moment before measuring again
-        delay(1_200)
     }
 
-    fun removeDownloads(songIds: Collection<String>) = runBusy {
+    override suspend fun removeDownloads(songIds: Collection<String>) {
         songIds.forEach { DownloadService.sendRemoveDownload(context, ExoDownloadService::class.java, it, false) }
-        delay(800)
     }
 
-    /** the drives on offer for [kind], read off the main thread since it measures the folder */
-    suspend fun placeChoice(kind: StoredKind): PlaceChoice = withContext(Dispatchers.IO) {
-        PlaceChoice(StoragePlaces.places(context), StoragePlaces.placeOf(context, kind), mover.bytesToMove(kind))
+    override suspend fun placeChoice(kind: StorageKind): PlaceChoice = withContext(Dispatchers.IO) {
+        val appKind = kind.toApp()
+        PlaceChoice(
+            places = StoragePlaces.places(context).map { it.toInfo() },
+            current = StoragePlaces.placeOf(context, appKind).toInfo(),
+            bytesToMove = mover.bytesToMove(appKind),
+        )
     }
 
-    // a folder from the folder picker as the place mochy would save into, or null when it isn't on the phone or a card
-    suspend fun pickedFolder(tree: android.net.Uri): StoragePlace? = withContext(Dispatchers.IO) {
-        StoragePlaces.folderFromTree(context, tree)?.let { StoragePlaces.folderPlace(context, StoragePlaces.rootForPicked(it)) }
+    override suspend fun pickedFolder(tree: String): StoragePlaceInfo? = withContext(Dispatchers.IO) {
+        val place = StoragePlaces.folderFromTree(context, Uri.parse(tree))
+            ?.let { StoragePlaces.folderPlace(context, StoragePlaces.rootForPicked(it)) }
+        lastPicked = place
+        place?.toInfo()
     }
 
-    fun needsFolderAccess(place: StoragePlace): Boolean = StoragePlaces.needsFolderAccess(context, place.root)
+    override fun needsFolderAccess(place: StoragePlaceInfo): Boolean =
+        StoragePlaces.needsFolderAccess(context, File(place.root))
 
-    fun move(kind: StoredKind, to: StoragePlace) = mover.move(kind, to)
+    override fun move(kind: StorageKind, to: StoragePlaceInfo) {
+        val place = lastPicked?.takeIf { it.root.path == to.root }
+            ?: StoragePlaces.places(context).firstOrNull { it.root.path == to.root }
+            ?: StoragePlace(File(to.root), to.label, to.isPhone, to.total, to.free, to.isFolder)
+        mover.move(kind.toApp(), place)
+    }
 
-    fun clearMoveFailure() = mover.clearFailure()
+    override fun clearMoveFailure() = mover.clearFailure()
 
-    fun export(tree: android.net.Uri, choice: ExportChoice) = exporter.start(tree, choice)
+    override fun export(tree: String, choice: ExportChoice) {
+        exporter.start(
+            Uri.parse(tree),
+            AppExportChoice(choice.layout.toApp(), choice.covers, choice.lyrics),
+        )
+    }
 
-    fun clearExport() = exporter.clear()
+    override fun clearExport() = exporter.clear()
 
-    private fun runBusy(block: suspend () -> Unit) {
-        if (_busy.value) return
-        _busy.value = true
-        viewModelScope.launch {
-            try {
-                block()
-            } finally {
-                _usage.value = withContext(Dispatchers.IO) { readUsage() }
-                _busy.value = false
-            }
-        }
+    override suspend fun canvasGifStats(): CanvasGifStats = withContext(Dispatchers.IO) {
+        com.mochyy.mochymusic.discord.CanvasGifStore.stats(context).let { CanvasGifStats(it.bytes, it.count) }
+    }
+
+    override suspend fun clearCanvasGifs() = withContext(Dispatchers.IO) {
+        com.mochyy.mochymusic.discord.CanvasGifStore.clear(context)
     }
 
     private suspend fun readUsage(): StorageUsage {
@@ -251,5 +231,29 @@ class StorageViewModel @Inject constructor(
                 }
             }
         }.getOrDefault(0L)
+    }
+
+    private fun StoragePlace.toInfo() = StoragePlaceInfo(
+        root = root.path,
+        label = label,
+        isPhone = isPhone,
+        total = total,
+        free = free,
+        isFolder = isFolder,
+    )
+
+    private fun StoredKind.toShared(): StorageKind = when (this) {
+        StoredKind.Downloads -> StorageKind.Downloads
+        StoredKind.SongCache -> StorageKind.SongCache
+    }
+
+    private fun StorageKind.toApp(): StoredKind = when (this) {
+        StorageKind.Downloads -> StoredKind.Downloads
+        StorageKind.SongCache -> StoredKind.SongCache
+    }
+
+    private fun ExportLayout.toApp(): AppExportLayout = when (this) {
+        ExportLayout.Playlists -> AppExportLayout.Playlists
+        ExportLayout.Albums -> AppExportLayout.Albums
     }
 }

@@ -455,7 +455,7 @@ fun NavGraphBuilder.navigationBuilder(
                         com.mochyy.mochymusic.scrobble.ScrobbleSite.LIBREFM -> com.mochyy.mochymusic.ui.screens.settings.integrations.ScrobbleBrand.LIBRE_FM
                     },
                     label = site.label,
-                    route = com.mochyy.mochymusic.ui.screens.settings.integrations.scrobbleServiceRoute(site),
+                    route = com.mochyy.mochymusic.ui.screens.settings.integrations.scrobbleServiceRoute(site.name),
                 )
             },
             routes = com.mochyy.mochymusic.ui.screens.settings.integrations.IntegrationRoutes(
@@ -483,7 +483,7 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.integrations.backup.BackupRoute) {
-        com.mochyy.mochymusic.ui.screens.settings.integrations.backup.BackupScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.integrations.backup.AndroidBackupScreen(navController = navController)
     }
 
     composable(
@@ -493,7 +493,7 @@ fun NavGraphBuilder.navigationBuilder(
         val site = com.mochyy.mochymusic.scrobble.ScrobbleSite.entries
             .find { it.name == entry.arguments?.getString("site") }
             ?: com.mochyy.mochymusic.scrobble.ScrobbleSite.LASTFM
-        com.mochyy.mochymusic.ui.screens.settings.integrations.ScrobbleServiceScreen(navController = navController, site = site)
+        com.mochyy.mochymusic.ui.screens.settings.integrations.AndroidScrobbleServiceScreen(navController = navController, site = site)
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.InternetSettingsRoute) {
@@ -553,7 +553,7 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.storage.StorageRoute) {
-        com.mochyy.mochymusic.ui.screens.settings.storage.StorageScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.storage.AndroidStorageScreen(navController = navController)
     }
 
     composable("experimental_settings") {

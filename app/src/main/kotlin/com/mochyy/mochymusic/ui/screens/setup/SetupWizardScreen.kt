@@ -150,12 +150,12 @@ fun SetupWizardScreen(
     }
 
     // ---- previous data: a whole export from the old app or another phone ----
-    val transfer: TransferViewModel = hiltViewModel()
+    val transfer: TransferViewModel = org.koin.compose.viewmodel.koinViewModel()
     val importStep by transfer.import.collectAsState()
     val transferManifest by transfer.manifest.collectAsState()
     var waitingForPermission by remember { mutableStateOf<Uri?>(null) }
     fun startRestoring(uri: Uri) {
-        transfer.importFrom(uri)
+        transfer.importFrom(uri.toString())
         go(Step.Restoring)
     }
     // local songs come back through the phone's music library, so ask first; a no still imports everything else
@@ -168,11 +168,11 @@ fun SetupWizardScreen(
     val transferPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             scope.launch {
-                transfer.check(uri)
+                transfer.check(uri.toString())
                     .onSuccess { manifest ->
                         if (transfer.wantsAudioPermission(manifest)) {
                             waitingForPermission = uri
-                            audioPermission.launch(TransferViewModel.AudioPermission)
+                            audioPermission.launch(transfer.audioPermission)
                         } else {
                             startRestoring(uri)
                         }
