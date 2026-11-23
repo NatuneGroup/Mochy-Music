@@ -12,9 +12,12 @@ For every APK under --apks (one folder per commit, as the Android speed A/B work
   4. one more round under Perfetto, kept as a trace
 
 Per tap it records:
-  tap_to_frame_ms   from the frame that handled the tap to the end of the slowest frame after it,
-                    which is the frame that first draws the new screen (its first composition)
-  longest_frame_ms  that slowest frame
+  tap_to_frame_ms   from the tap's HandleInputStart to the end of the frame that handled that input,
+                    so it is the tap's own latency and not whatever jank followed it
+  post_tap_longest_ms, post_tap_longest_end_ms   the slowest frame in the window and when it ended,
+                    reported separately so jank after the screen appears cannot pass for latency
+  screen_seen       whether the destination's marker text appeared after the tap; a round without it
+                    is rejected instead of scored
   janky_pct, p50/p90/p95/p99, slow_ui   gfxinfo's own numbers for the frames since the tap
 
 Writes results.json, summary.md, screenshots and traces into --out.
@@ -49,8 +52,23 @@ def run(args: list[str], timeout: int = 180, check: bool = True) -> str:
     return r.stdout
 
 
+DROPPED = ("device offline", "no devices", "device not found", "device still authorizing")
+
+
 def adb(*args: str, timeout: int = 180, check: bool = True) -> str:
-    return run([ADB, *args], timeout=timeout, check=check)
+    # the emulator occasionally drops off mid-run (seen as "device offline" during a fresh install);
+    # reconnect and retry rather than losing the whole comparison to one flaky half minute
+    for attempt in range(3):
+        try:
+            return run([ADB, *args], timeout=timeout, check=check)
+        except RuntimeError as e:
+            if attempt == 2 or not any(d in str(e) for d in DROPPED):
+                raise
+            log(f"device dropped mid-command, reconnecting (attempt {attempt + 1})")
+            subprocess.run([ADB, "reconnect"], capture_output=True, text=True, timeout=60)
+            subprocess.run([ADB, "wait-for-device"], capture_output=True, text=True, timeout=180)
+            time.sleep(5)
+    raise RuntimeError("unreachable")
 
 
 def sh(cmd: str, timeout: int = 180, check: bool = True) -> str:
@@ -171,6 +189,21 @@ def tap(xy: tuple[int, int]) -> None:
     sh(f"input tap {xy[0]} {xy[1]}")
 
 
+def wait_for_label(label: str, timeout: float = 5.0, save: Path | None = None) -> bool:
+    """True once a node with this exact text/description is on screen; False if it never appears.
+
+    This is a validity gate, not the timing: uiautomator costs a few hundred ms per dump, so the
+    elapsed time here would be far too coarse to score. gfxinfo supplies the latency.
+    """
+    end = time.time() + timeout
+    while time.time() < end:
+        nodes = ui_nodes(save)
+        if find(nodes, label) is not None:
+            return True
+        time.sleep(0.2)
+    return False
+
+
 # ------------------------------------------------------------------------------------------- gfxinfo
 
 def gfx_reset(pkg: str) -> None:
@@ -212,14 +245,23 @@ def gfx_read(pkg: str) -> dict:
     if rows:
         def dur(r):
             return (r["FrameCompleted"] - r["IntendedVsync"]) / 1e6
+
+        # the tap itself has to be in the data, or there is no latency to report
         inputs = [r for r in rows if r.get("InputEventId", 0) != 0]
-        first = inputs[0] if inputs else rows[0]
-        t0 = first.get("HandleInputStart", 0) or first["IntendedVsync"]
-        after = [r for r in rows if r["IntendedVsync"] >= first["IntendedVsync"]]
-        slowest = max(after, key=dur)
-        res["longest_frame_ms"] = round(dur(slowest), 1)
-        res["tap_to_frame_ms"] = round((slowest["FrameCompleted"] - t0) / 1e6, 1)
         res["input_frame_found"] = bool(inputs)
+        if not inputs:
+            return res
+        # the frame that consumed this tap: earliest input frame, timed from when the app started
+        # handling it. Taking the slowest frame instead let unrelated jank after the screen was drawn
+        # pass for tap latency, which is what this run is supposed to measure.
+        frame = inputs[0]
+        t0 = frame.get("HandleInputStart", 0) or frame["IntendedVsync"]
+        res["tap_to_frame_ms"] = round((frame["FrameCompleted"] - t0) / 1e6, 1)
+
+        after = [r for r in rows if r["IntendedVsync"] >= frame["IntendedVsync"]]
+        slowest = max(after, key=dur)
+        res["post_tap_longest_ms"] = round(dur(slowest), 1)
+        res["post_tap_longest_end_ms"] = round((slowest["FrameCompleted"] - frame["FrameCompleted"]) / 1e6, 1)
         res["frames_over_16ms"] = sum(1 for r in rows if dur(r) > 16.7)
         res["frame_ms"] = [round(dur(r), 1) for r in rows[:40]]
     return res
@@ -394,14 +436,18 @@ def measure(label: str, folder: Path, out_root: Path, runs: int) -> dict:
         time.sleep(SETTLE_AFTER_START)
         gfx_reset(pkg)
         tap(taps["settings"])
-        time.sleep(SETTLE_AFTER_TAP)
         s = gfx_read(pkg)
+        s["screen_seen"] = wait_for_label("Appearance", timeout=SETTLE_AFTER_TAP + 2)
         gfx_reset(pkg)
         tap(taps["appearance"])
-        time.sleep(SETTLE_AFTER_TAP)
         a = gfx_read(pkg)
+        a["screen_seen"] = wait_for_label("Accent colour", timeout=SETTLE_AFTER_TAP + 2, save=out / "5-appearance.xml")
         if i == runs + 1:
             screenshot(out / "4-last-round.png")
+        # a round whose screen never opened says nothing about latency; keep the count honest
+        if not (s["screen_seen"] and a["screen_seen"]):
+            log(f"run {i - 1} rejected: screen_seen settings={s['screen_seen']} appearance={a['screen_seen']}")
+            continue
         if i < 2:
             log(f"warm-up {i + 1}: start {start['total_ms']} ms")
             continue
@@ -435,7 +481,7 @@ def summarise(results: list[dict]) -> tuple[dict, str]:
         row = {"label": r["label"], "runs": len(rs),
                "cold_start_ms": med([x["start"]["total_ms"] for x in rs])}
         for screen in ("settings", "appearance"):
-            for key in ("tap_to_frame_ms", "longest_frame_ms", "janky_pct", "p90", "p99", "slow_ui"):
+            for key in ("tap_to_frame_ms", "post_tap_longest_ms", "janky_pct", "p90", "p99", "slow_ui"):
                 row[f"{screen}_{key}"] = med([x[screen].get(key) for x in rs])
         row["cvr"] = f"{r['apk']['cvr_deflated']}/{r['apk']['cvr_files']} deflated"
         if r.get("shared_resources"):
@@ -443,7 +489,7 @@ def summarise(results: list[dict]) -> tuple[dict, str]:
         rows.append(row)
 
     lines = ["## Android speed A/B (emulator, x86_64 FOSS profileable, medians)", ""]
-    lines.append("| build | cold start | Settings tap→frame | longest | janky % | p90 | p99 | Appearance tap→frame | longest | janky % | p90 | p99 |")
+    lines.append("| build | cold start | Settings tap→frame | post-tap longest | janky % | p90 | p99 | Appearance tap→frame | post-tap longest | janky % | p90 | p99 |")
     lines.append("|---|---|---|---|---|---|---|---|---|---|---|---|")
     for row in rows:
         if "error" in row:
@@ -453,9 +499,9 @@ def summarise(results: list[dict]) -> tuple[dict, str]:
             v = row.get(k)
             return "–" if v is None else f"{v:g}{unit}"
         lines.append(
-            f"| {row['label']} | {f('cold_start_ms')} | {f('settings_tap_to_frame_ms')} | {f('settings_longest_frame_ms')} | "
+            f"| {row['label']} | {f('cold_start_ms')} | {f('settings_tap_to_frame_ms')} | {f('settings_post_tap_longest_ms')} | "
             f"{f('settings_janky_pct', '%')} | {f('settings_p90')} | {f('settings_p99')} | {f('appearance_tap_to_frame_ms')} | "
-            f"{f('appearance_longest_frame_ms')} | {f('appearance_janky_pct', '%')} | {f('appearance_p90')} | {f('appearance_p99')} |")
+            f"{f('appearance_post_tap_longest_ms')} | {f('appearance_janky_pct', '%')} | {f('appearance_p90')} | {f('appearance_p99')} |")
     lines.append("")
     for r in results:
         if "error" in r:
@@ -473,8 +519,11 @@ def summarise(results: list[dict]) -> tuple[dict, str]:
             lines.append(f"  - trace: {total:.1f} ms on the main thread inside compose resources calls "
                          + ", ".join(f"{x['name'][:60]} ×{x['n']} {x['ms']:.1f} ms" for x in cr[:4]))
     lines.append("")
-    lines.append("tap→frame: from the frame that handled the tap to the end of the slowest frame after it (the new "
-                 "screen's first frame). Each round is a fresh cold start, so every open is the first one in that process.")
+    lines.append("tap→frame: from HandleInputStart of the tap to FrameCompleted of the frame that consumed it. "
+                 "post-tap longest is the slowest frame in the same window and is reported apart, so jank after the "
+                 "screen appears cannot pass for latency. A round is dropped when the destination's marker text "
+                 "(Appearance) never appears, and a round with no input frame is reported as no data. Each round is a "
+                 "fresh cold start, so every open is the first one in that process.")
     return {"rows": rows}, "\n".join(lines) + "\n"
 
 
