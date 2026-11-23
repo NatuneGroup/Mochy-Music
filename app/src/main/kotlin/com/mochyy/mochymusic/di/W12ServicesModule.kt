@@ -54,14 +54,13 @@ object W12ServicesModule {
     @Singleton
     fun discordPresence(@ApplicationContext context: Context, auth: DiscordAuth): DiscordPresence {
         // the picture makers signal "ready" through the presence, which is built around them
-        lateinit var presence: DiscordPresence
-        val pictures = AndroidDiscordPictures(context, onReady = { presence.nudge() })
-        presence = DiscordPresence(
+        val holder = arrayOfNulls<DiscordPresence>(1)
+        val pictures = AndroidDiscordPictures(context, onReady = { holder[0]?.nudge() })
+        return DiscordPresence(
             preferences = context.dataStore,
             auth = auth,
             pictures = pictures,
             isOffline = { OfflineMode.isOn },
-        )
-        return presence
+        ).also { holder[0] = it }
     }
 }
