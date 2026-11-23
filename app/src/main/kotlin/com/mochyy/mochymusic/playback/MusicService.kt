@@ -197,6 +197,7 @@ import com.mochyy.mochymusic.eq.audio.LoudnessAudioProcessor
 import com.mochyy.mochymusic.eq.audio.ReverbAudioProcessor
 import com.mochyy.mochymusic.eq.audio.EightDAudioProcessor
 import com.mochyy.mochymusic.eq.audio.SpatialAudioProcessor
+import com.mochyy.mochymusic.eq.audio.readTracks
 import com.mochyy.mochymusic.extensions.SilentHandler
 import com.mochyy.mochymusic.extensions.collect
 import com.mochyy.mochymusic.extensions.collectLatest
@@ -1526,7 +1527,7 @@ class MusicService :
 
         player.addListener(object : Player.Listener {
             override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
-                replayGain.update(tracks)
+                replayGain.readTracks(tracks)
                 val mediaId = player.currentMediaItem?.mediaId
                 val format = StreamFacts.selectedAudio(tracks)
                 if (mediaId != null && format != null) recordDecodedFormat(mediaId, format)

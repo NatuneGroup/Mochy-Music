@@ -1,7 +1,5 @@
 package com.mochyy.mochymusic.eq.audio
 
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.log2
@@ -23,8 +21,10 @@ class PeakLimiter {
     private var delayPos = 0
 
     // the same delay as raw 16-bit pcm, oldest first, used instead of the doubles while resting
-    private var pcmDelay = ByteArray(0)
+    private var pcmDelay = ShortArray(0)
     private var inPcm = false
+    // what delayPcm hands back: the pcm that came out of the delay, sized to the last call
+    private var pcmOut = ShortArray(0)
 
     // the lowest gain asked for in the last window, kept as a queue that rises from front to back
     private var minGain = DoubleArray(0)
@@ -49,7 +49,7 @@ class PeakLimiter {
         holdFrames = (sampleRate * HoldSeconds).toInt()
         releaseStep = 1.0 - exp(-1.0 / (ReleaseSeconds * sampleRate))
         delay = DoubleArray(latencyFrames * channels)
-        pcmDelay = ByteArray(latencyFrames * channels * 2)
+        pcmDelay = ShortArray(latencyFrames * channels)
         minGain = DoubleArray(window)
         minFrame = LongArray(window)
         held = DoubleArray(window)
@@ -136,46 +136,41 @@ class PeakLimiter {
         minSize = 0
     }
 
-    /** the resting case straight on 16-bit pcm: the samples only go through the delay, so they're copied in blocks, not one by one */
-    fun delayPcm(input: ByteBuffer, out: ByteBuffer) {
+    /** the resting case straight on 16-bit pcm: the samples only go through the delay, so they're copied in blocks, not one by one. Returns the delayed pcm, count samples long */
+    fun delayPcm(samples: ShortArray, count: Int): ShortArray {
         if (!inPcm) doublesToPcm()
-        val frameBytes = (2 * channels).coerceAtLeast(2)
-        val bytes = (input.remaining() / frameBytes) * frameBytes
-        if (bytes <= 0) {
-            input.position(input.limit())
-            return
-        }
+        if (pcmOut.size < count) pcmOut = ShortArray(count)
         val held = pcmDelay.size
-        if (bytes >= held) {
-            out.put(pcmDelay)
-            val end = input.limit()
-            input.limit(input.position() + bytes - held)
-            out.put(input)
-            input.limit(end)
-            input.get(pcmDelay)
-        } else {
-            out.put(pcmDelay, 0, bytes)
-            System.arraycopy(pcmDelay, bytes, pcmDelay, 0, held - bytes)
-            input.get(pcmDelay, held - bytes, bytes)
+        if (count == 0 || held == 0) {
+            samples.copyInto(pcmOut, 0, 0, count)
+            return pcmOut
         }
-        frame += bytes / (2 * channels)
+        if (count >= held) {
+            pcmDelay.copyInto(pcmOut, 0, 0, held)
+            samples.copyInto(pcmOut, held, 0, count - held)
+            samples.copyInto(pcmDelay, 0, count - held, count)
+        } else {
+            pcmDelay.copyInto(pcmOut, 0, 0, count)
+            pcmDelay.copyInto(pcmDelay, 0, count, held)
+            samples.copyInto(pcmDelay, held - count, 0, count)
+        }
+        frame += count / channels
         minSize = 0
+        return pcmOut
     }
 
     // what's in the delay comes out exactly as the double path would round it, so the switch can't be heard
     private fun doublesToPcm() {
-        val pcm = ByteBuffer.wrap(pcmDelay).order(ByteOrder.nativeOrder())
         for (k in delay.indices) {
             var d = delayPos + k
             if (d >= delay.size) d -= delay.size
-            pcm.putShort(toPcm(delay[d]))
+            pcmDelay[k] = toPcm(delay[d])
         }
         inPcm = true
     }
 
     private fun pcmToDoubles() {
-        val pcm = ByteBuffer.wrap(pcmDelay).order(ByteOrder.nativeOrder())
-        for (k in delay.indices) delay[k] = pcm.getShort() / 32768.0
+        for (k in delay.indices) delay[k] = pcmDelay[k] / 32768.0
         delayPos = 0
         inPcm = false
     }

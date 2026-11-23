@@ -1,10 +1,6 @@
 package com.mochyy.mochymusic.eq.audio
 
-import androidx.annotation.OptIn
-import androidx.media3.common.C
-import androidx.media3.common.Tracks
-import androidx.media3.common.util.UnstableApi
-import androidx.media3.extractor.metadata.vorbis.VorbisComment
+import kotlin.concurrent.Volatile
 import kotlin.math.min
 import kotlin.math.pow
 
@@ -20,23 +16,6 @@ class ReplayGainTags {
         private set
 
     val present: Boolean get() = trackGain != null || albumGain != null
-
-    @OptIn(UnstableApi::class)
-    fun update(tracks: Tracks) {
-        val comments = ArrayList<Pair<String, String>>()
-        for (group in tracks.groups) {
-            if (group.type != C.TRACK_TYPE_AUDIO) continue
-            for (i in 0 until group.length) {
-                if (!group.isTrackSelected(i)) continue
-                val metadata = group.getTrackFormat(i).metadata ?: continue
-                for (e in 0 until metadata.length()) {
-                    val entry = metadata.get(e) as? VorbisComment ?: continue
-                    comments += entry.key to entry.value
-                }
-            }
-        }
-        update(comments)
-    }
 
     /** from the song's vorbis comments (key, value); a song without any clears the last one's */
     fun update(comments: List<Pair<String, String>>) {

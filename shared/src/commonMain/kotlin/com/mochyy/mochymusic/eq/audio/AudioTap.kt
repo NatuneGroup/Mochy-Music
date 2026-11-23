@@ -1,11 +1,13 @@
 package com.mochyy.mochymusic.eq.audio
 
+import kotlin.concurrent.Volatile
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.log10
 import kotlin.math.max
 import kotlin.math.sin
 import kotlin.math.sqrt
+import kotlin.time.TimeSource
 
 /** what the audio lab pictures listen to: the equalizer output folded to mono into a ring, only filled while a page is looking so playback pays nothing otherwise */
 object AudioTap {
@@ -16,31 +18,43 @@ object AudioTap {
     /** audio is processed ahead of the speaker by about the sink's buffer, so pictures read this far behind to line up with what is heard */
     private const val PlaybackLagSeconds = 0.2
 
+    /** how long after the last write the tap still counts as playing, and how long one writer keeps the tap */
+    private const val LiveNanos = 400_000_000L
+    private const val OwnerHoldNanos = 300_000_000L
+
     private val ring = FloatArray(RingSize)
 
     @Volatile private var writeIndex = 0L
     @Volatile var sampleRate = 44_100
         private set
     @Volatile private var owner = 0
-    @Volatile private var lastWriteNanos = 0L
+    // monotonic nanos since the tap was first touched, so a wall-clock change can't make the pictures jump
+    private val clock = TimeSource.Monotonic.markNow()
+    @Volatile private var lastWriteNanos = -1L
+
+    private fun nowNanos(): Long = clock.elapsedNow().inWholeNanoseconds
 
     @Volatile var listeners = 0
         private set
 
-    fun listen() { synchronized(this) { listeners++ } }
-    fun stopListening() { synchronized(this) { listeners = max(0, listeners - 1) } }
+    fun listen() { listeners++ }
+    fun stopListening() { listeners = max(0, listeners - 1) }
 
     val wanted: Boolean get() = listeners > 0
 
     /** whether music went through recently: pictures settle into their idle motion when not */
-    val isLive: Boolean get() = System.nanoTime() - lastWriteNanos < 400_000_000L
+    val isLive: Boolean
+        get() {
+            val last = lastWriteNanos
+            return last >= 0L && nowNanos() - last < LiveNanos
+        }
 
     /** audio thread: samples interleaved, frames long */
     fun write(writer: Int, samples: DoubleArray, frames: Int, channels: Int, rate: Int) {
-        val now = System.nanoTime()
+        val now = nowNanos()
         // two players write during a crossmix: the first keeps the tap until it goes quiet, so the picture never mixes two songs into noise
         if (owner != writer) {
-            if (now - lastWriteNanos < 300_000_000L) return
+            if (lastWriteNanos >= 0L && now - lastWriteNanos < OwnerHoldNanos) return
             owner = writer
         }
         lastWriteNanos = now
