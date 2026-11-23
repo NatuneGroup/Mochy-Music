@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.eq.EqPreset
 import com.mochyy.mochymusic.eq.EqPresets
 import com.mochyy.mochymusic.eq.EqSettings
@@ -182,9 +183,9 @@ private fun Presets(
     // your own picked preset can be renamed or deleted from here, the built in ones can't
     val ownPicked = eq.presetId?.takeIf { id -> presets.any { it.id == id } }
     LabSectionLabel(stringResource(R.string.eqx_presets)) {
-        LabTextAction(stringResource(R.string.eqx_reset), R.drawable.refresh, onClick = onReset)
-        if (ownPicked != null) LabTextAction(stringResource(R.string.edit), R.drawable.edit) { onEdit(ownPicked) }
-        LabTextAction(stringResource(R.string.eqx_save), R.drawable.add, onClick = onSave)
+        LabTextAction(stringResource(R.string.eqx_reset), Res.drawable.refresh, onClick = onReset)
+        if (ownPicked != null) LabTextAction(stringResource(R.string.edit), Res.drawable.edit) { onEdit(ownPicked) }
+        LabTextAction(stringResource(R.string.eqx_save), Res.drawable.add, onClick = onSave)
     }
     val customLabel = stringResource(R.string.eqx_custom)
     val builtInPresetNames = EqPresets.BuiltIn.associate { it.id to builtInPresetName(it) }

@@ -2,7 +2,6 @@
 
 package com.mochyy.mochymusic.ui.screens.audiolab
 
-import android.os.Build
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -51,8 +50,6 @@ import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -63,11 +60,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
-import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.ui.component.BlurEffectCache
+import com.mochyy.mochymusic.ui.component.GlassTileMode
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import kotlin.math.roundToInt
 import com.mochyy.mochymusic.ui.utils.stableStatusBars
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 /** the backdrop behind the sheet, and the sheet itself */
 private val PageBackdrop = Color(0xFF141416)
@@ -201,12 +201,8 @@ private fun LabBackdrop(scroll: ScrollState, headerHeight: Int, content: @Compos
                 alpha = 1f - 0.4f * covered
                 shape = RoundedCornerShape((30f * covered).dp)
                 clip = covered > 0f
-                // DECAL is android 12's, named outside this check it fails to load on older phones
-                renderEffect = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    BlurEffectCache.element(18.dp.toPx() * covered, android.graphics.Shader.TileMode.DECAL)
-                } else {
-                    null
-                }
+                // the shared cache gives no blur below android 12 (its DECAL mode is android 12's), so older phones draw none, as before
+                renderEffect = BlurEffectCache.element(18.dp.toPx() * covered, GlassTileMode.Decal)
             }
             .background(PageBackdrop)
             .dotGrid(),
@@ -347,7 +343,7 @@ private fun TopScrim(scroll: ScrollState, headerHeight: Int, statusTop: Dp) {
 
 // the round grey back button, shared with the customize page
 @Composable
-internal fun LabBackButton(onBack: () -> Unit, modifier: Modifier = Modifier) {
+fun LabBackButton(onBack: () -> Unit, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .size(BackSize)
@@ -357,8 +353,8 @@ internal fun LabBackButton(onBack: () -> Unit, modifier: Modifier = Modifier) {
         contentAlignment = Alignment.Center,
     ) {
         Icon(
-            painter = painterResource(R.drawable.arrow_back_ios),
-            contentDescription = stringResource(R.string.lab_back),
+            painter = painterResource(Res.drawable.arrow_back_ios),
+            contentDescription = stringResource(Res.string.lab_back),
             tint = Color.White,
             modifier = Modifier.size(15.dp),
         )

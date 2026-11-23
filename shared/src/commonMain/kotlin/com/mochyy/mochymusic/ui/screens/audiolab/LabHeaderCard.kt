@@ -29,13 +29,13 @@ import androidx.compose.ui.unit.sp
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
 
 /** where a card stands in the header picture: low in its corner, its bottom well under the sheet */
-internal val LabCardStart = 22.dp
-internal val LabCardBottom = 18.dp
+val LabCardStart = 22.dp
+val LabCardBottom = 18.dp
 
-internal val LabCardWidth = 128.dp
-internal val LabCardHeight = 186.dp
-internal val LabCardBars = Color(0xFF5A5A60)
-internal val LabCardInk = Color(0xFF7E7E84)
+val LabCardWidth = 128.dp
+val LabCardHeight = 186.dp
+val LabCardBars = Color(0xFF5A5A60)
+val LabCardInk = Color(0xFF7E7E84)
 
 private val CardShape = RoundedCornerShape(26.dp)
 private val CardColor = Color(0xFF1C1C1F)
@@ -44,7 +44,7 @@ private val PanelColor = Color(0xFF141416)
 
 /** the card itself, before what's on it */
 @Composable
-internal fun LabHeaderCardFrame(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
+fun LabHeaderCardFrame(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
     Box(
         modifier = modifier
             .size(LabCardWidth, LabCardHeight)
@@ -57,7 +57,7 @@ internal fun LabHeaderCardFrame(modifier: Modifier = Modifier, content: @Composa
 
 /** what's on a card: topStart and topEnd in small type, label under them, bars in the panel that fills the rest, leave the text ones out for a card that's only bars */
 @Composable
-internal fun LabCardFace(
+fun LabCardFace(
     modifier: Modifier = Modifier,
     topStart: String? = null,
     topEnd: String? = null,

@@ -44,6 +44,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.mochyy.mochymusic.LocalPlayerConnection
 import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.constants.AudioNormalizationKey
 import com.mochyy.mochymusic.eq.MaxSpeed
 import com.mochyy.mochymusic.eq.MinSpeed
@@ -451,7 +452,7 @@ private fun SpeedCard(viewModel: AudioLabViewModel) {
             }
             Spacer(Modifier.height(8.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                LabTextAction(stringResource(R.string.fx_reset), R.drawable.refresh, enabled = !playback.isNormal) {
+                LabTextAction(stringResource(R.string.fx_reset), Res.drawable.refresh, enabled = !playback.isNormal) {
                     viewModel.updatePlayback { com.mochyy.mochymusic.eq.PlaybackSettings() }
                 }
             }
