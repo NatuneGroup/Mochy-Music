@@ -6,9 +6,6 @@
 
 package com.mochyy.mochymusic.lyrics
 
-import java.io.ByteArrayOutputStream
-import java.nio.charset.Charset
-
 object EmbeddedLyrics {
 
     /** What [LyricsEntity.provider][com.mochyy.mochymusic.db.entities.LyricsEntity] says for these. */
@@ -228,7 +225,7 @@ object EmbeddedLyrics {
     private fun oggPacket(source: Source, index: Int): ByteArray? {
         var pos = 0L
         var packetIndex = 0
-        val packet = ByteArrayOutputStream()
+        val packet = ByteSink()
         repeat(MaxOggPages) {
             val header = source.read(pos, 27)
             if (header.size < 27 || !header.startsWith("OggS")) return null
@@ -239,7 +236,7 @@ object EmbeddedLyrics {
             for (value in lacing) {
                 val length = value.toInt() and 0xFF
                 if (packetIndex == index) {
-                    if (packet.size() + length > MaxTagBytes) return null
+                    if (packet.size + length > MaxTagBytes) return null
                     packet.write(source.read(body, length))
                 }
                 body += length
@@ -304,8 +301,17 @@ object EmbeddedLyrics {
         return texts.firstOrNull { LrcTimestamp.containsMatchIn(it) } ?: texts.firstOrNull()
     }
 
-    private fun lrcTime(ms: Long): String =
-        "[%02d:%02d.%02d]".format(java.util.Locale.ROOT, ms / 60_000, ms / 1000 % 60, ms % 1000 / 10)
+    private fun lrcTime(ms: Long): String = buildString {
+        append('[')
+        append((ms / 60_000).toInt().pad(2))
+        append(':')
+        append((ms / 1000 % 60).toInt().pad(2))
+        append('.')
+        append((ms % 1000 / 10).toInt().pad(2))
+        append(']')
+    }
+
+    private fun Int.pad(width: Int): String = toString().padStart(width, '0')
 
     private fun charsetOf(encoding: Int): Charset? = when (encoding) {
         0 -> Charsets.ISO_8859_1
@@ -334,7 +340,7 @@ object EmbeddedLyrics {
 
     /** ID3's unsynchronisation: every 0xFF 0x00 was written for a 0xFF. */
     private fun deUnsync(bytes: ByteArray): ByteArray {
-        val out = java.io.ByteArrayOutputStream(bytes.size)
+        val out = ByteSink(bytes.size)
         var i = 0
         while (i < bytes.size) {
             out.write(bytes[i].toInt())
@@ -371,4 +377,24 @@ object EmbeddedLyrics {
 
     /** Tags carry cover art too, which can run to megabytes; past this something's wrong. */
     private const val MaxTagBytes = 16 * 1024 * 1024
+}
+
+/** A growable byte array, ByteArrayOutputStream's part in the ogg and unsync paths. */
+private class ByteSink(initial: Int = 128) {
+    private var bytes = ByteArray(initial.coerceAtLeast(1))
+    var size = 0
+        private set
+
+    fun write(block: ByteArray) {
+        if (size + block.size > bytes.size) bytes = bytes.copyOf(maxOf(bytes.size * 2, size + block.size))
+        block.copyInto(bytes, size)
+        size += block.size
+    }
+
+    fun write(byte: Int) {
+        if (size + 1 > bytes.size) bytes = bytes.copyOf(bytes.size * 2)
+        bytes[size++] = byte.toByte()
+    }
+
+    fun toByteArray(): ByteArray = bytes.copyOf(size)
 }

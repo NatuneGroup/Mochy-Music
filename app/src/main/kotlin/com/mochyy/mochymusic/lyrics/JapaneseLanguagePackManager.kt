@@ -89,6 +89,11 @@ object JapaneseLanguagePackManager {
     fun initialize(context: Context) = synchronized(requestLock) {
         if (applicationContext != null) return@synchronized
         applicationContext = context.applicationContext
+        // compact builds carry no IPADIC of their own: the shared lyrics parser reads through this
+        // dictionary once it is installed, and falls back to the kana tables until it is
+        JapaneseReadings.tokenizer = { text ->
+            cachedTokenizer?.tokenize(text)?.map { JapaneseToken(it.surface, it.reading, it.position) }
+        }
         initialization = scope.launch {
             operationMutex.withLock {
                 val target = packFile(context)
