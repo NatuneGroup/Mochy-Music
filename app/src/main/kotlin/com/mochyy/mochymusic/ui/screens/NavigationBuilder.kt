@@ -505,7 +505,7 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable("experimental_settings") {
-        com.mochyy.mochymusic.ui.screens.settings.ExperimentalSettingsScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.AndroidExperimentalSettingsScreen(navController = navController)
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.importsync.ImportSyncRoute) {
