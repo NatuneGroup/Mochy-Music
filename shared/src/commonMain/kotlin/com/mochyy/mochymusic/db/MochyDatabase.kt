@@ -1,6 +1,11 @@
 package com.mochyy.mochymusic.db
 
+import com.mochyy.mochymusic.constants.ArtistSongSortType
 import com.mochyy.mochymusic.db.daos.SpeedDialDao
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.extensions.reversed
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 // bump this with every schema change and add its migration to AllMigrations (Android) and SharedMigrations
 // (desktop and iOS, nonAndroidMain); the import checks old exports against it too.
@@ -16,4 +21,37 @@ interface MochyDatabase {
     val historyDao: HistoryDao
     val suspendingDao: SuspendingDao
     val speedDialDao: SpeedDialDao
+
+    /**
+     * The app DatabaseDao's artistSongs, for shared code: it needs queries from two shared DAOs
+     * (SongDao and HistoryDao), so it lives here rather than in either. Same queries, ordering and limit
+     * as the blocking original.
+     */
+    fun artistSongs(
+        artistId: String,
+        sortType: ArtistSongSortType,
+        descending: Boolean,
+        fromTimeStamp: Long? = null,
+        toTimeStamp: Long? = null,
+        limit: Int = -1,
+    ): Flow<List<Song>> {
+        val songsFlow = when (sortType) {
+            ArtistSongSortType.CREATE_DATE -> songDao.artistSongsByCreateDateAsc(artistId)
+            ArtistSongSortType.NAME ->
+                songDao.artistSongsByNameAsc(artistId).map { artistSongs -> artistSongs.sortedBySongTitle() }
+
+            ArtistSongSortType.PLAY_TIME -> {
+                if (fromTimeStamp != null && toTimeStamp != null) {
+                    historyDao.mostPlayedSongsByArtist(artistId, fromTimeStamp, toTimeStamp)
+                } else {
+                    songDao.artistSongsByPlayTimeAsc(artistId)
+                }
+            }
+        }
+
+        return songsFlow.map { songs ->
+            val limitedSongs = if (limit > 0) songs.take(limit) else songs
+            limitedSongs.reversed(descending)
+        }
+    }
 }
