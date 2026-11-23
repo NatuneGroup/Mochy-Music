@@ -443,7 +443,27 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.integrations.IntegrationsRoute) {
-        com.mochyy.mochymusic.ui.screens.settings.integrations.IntegrationsScreen(navController = navController)
+        // ScrobbleSite holds the app's API clients and every integration page's route belongs to the app's
+        // graph, so the shared page is handed the service rows and the routes it opens
+        com.mochyy.mochymusic.ui.screens.settings.integrations.IntegrationsScreen(
+            navController = navController,
+            scrobbleSites = com.mochyy.mochymusic.scrobble.ScrobbleSite.entries.map { site ->
+                com.mochyy.mochymusic.ui.screens.settings.integrations.ScrobbleSiteRow(
+                    brand = when (site) {
+                        com.mochyy.mochymusic.scrobble.ScrobbleSite.LASTFM -> com.mochyy.mochymusic.ui.screens.settings.integrations.ScrobbleBrand.LAST_FM
+                        com.mochyy.mochymusic.scrobble.ScrobbleSite.LIBREFM -> com.mochyy.mochymusic.ui.screens.settings.integrations.ScrobbleBrand.LIBRE_FM
+                    },
+                    label = site.label,
+                    route = com.mochyy.mochymusic.ui.screens.settings.integrations.scrobbleServiceRoute(site),
+                )
+            },
+            routes = com.mochyy.mochymusic.ui.screens.settings.integrations.IntegrationRoutes(
+                androidAuto = com.mochyy.mochymusic.ui.screens.settings.integrations.AndroidAutoSettingsRoute,
+                discord = com.mochyy.mochymusic.ui.screens.settings.integrations.discord.DiscordRoute,
+                youtubeSync = com.mochyy.mochymusic.ui.screens.settings.importsync.YouTubeSyncRoute,
+                backup = com.mochyy.mochymusic.ui.screens.settings.integrations.backup.BackupRoute,
+            ),
+        )
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.integrations.AndroidAutoSettingsRoute) {

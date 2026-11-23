@@ -1,6 +1,5 @@
 package com.mochyy.mochymusic.ui.screens.settings.integrations
 
-import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,20 +17,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 
 private val CardColor = Color(0xFF232323)
 private val CardShape = RoundedCornerShape(16.dp)
 private val IconShape = RoundedCornerShape(8.dp)
 
-/** grey line under a settings page's big title, as in the integrations and discord mocks */
+/** grey line under a settings page's big title, as in the integrations and discord mocks; shared pages draw it too */
 @Composable
-internal fun IntegrationPageSubtitle(text: String) {
+fun IntegrationPageSubtitle(text: String) {
     Text(
         text = text,
         color = Color.White.copy(alpha = 0.5f),
@@ -46,7 +46,7 @@ internal fun IntegrationPageSubtitle(text: String) {
 internal fun IntegrationRow(
     name: String,
     description: String,
-    @DrawableRes icon: Int,
+    icon: DrawableResource,
     onClick: () -> Unit,
     // the colour behind the icon, for a round logo that should still read as a square tile
     iconBackground: Color = Color.Transparent,
@@ -100,7 +100,7 @@ internal fun IntegrationRow(
 internal fun IntegrationSwitchRow(
     name: String,
     description: String,
-    @DrawableRes icon: Int,
+    icon: DrawableResource,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
