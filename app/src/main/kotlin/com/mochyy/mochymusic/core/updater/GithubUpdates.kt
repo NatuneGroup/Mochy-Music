@@ -23,8 +23,15 @@ const val ThreadsUrl = "https://www.threads.net/@furfurrfoxx"
 // dev spaces hides the discord row while this is blank
 const val DiscordUrl = "https://discord.gg/NTmqVphbRY"
 
+// Where updates come from: this build's own signed releases. The Github* names above stay the
+// credit to Mochy by realidkroo (About, support, Discord, Developer space); an APK from there is
+// signed with another key and can never install over this one, so only update checks use these.
+const val UpdateOwner = "NatuneGroup"
+const val UpdateRepo = "Mochy-Music"
+const val UpdateRepoUrl = "https://github.com/$UpdateOwner/$UpdateRepo"
+
 private const val ReleasesApi =
-    "https://api.github.com/repos/$GithubOwner/$GithubRepo/releases?per_page=20"
+    "https://api.github.com/repos/$UpdateOwner/$UpdateRepo/releases?per_page=20"
 
 data class GithubRelease(
     val title: String,
@@ -157,6 +164,7 @@ private suspend fun fetchReleases(): Result<List<ParsedRelease>> = withContext(D
         val json = connection.inputStream.bufferedReader().use { it.readText() }
         val releases = JSONArray(json)
         val appArch = runCatching { BuildConfig.ARCHITECTURE }.getOrDefault("universal")
+        val appVariant = installedVariant(BuildConfig.FLAVOR)
 
         buildList {
             for (i in 0 until releases.length()) {
@@ -173,49 +181,21 @@ private suspend fun fetchReleases(): Result<List<ParsedRelease>> = withContext(D
                 val displayVersion = if (fullVer.buildNumber > 0) "${fullVer.name} (${fullVer.buildNumber})" else fullVer.name
 
                 val assets = release.optJSONArray("assets")
-                var selectedUrl: String? = null
-                var selectedName: String? = null
-                var selectedSize = 0L
-
-                var universalUrl: String? = null
-                var universalName: String? = null
-                var universalSize = 0L
-
-                var fallbackUrl: String? = null
-                var fallbackName: String? = null
-                var fallbackSize = 0L
-
-                if (assets != null) {
-                    for (a in 0 until assets.length()) {
-                        val asset = assets.getJSONObject(a)
-                        val name = asset.optString("name").orEmpty()
-                        if (!name.endsWith(".apk", ignoreCase = true)) continue
-                        val url = asset.optString("browser_download_url").orEmpty()
-                        val size = asset.optLong("size", 0L)
-
-                        if (appArch.isNotBlank() && appArch != "universal" && name.contains(appArch, ignoreCase = true)) {
-                            selectedUrl = url
-                            selectedName = name
-                            selectedSize = size
-                        } else if (name.contains("universal", ignoreCase = true)) {
-                            universalUrl = url
-                            universalName = name
-                            universalSize = size
-                        } else if (fallbackUrl == null) {
-                            fallbackUrl = url
-                            fallbackName = name
-                            fallbackSize = size
+                val apks = buildList {
+                    if (assets != null) {
+                        for (a in 0 until assets.length()) {
+                            val asset = assets.getJSONObject(a)
+                            add(
+                                ApkAsset(
+                                    name = asset.optString("name").orEmpty(),
+                                    url = asset.optString("browser_download_url").orEmpty(),
+                                    sizeBytes = asset.optLong("size", 0L),
+                                ),
+                            )
                         }
                     }
                 }
-
-                val apkUrl = selectedUrl ?: universalUrl ?: fallbackUrl
-                val apkName = selectedName ?: universalName ?: fallbackName
-                val apkSize = when {
-                    selectedUrl != null -> selectedSize
-                    universalUrl != null -> universalSize
-                    else -> fallbackSize
-                }
+                val picked = pickApkAsset(apks, appArch, appVariant)
 
                 add(
                     ParsedRelease(
@@ -225,10 +205,10 @@ private suspend fun fetchReleases(): Result<List<ParsedRelease>> = withContext(D
                             tag = tag,
                             version = displayVersion,
                             body = release.optString("body").orEmpty(),
-                            htmlUrl = release.optString("html_url").orEmpty().ifBlank { "$GithubRepoUrl/releases" },
-                            apkUrl = apkUrl,
-                            apkName = apkName,
-                            apkSizeBytes = apkSize,
+                            htmlUrl = release.optString("html_url").orEmpty().ifBlank { "$UpdateRepoUrl/releases" },
+                            apkUrl = picked?.url,
+                            apkName = picked?.name,
+                            apkSizeBytes = picked?.sizeBytes ?: 0L,
                             publishedAt = release.optString("published_at").orEmpty(),
                             isNightly = release.optBoolean("prerelease", false),
                         ),
@@ -237,6 +217,31 @@ private suspend fun fetchReleases(): Result<List<ParsedRelease>> = withContext(D
             }
         }
     }
+}
+
+/** One file attached to a release. */
+data class ApkAsset(val name: String, val url: String, val sizeBytes: Long)
+
+private val Variants = listOf("fdroid", "foss", "gms")
+
+/** foss, gms or fdroid out of the build's flavour name (arm64Foss -> foss), null when it has none. */
+fun installedVariant(flavor: String): String? = Variants.firstOrNull { flavor.contains(it, ignoreCase = true) }
+
+/**
+ * The APK to install from a release: the one built for this ABI and flavour (mochy-8.4.4-arm64-foss.apk)
+ * first. With none, what the updater always picked: the last one named for this ABI, else a universal
+ * one, else the first APK.
+ */
+fun pickApkAsset(assets: List<ApkAsset>, arch: String, variant: String?): ApkAsset? {
+    val apks = assets.filter { it.name.endsWith(".apk", ignoreCase = true) }
+    val specificArch = arch.isNotBlank() && arch != "universal"
+    if (specificArch && variant != null) {
+        apks.lastOrNull { it.name.contains(arch, ignoreCase = true) && it.name.contains(variant, ignoreCase = true) }
+            ?.let { return it }
+    }
+    return (if (specificArch) apks.lastOrNull { it.name.contains(arch, ignoreCase = true) } else null)
+        ?: apks.lastOrNull { it.name.contains("universal", ignoreCase = true) }
+        ?: apks.firstOrNull()
 }
 
 fun isNewerThanInstalled(candidateVersionText: String): Boolean {

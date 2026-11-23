@@ -1,15 +1,8 @@
 name: Android Release APK
 
-# The auto build, in Neiro's shape: every push to main builds the one APK
-# this fork ships — the signed arm64-v8a phone release — and nothing else.
+# A signed arm64-v8a release on demand. Pushes to main used to run this too; release.yml
+# now builds and publishes that release, so this one is manual only.
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - 'README.md'
-      - 'fastlane/**'
-      - 'assets/**'
-      - '.github/**/*.md'
   workflow_dispatch:
     inputs:
       flavor:
