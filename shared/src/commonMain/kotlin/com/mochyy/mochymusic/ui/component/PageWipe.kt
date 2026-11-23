@@ -6,7 +6,6 @@
 
 package com.mochyy.mochymusic.ui.component
 
-import android.graphics.Shader
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,7 +31,6 @@ import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.min
 import kotlin.math.sqrt
-import com.mochyy.mochymusic.ui.utils.AppMotion
 
 // how far a page actually travels while it crossfades: a little drift reads as sliding,
 // a full-width slide is what made two covers look stacked on each other mid-swipe
@@ -74,7 +72,7 @@ private const val PeekMediaTravel = 0.12f
 //
 // draw the left-hand page of a pair first: the right-hand one is the one with the circle.
 @Composable
-internal fun PageWipe(
+fun PageWipe(
     pageOffset: () -> Float,
     curve: () -> Float,
     blur: Boolean,
@@ -203,9 +201,9 @@ private fun PageWipeCopy(
         radius = {
             val a = abs(pageOffset())
             // the wipe's soft edge is an element blur, it stays crisp with element blur off
-            if (a < PageWipeSettled || a >= PageWipeHidden || !AppMotion.elementBlur) 0f else BlurEffectCache.effectiveRadius(a * blurPx)
+            if (a < PageWipeSettled || a >= PageWipeHidden || !elementBlurEnabled()) 0f else BlurEffectCache.effectiveRadius(a * blurPx)
         },
-        tileMode = Shader.TileMode.CLAMP,
+        tileMode = GlassTileMode.Clamp,
         mask = null,
         offscreen = { abs(pageOffset()) in PageWipeSettled..PageWipeHidden },
         modifier = Modifier.fillMaxSize(),
@@ -267,7 +265,7 @@ private val FeatherEase = floatArrayOf(0f, 0.104f, 0.352f, 0.648f, 0.896f, 1f)
 
 // the slide itself, inside a pinned page: the media drifts the way it used to, zoomed by just
 // enough to keep its edges off screen, so it settles from a slight push-in
-internal fun Modifier.pageMediaDrift(pageOffset: () -> Float, peek: Boolean = false): Modifier = if (peek) peekMediaDrift(pageOffset) else graphicsLayer {
+fun Modifier.pageMediaDrift(pageOffset: () -> Float, peek: Boolean = false): Modifier = if (peek) peekMediaDrift(pageOffset) else graphicsLayer {
     val d = pageOffset().coerceIn(-1f, 1f)
     val scale = 1f + 2f * PageMediaTravel * abs(d)
     scaleX = scale
@@ -277,7 +275,7 @@ internal fun Modifier.pageMediaDrift(pageOffset: () -> Float, peek: Boolean = fa
 
 // text drifts further than the cover and is gone by half way, so the outgoing and incoming
 // titles never sit on top of each other
-internal fun Modifier.pageTextDrift(pageOffset: () -> Float, peek: Boolean = false): Modifier = graphicsLayer {
+fun Modifier.pageTextDrift(pageOffset: () -> Float, peek: Boolean = false): Modifier = graphicsLayer {
     val d = pageOffset()
     if (peek) {
         // the peeking card keeps a faint hint of its title, the way the concept shows it

@@ -15,52 +15,56 @@ import androidx.annotation.RequiresApi
  *
  * So shaders travel as `Any` and only these helpers - each annotated, each invoked solely from
  * inside a version check - ever name the real type.
+ *
+ * They live in :shared's androidMain and are public because the app's player, look and recap
+ * shaders call them; the shared package keeps their names, so those call sites need no import
+ * change. Desktop and iOS draw their own Skia shaders (RuntimeEffect) and don't use these.
  */
 
 @RequiresApi(33)
-internal fun createAgslShader(source: String): Any = RuntimeShader(source)
+fun createAgslShader(source: String): Any = RuntimeShader(source)
 
 @RequiresApi(33)
-internal fun Any.setAgslUniform(name: String, value: Float) {
+fun Any.setAgslUniform(name: String, value: Float) {
     (this as RuntimeShader).setFloatUniform(name, value)
 }
 
 @RequiresApi(33)
-internal fun Any.setAgslUniform(name: String, first: Float, second: Float) {
+fun Any.setAgslUniform(name: String, first: Float, second: Float) {
     (this as RuntimeShader).setFloatUniform(name, first, second)
 }
 
 @RequiresApi(33)
-internal fun Any.setAgslUniform(name: String, first: Float, second: Float, third: Float) {
+fun Any.setAgslUniform(name: String, first: Float, second: Float, third: Float) {
     (this as RuntimeShader).setFloatUniform(name, first, second, third)
 }
 
 @RequiresApi(33)
-internal fun Any.setAgslUniform(name: String, first: Float, second: Float, third: Float, fourth: Float) {
+fun Any.setAgslUniform(name: String, first: Float, second: Float, third: Float, fourth: Float) {
     (this as RuntimeShader).setFloatUniform(name, first, second, third, fourth)
 }
 
 // a uniform array: a float4 list of 16 takes 64 numbers, in order
 @RequiresApi(33)
-internal fun Any.setAgslUniformArray(name: String, values: FloatArray) {
+fun Any.setAgslUniformArray(name: String, values: FloatArray) {
     (this as RuntimeShader).setFloatUniform(name, values)
 }
 
 /** For a `layout(color) uniform half4`: [color] is an sRGB ARGB int, converted for the shader. */
 @RequiresApi(33)
-internal fun Any.setAgslColorUniform(name: String, color: Int) {
+fun Any.setAgslColorUniform(name: String, color: Int) {
     (this as RuntimeShader).setColorUniform(name, color)
 }
 
 @RequiresApi(33)
-internal fun agslRenderEffect(shader: Any, inputName: String): RenderEffect =
+fun agslRenderEffect(shader: Any, inputName: String): RenderEffect =
     RenderEffect.createRuntimeShaderEffect(shader as RuntimeShader, inputName)
 
 @RequiresApi(33)
-internal fun Any.setAgslInputShader(name: String, input: android.graphics.Shader) {
+fun Any.setAgslInputShader(name: String, input: android.graphics.Shader) {
     (this as RuntimeShader).setInputShader(name, input)
 }
 
 /** The shader itself, to draw with (a brush/paint shader rather than a layer effect). */
 @RequiresApi(33)
-internal fun Any.asAgslPaintShader(): android.graphics.Shader = this as RuntimeShader
+fun Any.asAgslPaintShader(): android.graphics.Shader = this as RuntimeShader
