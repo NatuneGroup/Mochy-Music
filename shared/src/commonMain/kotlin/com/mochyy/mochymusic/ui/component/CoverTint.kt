@@ -2,8 +2,6 @@
 
 package com.mochyy.mochymusic.ui.component
 
-import android.content.Context
-import android.util.LruCache
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
@@ -17,16 +15,12 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
-import androidx.core.graphics.ColorUtils
-import androidx.palette.graphics.Palette
-import coil3.imageLoader
-import coil3.request.ImageRequest
-import coil3.request.allowHardware
-import coil3.toBitmap
-import com.mochyy.mochymusic.ui.theme.PlayerColorExtractor
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import coil3.PlatformContext
+import coil3.compose.LocalPlatformContext
+import com.mochyy.mochymusic.ui.theme.blendARGB
+import com.mochyy.mochymusic.ui.theme.gradientColors
+import com.mochyy.mochymusic.ui.utils.readCoverPalette
+import kotlinx.coroutines.CancellationException
 
 // what a big card sits on until its covers are read, picked by a hash so each card keeps its own
 private val CardFallbackGradients = listOf(
@@ -41,7 +35,9 @@ private val CardFallbackGradients = listOf(
 private val CardTintDarkening = floatArrayOf(0.65f, 0.75f, 0.85f)
 
 // colours already read from a set of covers, so a card scrolling back in starts on them instead of tinting all over again
-private val readTints = LruCache<List<String>, List<Color>>(48)
+private val readTints = CoverColorCache<List<String>, List<Color>>(48)
+
+private val FallbackTintArgb = 0xFF444444.toInt()
 
 /** the dark gradient behind Home's big community and artist cards, tinted by their first covers once those are read */
 @Composable
@@ -51,13 +47,13 @@ fun Modifier.coverTintBackground(
     // how far each stop leans to black; something already dimmed on top can keep more colour
     darkening: FloatArray = CardTintDarkening,
 ): Modifier {
-    val context = LocalContext.current
+    val context = LocalPlatformContext.current
     var tint by remember(thumbnails) { mutableStateOf(readTints[thumbnails].orEmpty()) }
     LaunchedEffect(thumbnails) {
         if (tint.isNotEmpty() || thumbnails.isEmpty()) return@LaunchedEffect
-        val read = withContext(Dispatchers.IO) { readCoverTint(context, thumbnails) }
+        val read = readCoverTint(context, thumbnails)
         if (read.isNotEmpty()) {
-            readTints.put(thumbnails, read)
+            readTints[thumbnails] = read
             tint = read
         }
     }
@@ -75,31 +71,26 @@ fun Modifier.coverTintBackground(
 
 private fun tintStop(tint: List<Color>, fallback: List<Color>, darkening: FloatArray, index: Int): Color =
     tint.getOrNull(index)
-        ?.let { Color(ColorUtils.blendARGB(it.toArgb(), android.graphics.Color.BLACK, darkening[index])) }
+        ?.let { Color(blendARGB(it.toArgb(), 0xFF000000.toInt(), darkening[index])) }
         ?: fallback[index]
 
 // up to two colours from each cover, read from a small software copy of it
-private suspend fun readCoverTint(context: Context, thumbnails: List<String>): List<Color> = try {
+private suspend fun readCoverTint(context: PlatformContext, thumbnails: List<String>): List<Color> = try {
     val colors = mutableListOf<Color>()
     for (thumbnail in thumbnails) {
-        val request = ImageRequest.Builder(context)
-            .data(thumbnail)
-            .size(100, 100)
-            .allowHardware(false)
-            .memoryCachePolicy(coil3.request.CachePolicy.DISABLED)
-            .build()
-        val bitmap = context.imageLoader.execute(request).image?.toBitmap() ?: continue
-        val palette = Palette.from(bitmap)
-            .maximumColorCount(4)
-            .resizeBitmapArea(100 * 100)
-            .generate()
-        colors += PlayerColorExtractor.extractGradientColors(
-            palette = palette,
-            fallbackColor = android.graphics.Color.DKGRAY,
-        ).take(2)
+        val palette = readCoverPalette(
+            context = context,
+            url = thumbnail,
+            size = 100,
+            maximumColorCount = 4,
+            resizeArea = 100 * 100,
+            fallbackArgb = FallbackTintArgb,
+        ) ?: continue
+        colors += palette.gradientColors().take(2)
     }
     colors.distinct().take(3)
-} catch (e: Exception) {
-    if (e is kotlinx.coroutines.CancellationException) throw e
+} catch (e: CancellationException) {
+    throw e
+} catch (_: Exception) {
     emptyList()
 }

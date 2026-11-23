@@ -36,6 +36,8 @@ import org.jetbrains.compose.resources.stringResource
 fun runDesktopApp(font: FontFamily) {
     // warm before the first frame, so rememberPreference starts on the saved value
     PreferencesCache.start(desktopPlaybackPreferences.store)
+    // covers get the same crossfade, memory share and size setting as Android, with a disk cache
+    configureDesktopImageLoader()
     // shared ViewModels get the store above and desktopDatabase; nothing opens either until one asks
     com.mochyy.mochymusic.di.startMochyKoin(database = { desktopDatabase }, preferences = { desktopPlaybackPreferences.store })
     // the app's font pick falls back to this inter (StandaloneMochyTheme hands it over too, as iOS does)

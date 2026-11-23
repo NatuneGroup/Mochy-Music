@@ -28,15 +28,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.models.ArtistGroup
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.pc_hero_similar_to
 import com.music.innertube.models.YTItem
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun ArtistListCard(
@@ -88,7 +89,7 @@ fun ArtistListCard(
                 Spacer(modifier = Modifier.width(16.dp))
                 Column {
                     Text(
-                        text = stringResource(R.string.pc_hero_similar_to),
+                        text = stringResource(Res.string.pc_hero_similar_to),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                         maxLines = 1,

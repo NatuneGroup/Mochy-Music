@@ -2,8 +2,6 @@
 
 package com.mochyy.mochymusic.ui.component
 
-import android.content.Context
-import android.util.LruCache
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
@@ -20,25 +18,19 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
-import androidx.palette.graphics.Palette
-import coil3.imageLoader
-import coil3.request.ImageRequest
-import coil3.request.allowHardware
-import coil3.toBitmap
-import com.mochyy.mochymusic.ui.theme.PlayerColorExtractor
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import coil3.compose.LocalPlatformContext
+import com.mochyy.mochymusic.ui.theme.gradientColors
+import com.mochyy.mochymusic.ui.utils.readCoverPalette
 
 // colours already read from a cover, so a card scrolling back in starts on them instead of decoding the cover again
-private val readGradients = LruCache<String, List<Color>>(96)
+private val readGradients = CoverColorCache<String, List<Color>>(96)
 
 @Composable
 fun AlbumGradient(
     thumbnailUrl: String?,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
+    val context = LocalPlatformContext.current
     val surfaceColor = MaterialTheme.colorScheme.surface
     val fallbackColorInt = MaterialTheme.colorScheme.primaryContainer.toArgb()
 
@@ -49,9 +41,17 @@ fun AlbumGradient(
 
     LaunchedEffect(thumbnailUrl) {
         if (thumbnailUrl == null || extractedColors.isNotEmpty()) return@LaunchedEffect
-        val colors = withContext(Dispatchers.IO) { readGradientColors(context, thumbnailUrl, fallbackColorInt) }
+        val palette = readCoverPalette(
+            context = context,
+            url = thumbnailUrl,
+            size = 100,
+            maximumColorCount = 8,
+            resizeArea = 100 * 100,
+            fallbackArgb = fallbackColorInt,
+        )
+        val colors = palette?.gradientColors().orEmpty()
         if (colors.isEmpty()) return@LaunchedEffect
-        readGradients.put(thumbnailUrl, colors)
+        readGradients[thumbnailUrl] = colors
         extractedColors = colors
         fade.animateTo(1f, tween(durationMillis = 800))
     }
@@ -71,29 +71,4 @@ fun AlbumGradient(
             )
         }
     )
-}
-
-// the cover's gradient colours, read from a small software copy of it
-private suspend fun readGradientColors(context: Context, url: String, fallbackColor: Int): List<Color> = try {
-    val request = ImageRequest.Builder(context)
-        .data(url)
-        .size(100, 100)
-        .allowHardware(false)
-        .memoryCachePolicy(coil3.request.CachePolicy.DISABLED)
-        .build()
-    val bitmap = context.imageLoader.execute(request).image?.toBitmap()
-    if (bitmap == null) {
-        emptyList()
-    } else {
-        val palette = withContext(Dispatchers.Default) {
-            Palette.from(bitmap)
-                .maximumColorCount(8)
-                .resizeBitmapArea(100 * 100)
-                .generate()
-        }
-        PlayerColorExtractor.extractGradientColors(palette = palette, fallbackColor = fallbackColor)
-    }
-} catch (e: Exception) {
-    if (e is kotlinx.coroutines.CancellationException) throw e
-    emptyList()
 }
