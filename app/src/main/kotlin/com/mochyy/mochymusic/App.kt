@@ -68,6 +68,10 @@ class App : Application(), SingletonImageLoader.Factory {
     @Inject
     lateinit var musicDatabase: com.mochyy.mochymusic.db.MusicDatabase
 
+    // the same @Singleton MusicDatabase wraps; handed to Koin so shared ViewModels read this one database
+    @Inject
+    lateinit var internalDatabase: com.mochyy.mochymusic.db.InternalDatabase
+
     // only built once a tv is paired, it pulls in the downloads
     @Inject
     lateinit var phoneLink: dagger.Lazy<com.mochyy.mochymusic.link.phone.PhoneLinkHost>
@@ -91,6 +95,8 @@ class App : Application(), SingletonImageLoader.Factory {
         }
 
         PreferencesCache.start(dataStore, applicationScope)
+        // shared ViewModels: Hilt's database and the sealed store, never a second of either
+        com.mochyy.mochymusic.di.startMochyKoin(database = { internalDatabase }, preferences = { dataStore })
         if (BuildConfig.COMPACT_APK) {
             JapaneseLanguagePackManager.initialize(this)
             ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
