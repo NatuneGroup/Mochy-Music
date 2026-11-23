@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.importer.account.AccountImportState
 import com.mochyy.mochymusic.importer.account.AccountService
@@ -86,7 +87,8 @@ fun PopupSheetState.showLibraryImportSheet() {
 
 @Composable
 private fun LibraryImportFlow(onClose: () -> Unit) {
-    val vm: OnboardingViewModel = hiltViewModel()
+    // OnboardingViewModel is Koin's since it lost its Hilt constructor (di/koin/OnboardingKoin.kt)
+    val vm: OnboardingViewModel = koinViewModel()
     val scope = rememberCoroutineScope()
 
     val history = remember { mutableStateListOf(ImportStep.Providers) }

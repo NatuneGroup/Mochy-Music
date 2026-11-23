@@ -40,32 +40,38 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.importer.account.AccountService
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.close
+import com.mochyy.mochymusic.shared.resources.onb_close
+import com.mochyy.mochymusic.shared.resources.onb_sign_in_to
 import com.mochyy.mochymusic.ui.component.SheetGrabber
 import com.mochyy.mochymusic.ui.component.rememberSheetGrabberBend
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
+
+// Moved from app to shared: the app's SetupWizardScreen, LibraryImportFlow and ModuleSignInSheet use these
+// names, so they are public now (an internal symbol is invisible across the shared and app modules).
 
 /** one spring for the sheet and the page behind it so the two never drift apart */
-internal val BrowserSpring = spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow, visibilityThreshold = 0.0005f)
+val BrowserSpring = spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow, visibilityThreshold = 0.0005f)
 
 /** the browser bar is solid behind its text, then fades out over the top of the web page */
 private val BarSolidHeight = 76.dp
 private val BarFadeHeight = 28.dp
 
 /** how far the page behind shrinks and how much of its top shows above the browser sheet */
-internal const val BehindScale = 0.92f
+const val BehindScale = 0.92f
 internal val BrowserPeek = 26.dp
 
 /** the browser sheet, presence goes 0 hidden to 1 open and the caller recedes the page behind with it */
 @Composable
-internal fun OnboardingBrowserSheet(
+fun OnboardingBrowserSheet(
     service: AccountService,
     presence: Animatable<Float, AnimationVector1D>,
     onClose: () -> Unit,
@@ -126,7 +132,7 @@ internal fun OnboardingBrowserSheet(
             }
             BrowserSheetBar(
                 icon = { ProviderSquircle(service, size = 38.dp) },
-                title = stringResource(R.string.onb_sign_in_to, service.label),
+                title = stringResource(Res.string.onb_sign_in_to, service.label),
                 url = url,
                 onClose = onClose,
             )
@@ -136,7 +142,7 @@ internal fun OnboardingBrowserSheet(
 
 /** the browser's bar: whose sign-in it is, the address it's on, and a close button; the module sign-in sheet shows the same one */
 @Composable
-internal fun BrowserSheetBar(
+fun BrowserSheetBar(
     icon: @Composable () -> Unit,
     title: String,
     url: String,
@@ -176,7 +182,7 @@ internal fun BrowserSheetBar(
                 .clickable(onClick = onClose),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(painterResource(R.drawable.close), contentDescription = stringResource(R.string.onb_close), tint = Color.White, modifier = Modifier.size(20.dp))
+            Icon(painterResource(Res.drawable.close), contentDescription = stringResource(Res.string.onb_close), tint = Color.White, modifier = Modifier.size(20.dp))
         }
     }
 }

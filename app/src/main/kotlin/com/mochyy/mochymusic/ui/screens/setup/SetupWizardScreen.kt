@@ -39,6 +39,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.CrossmixMode
 import com.mochyy.mochymusic.constants.CrossmixModeKey
@@ -104,7 +105,8 @@ fun SetupWizardScreen(
     onDrag: (Float) -> Unit,
     onDragRelease: () -> Unit,
 ) {
-    val vm: OnboardingViewModel = hiltViewModel()
+    // Koin now (di/koin/OnboardingKoin.kt); TransferViewModel below is still Hilt until its owner moves it
+    val vm: OnboardingViewModel = koinViewModel()
     val scope = rememberCoroutineScope()
 
     val history = remember { mutableStateListOf(Step.Welcome) }
