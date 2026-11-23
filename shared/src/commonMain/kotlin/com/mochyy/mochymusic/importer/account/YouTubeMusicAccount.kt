@@ -2,11 +2,9 @@
 
 package com.mochyy.mochymusic.importer.account
 
+import com.mochyy.mochymusic.importer.ImporterYouTube
 import com.mochyy.mochymusic.importer.ImportedTrack
 import com.mochyy.mochymusic.importer.toImportedTrack
-import com.music.innertube.YouTube
-import com.music.innertube.models.PlaylistItem
-import com.music.innertube.utils.completed
 
 private const val LIKED_ID = "LM"
 
@@ -17,11 +15,11 @@ class YouTubeMusicLibrary(
 ) : AccountLibrary {
 
     override suspend fun playlists(): List<RemotePlaylist> {
-        val page = YouTube.library("FEmusic_liked_playlists").completed().getOrElse {
+        val playlists = ImporterYouTube.libraryPlaylists().getOrElse {
             throw AccountImportException("Couldn't read your YouTube Music playlists. Check that you're signed in.")
         }
         val result = mutableListOf(RemotePlaylist(LIKED_ID, "Liked music", null, isLiked = true))
-        page.items.filterIsInstance<PlaylistItem>()
+        playlists
             // LM is listed above; SE is the "Episodes for later" podcast list
             .filterNot { it.id == LIKED_ID || it.id == "SE" }
             .forEach { playlist ->
@@ -37,7 +35,7 @@ class YouTubeMusicLibrary(
     }
 
     override suspend fun tracks(playlist: RemotePlaylist): List<ImportedTrack> {
-        val page = YouTube.playlist(playlist.id).completed().getOrElse {
+        val page = ImporterYouTube.playlist(playlist.id).getOrElse {
             throw AccountImportException("Couldn't open \"${playlist.name}\" on YouTube Music.")
         }
         return page.songs.map { it.toImportedTrack() }

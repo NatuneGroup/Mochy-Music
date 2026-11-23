@@ -9,7 +9,7 @@ import com.mochyy.mochymusic.importer.long
 import com.mochyy.mochymusic.importer.obj
 import com.mochyy.mochymusic.importer.path
 import com.mochyy.mochymusic.importer.string
-import java.net.URLEncoder
+import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -19,7 +19,8 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
-import timber.log.Timber
+import com.mochyy.mochymusic.db.nowEpochMillis
+import com.mochyy.mochymusic.importer.ImportLog
 
 private const val API = "https://api.spotify.com/v1"
 private const val SERVICE = "Spotify"
@@ -51,7 +52,7 @@ object SpotifyConnector : AccountConnector {
                         credentials.markTried(token)
                         continue
                     }
-                    Timber.tag(LOG_TAG).i("connected through the Web API")
+                    ImportLog.d("$LOG_TAG: connected through the Web API")
                     return SpotifyLibrary(
                         token = token,
                         accountName = me.string("display_name") ?: me.string("id"),
@@ -59,11 +60,11 @@ object SpotifyConnector : AccountConnector {
                     )
                 }
                 429 -> {
-                    Timber.tag(LOG_TAG).d("Web API is rate-limiting this token")
+                    ImportLog.d("$LOG_TAG: Web API is rate-limiting this token")
                     throw AccountRetryLater(response.retryAfterSeconds?.coerceIn(2, 30) ?: 5)
                 }
                 else -> {
-                    Timber.tag(LOG_TAG).d("Web API refused a token (%d)", response.status)
+                    ImportLog.d("$LOG_TAG: Web API refused a token (${response.status})")
                     credentials.markTried(token)
                 }
             }
@@ -190,14 +191,14 @@ private object SpotifyWebPlayer {
             val firstPage = try {
                 client.run(library, libraryVariables(library, offset = 0))
             } catch (e: AccountImportException) {
-                Timber.tag(LOG_TAG).w("library query failed: %s", e.message)
+                ImportLog.w("$LOG_TAG: library query failed: ${e.message}")
                 if (!e.signedOut) return null
                 credentials.markTried(key)
                 continue
             }
             // the logged-out player has no "me"
             if (firstPage.path("data", "me").obj() == null) {
-                Timber.tag(LOG_TAG).d("a token with no account behind it; trying the next")
+                ImportLog.d("$LOG_TAG: a token with no account behind it; trying the next")
                 credentials.markTried(key)
                 continue
             }
@@ -207,17 +208,17 @@ private object SpotifyWebPlayer {
             val liked = likedQuery(queries)
             val playlist = playlistQuery(queries)
             val stillComing = liked == null || (playlists.isNotEmpty() && playlist == null)
-            if (stillComing && System.currentTimeMillis() - library.seenAtMs < WAIT_FOR_QUERIES_MS) {
-                Timber.tag(LOG_TAG).d("signed in; waiting for the %s query", if (liked == null) "Liked Songs" else "playlist")
+            if (stillComing && nowEpochMillis() - library.seenAtMs < WAIT_FOR_QUERIES_MS) {
+                ImportLog.d("$LOG_TAG: signed in; waiting for the ${if (liked == null) "Liked Songs" else "playlist"} query")
                 throw AccountRetryLater(2)
             }
-            Timber.tag(LOG_TAG).i(
-                "connected through the web player: %s, liked by %s, playlists by %s",
-                library.name, liked?.name ?: "the Web API", playlist?.name ?: "the Web API",
+            ImportLog.d(
+                "$LOG_TAG: connected through the web player: ${library.name}, liked by ${liked?.name ?: "the Web API"}, " +
+                    "playlists by ${playlist?.name ?: "the Web API"}",
             )
             return SpotifyWebPlayerLibrary(credentials, client, webApi = SpotifyLibrary(token, null, null))
         }
-        Timber.tag(LOG_TAG).d("no signed-in token yet")
+        ImportLog.d("$LOG_TAG: no signed-in token yet")
         return null
     }
 
@@ -422,17 +423,17 @@ private class WebPlayerClient(token: String, sessionHeaders: Map<String, String>
                 response.status in 200..299 -> {
                     // a GraphQL error comes back as 200 with "errors" and no data
                     AccountHttp.parse(response.body)?.takeIf { it["data"].obj() != null }?.let { return it }
-                    Timber.tag(LOG_TAG).w("%s answered without data: %s", query.name, response.body.take(300))
+                    ImportLog.w("$LOG_TAG: ${query.name} answered without data: ${response.body.take(300)}")
                     throw AccountImportException("Spotify sent something we couldn't read.")
                 }
                 response.status == 429 || response.status == 502 || response.status == 503 -> {
                     val waitSeconds = (response.retryAfterSeconds ?: (2L shl attempt)).coerceIn(1, 30)
-                    Timber.tag(LOG_TAG).d("%s answered %d, waiting %ds", query.name, response.status, waitSeconds)
+                    ImportLog.d("$LOG_TAG: ${query.name} answered ${response.status}, waiting ${waitSeconds}s")
                     delay(waitSeconds * 1000)
                 }
                 response.status == 401 -> throw AccountImportException("Spotify signed you out. Sign in again.", signedOut = true)
                 else -> {
-                    Timber.tag(LOG_TAG).w("%s answered %d: %s", query.name, response.status, response.body.take(300))
+                    ImportLog.w("$LOG_TAG: ${query.name} answered ${response.status}: ${response.body.take(300)}")
                     throw AccountImportException("Spotify answered with an error (${response.status}).")
                 }
             }
@@ -440,7 +441,7 @@ private class WebPlayerClient(token: String, sessionHeaders: Map<String, String>
         throw AccountImportException("Spotify is busy right now. Try again in a minute.")
     }
 
-    private fun encode(value: String): String = URLEncoder.encode(value, "UTF-8")
+    private fun encode(value: String): String = value.encodeURLParameter()
 
     private companion object {
         const val MAX_ATTEMPTS = 5
@@ -472,7 +473,7 @@ private class SpotifyWebPlayerLibrary(
             previous = list
             offset += list?.size ?: SpotifyWebPlayer.pageSize(query)
         }
-        Timber.tag(LOG_TAG).d("library: %d playlists, %s liked songs", playlists.size, liked.value)
+        ImportLog.d("$LOG_TAG: library: ${playlists.size} playlists, ${liked.value} liked songs")
         return listOf(RemotePlaylist(LIKED_ID, "Liked Songs", liked.value, isLiked = true)) + playlists.values
     }
 
@@ -504,7 +505,7 @@ private class SpotifyWebPlayerLibrary(
             previousFound = found
             offset += list?.size ?: SpotifyWebPlayer.pageSize(query)
         }
-        Timber.tag(LOG_TAG).d("\"%s\": %d tracks by %s", playlist.name, tracks.size, query.name)
+        ImportLog.d("$LOG_TAG: \"${playlist.name}\": ${tracks.size} tracks by ${query.name}")
         return tracks
     }
 
