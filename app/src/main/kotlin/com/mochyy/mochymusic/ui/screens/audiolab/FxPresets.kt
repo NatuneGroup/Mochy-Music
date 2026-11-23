@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.ui.component.LocalZoomOutOverlayState
 import com.mochyy.mochymusic.ui.component.RemoteFocus
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
@@ -62,7 +63,7 @@ internal fun FxPresetsSection(viewModel: AudioLabViewModel) {
             color = Color.White,
             modifier = Modifier.weight(1f),
         )
-        pickedId?.let { id -> LabTextAction(stringResource(R.string.edit), R.drawable.edit) { edit(id) } }
+        pickedId?.let { id -> LabTextAction(stringResource(R.string.edit), Res.drawable.edit) { edit(id) } }
     }
     Spacer(Modifier.height(10.dp))
     LabChips(

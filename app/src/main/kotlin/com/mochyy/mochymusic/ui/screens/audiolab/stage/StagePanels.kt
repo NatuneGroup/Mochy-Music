@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.eq.stage.StageBox
 import com.mochyy.mochymusic.eq.stage.StageListener
 import com.mochyy.mochymusic.eq.stage.StageObject
@@ -115,7 +116,7 @@ private fun ObjectControls(viewModel: AudioLabViewModel, stage: State<StageSetti
         StagePill(stringResource(R.string.stage_mute), o.muted) { change { it.copy(muted = !it.muted) } }
         StagePill(stringResource(R.string.stage_solo), o.solo) { change { it.copy(solo = !it.solo) } }
         Spacer(Modifier.weight(1f))
-        if (removable) LabTextAction(stringResource(R.string.stage_remove), R.drawable.delete) { viewModel.removeStageObject(id) }
+        if (removable) LabTextAction(stringResource(R.string.stage_remove), Res.drawable.delete) { viewModel.removeStageObject(id) }
     }
 }
 

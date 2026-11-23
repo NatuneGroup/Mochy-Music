@@ -54,6 +54,7 @@ import com.mochyy.mochymusic.module.monochrome.MonochromeModule
 import com.mochyy.mochymusic.modules.SourceModules
 import com.mochyy.mochymusic.viewmodels.ModulesViewModel
 import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.constants.AudioQuality
 import com.mochyy.mochymusic.constants.AudioQualityKey
 import com.mochyy.mochymusic.eq.audio.AudioTap
@@ -184,7 +185,7 @@ fun AudioQualityScreen(navController: NavController, modules: ModulesViewModel =
                 } else if (id == MonochromeModule.Id) {
                     QualityRow(stringResource(R.string.aq_quality_lossless), stringResource(R.string.aq_desc_monochrome_lossless), selected = true, enabled = active) {}
                 }
-                LabTextAction(stringResource(R.string.aq_module_settings, entry.module.info.name), R.drawable.navigate_next) {
+                LabTextAction(stringResource(R.string.aq_module_settings, entry.module.info.name), Res.drawable.navigate_next) {
                     navController.navigate(com.mochyy.mochymusic.ui.screens.settings.modules.moduleRoute(id))
                 }
             }

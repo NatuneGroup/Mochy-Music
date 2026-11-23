@@ -3,7 +3,6 @@
 package com.mochyy.mochymusic.ui.screens.audiolab
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.relocation.BringIntoViewRequester
@@ -22,7 +21,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -54,11 +52,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
@@ -72,23 +68,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.painterResource
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.mochyy.mochymusic.LocalAppContentObscured
-import com.mochyy.mochymusic.eq.audio.AudioTap
+import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.ui.component.AppSwitch
 import com.mochyy.mochymusic.ui.component.DefaultPlayerSeekBarSlider
-import com.mochyy.mochymusic.ui.component.LocalNavAnimatedContentScope
 import com.mochyy.mochymusic.ui.component.damageBoundary
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.ui.utils.BackPressHandler
 import kotlinx.coroutines.flow.first
 import com.mochyy.mochymusic.ui.component.RemoteFocus
 
@@ -289,7 +282,7 @@ fun LabSectionLabel(text: String, modifier: Modifier = Modifier, actions: @Compo
 
 /** [busy] spins the icon and holds off taps, so a press that waits on the network shows it's working */
 @Composable
-fun LabTextAction(text: String, iconRes: Int? = null, enabled: Boolean = true, busy: Boolean = false, onClick: () -> Unit) {
+fun LabTextAction(text: String, iconRes: DrawableResource? = null, enabled: Boolean = true, busy: Boolean = false, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(12.dp))
@@ -423,7 +416,7 @@ fun LabSegmented(
 
 /** the 32dp light circle with a dark glyph that mochy's settings rows lead with */
 @Composable
-fun LabGlyph(iconRes: Int, modifier: Modifier = Modifier, size: Dp = 32.dp) {
+fun LabGlyph(iconRes: DrawableResource, modifier: Modifier = Modifier, size: Dp = 32.dp) {
     Box(
         modifier = modifier.size(size).clip(CircleShape).background(Color(0xFFE5E5EA)),
         contentAlignment = Alignment.Center,
@@ -438,19 +431,6 @@ fun Modifier.dimmedWhen(off: Boolean, alpha: Float): Modifier = graphicsLayer { 
 @Composable
 fun animatedDim(off: Boolean): Float =
     animateFloatAsState(if (off) 0.45f else 1f, tween(220), label = "dim").value
-
-/** whether pictures should move: not while the player covers the app, the page is opening or closing, or it is scrolled out of view */
-@Composable
-fun rememberPicturesHeld(onScreen: State<Boolean>): State<Boolean> {
-    val obscured = LocalAppContentObscured.current
-    val navTransition = LocalNavAnimatedContentScope.current?.transition
-    return remember(obscured, navTransition, onScreen) {
-        derivedStateOf {
-            !onScreen.value || obscured.value || (navTransition != null &&
-                (navTransition.currentState != EnterExitState.Visible || navTransition.targetState != EnterExitState.Visible))
-        }
-    }
-}
 
 /** seconds, advancing every frame while the picture is free to move, or checking back a few times a second when moving says no */
 @Composable
@@ -478,46 +458,6 @@ fun rememberLabTime(held: State<Boolean>, moving: () -> Boolean = { true }): Sta
     return time
 }
 
-/** true while any part of this is inside the window; written only when it flips */
-@Composable
-fun Modifier.trackOnScreen(state: MutableState<Boolean>): Modifier {
-    val view = LocalView.current
-    return onGloballyPositioned { coords ->
-        val bounds = coords.boundsInWindow()
-        val visible = bounds.height > 0f && bounds.bottom > 0f && bounds.top < view.height
-        if (visible != state.value) state.value = visible
-    }
-}
-
-/** asks the audio tap to fill while this page shows a live picture */
-@Composable
-fun ListenToAudio() {
-    DisposableEffect(Unit) {
-        AudioTap.listen()
-        onDispose { AudioTap.stopListening() }
-    }
-}
-
-/** a smoothed music level 0..1 for pictures to breathe with, updated from the frame clock */
-class LevelFollower {
-    private val scratch = FloatArray(1024)
-    var level = 0f
-        private set
-    var punch = 0f
-        private set
-    private var slow = 0f
-
-    /** call once per frame with the seconds since the last one */
-    fun update(dt: Float) {
-        val now = AudioTap.level(scratch)
-        level += (now - level) * (if (now > level) 0.5f else 0.12f)
-        slow += (now - slow) * 0.03f
-        // how far above its own recent average it is: a kick or a downbeat
-        val p = ((now - slow * 1.25f) * 6f).coerceIn(0f, 1f)
-        punch = if (p > punch) p else (punch - dt * 3f).coerceAtLeast(0f)
-    }
-}
-
 @Composable
 fun rememberOnScreen(): MutableState<Boolean> = remember { mutableStateOf(true) }
 
@@ -543,7 +483,7 @@ fun LabSelect(
     val bringIntoView = remember { BringIntoViewRequester() }
 
     // back closes the list before it leaves the page
-    BackHandler(enabled = open) { open = false }
+    BackPressHandler(enabled = open) { open = false }
     LaunchedEffect(open) {
         if (!open) return@LaunchedEffect
         // open with the picked row in sight, then make room for the list once it has unrolled
@@ -579,7 +519,7 @@ fun LabSelect(
                 modifier = Modifier.weight(1f),
             )
             Icon(
-                painter = painterResource(com.mochyy.mochymusic.R.drawable.expand_more),
+                painter = painterResource(Res.drawable.expand_more),
                 contentDescription = contentDescription,
                 tint = if (open) Color.White else LabColors.Secondary,
                 modifier = Modifier.size(22.dp).graphicsLayer { rotationZ = chevron },
@@ -639,7 +579,7 @@ private fun LabSelectRow(label: String, picked: Boolean, onClick: () -> Unit) {
         )
         if (picked) {
             Box(Modifier.size(20.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
-                Icon(painterResource(com.mochyy.mochymusic.R.drawable.check), contentDescription = null, tint = Color.Black, modifier = Modifier.size(14.dp))
+                Icon(painterResource(Res.drawable.check), contentDescription = null, tint = Color.Black, modifier = Modifier.size(14.dp))
             }
         }
     }

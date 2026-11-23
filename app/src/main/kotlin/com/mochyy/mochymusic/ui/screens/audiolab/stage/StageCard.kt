@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.eq.stage.StageSettings
 import com.mochyy.mochymusic.eq.stage.StageSource
 import com.mochyy.mochymusic.ui.screens.audiolab.EffectCard
@@ -44,7 +45,7 @@ internal fun StageCard(viewModel: AudioLabViewModel, onOpen: () -> Unit) {
         footer = {
             Row(Modifier.fillMaxWidth()) {
                 Spacer(Modifier.weight(1f))
-                LabTextAction(stringResource(R.string.stage_open), R.drawable.arrow_forward, onClick = onOpen)
+                LabTextAction(stringResource(R.string.stage_open), Res.drawable.arrow_forward, onClick = onOpen)
             }
         },
     )

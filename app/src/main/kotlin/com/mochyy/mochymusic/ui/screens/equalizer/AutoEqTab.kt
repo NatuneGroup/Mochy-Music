@@ -68,6 +68,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.eq.AutoEqCorrection
 import com.mochyy.mochymusic.eq.EqSettings
 import com.mochyy.mochymusic.eq.audio.ResponseCurve
@@ -285,9 +286,9 @@ private fun SelectedHeadphone(
         }
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (!tuning.isDefault) LabTextAction(stringResource(R.string.eqx_use_autoeq_fit), R.drawable.refresh, enabled = canTune) { viewModel.tune { AutoEqTuning() } }
+            if (!tuning.isDefault) LabTextAction(stringResource(R.string.eqx_use_autoeq_fit), Res.drawable.refresh, enabled = canTune) { viewModel.tune { AutoEqTuning() } }
             Spacer(Modifier.weight(1f))
-            LabTextAction(stringResource(R.string.eqx_remove), R.drawable.close) { viewModel.clearCorrection() }
+            LabTextAction(stringResource(R.string.eqx_remove), Res.drawable.close) { viewModel.clearCorrection() }
         }
     }
 }
@@ -355,7 +356,7 @@ private fun Database(viewModel: AudioLabViewModel, selectedPath: String?, loadin
                 ) {
                     Text(state.message, fontFamily = InterFontFamily, fontSize = 14.sp, color = LabColors.Secondary)
                     Spacer(Modifier.height(12.dp))
-                    LabTextAction(stringResource(R.string.eqx_try_again), R.drawable.refresh) { viewModel.loadIndex(refresh = true) }
+                    LabTextAction(stringResource(R.string.eqx_try_again), Res.drawable.refresh) { viewModel.loadIndex(refresh = true) }
                 }
                 is AutoEqIndex.Ready -> {
                     if (results.isEmpty()) {
