@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import statistics
@@ -505,6 +506,7 @@ def measure(label: str, folder: Path, out_root: Path, runs: int) -> dict:
     log(sh(f"cmd package compile -m speed-profile -f {pkg}", timeout=600).strip())
 
     rounds = []
+    rejected = 0
     for i in range(runs + 2):
         force_stop(pkg)
         time.sleep(1.5)
@@ -536,6 +538,8 @@ def measure(label: str, folder: Path, out_root: Path, runs: int) -> dict:
         # a round whose screen never opened says nothing about latency; keep the count honest
         if not (s["screen_seen"] and a["screen_seen"]):
             log(f"run {i - 1} rejected: screen_seen settings={s['screen_seen']} appearance={a['screen_seen']}")
+            if i >= 2:
+                rejected += 1
             continue
         if i < 2:
             log(f"warm-up {i + 1}: start {start['total_ms']} ms")
@@ -545,6 +549,8 @@ def measure(label: str, folder: Path, out_root: Path, runs: int) -> dict:
             f"(longest {s.get('longest_frame_ms')}, janky {s['janky_pct']}%) | appearance "
             f"{a.get('tap_to_frame_ms')} ms (longest {a.get('longest_frame_ms')}, janky {a['janky_pct']}%)")
     result["rounds"] = rounds
+    result["requested"] = runs
+    result["rejected"] = rejected
 
     trace = traced_round(pkg, component, taps, out)
     if trace:
@@ -560,15 +566,39 @@ def med(values: list) -> float | None:
     return round(statistics.median(values), 1) if values else None
 
 
-def summarise(results: list[dict]) -> tuple[dict, str]:
+# below this many finite tap→frame timings for a screen, a build's median for it is not a measurement
+MIN_VALID_SAMPLES = 5
+
+
+def valid_count(rounds: list[dict], screen: str) -> int:
+    values = [x[screen].get("tap_to_frame_ms") for x in rounds]
+    return sum(1 for v in values if isinstance(v, (int, float)) and math.isfinite(v) and v >= 0)
+
+
+def summarise(results: list[dict], expected: list[str] | None = None) -> tuple[dict, str]:
+    """The table, plus a verdict: a comparison only when every expected build ran and each screen of each
+    build has MIN_VALID_SAMPLES finite timings; otherwise inconclusive, with the reasons and the counts."""
     rows = []
+    problems = []
+    seen = {r["label"] for r in results}
+    for label in expected or []:
+        if label not in seen:
+            problems.append(f"{label}: expected build was not measured (no apk-{label}/app.apk)")
     for r in results:
         if "error" in r:
             rows.append({"label": r["label"], "error": r["error"]})
+            problems.append(f"{r['label']}: failed ({r['error'][:120]})")
             continue
         rs = r["rounds"]
-        row = {"label": r["label"], "runs": len(rs),
+        row = {"label": r["label"], "runs": len(rs), "requested": r.get("requested"), "accepted": len(rs),
+               "rejected": r.get("rejected"),
                "cold_start_ms": med([x["start"]["total_ms"] for x in rs])}
+        for screen in ("settings", "appearance"):
+            n = valid_count(rs, screen)
+            row[f"{screen}_valid"] = n
+            if n < MIN_VALID_SAMPLES:
+                problems.append(f"{r['label']}: {n} valid {screen} timings "
+                                f"({len(rs)} accepted of {r.get('requested')} requested), needs {MIN_VALID_SAMPLES}")
         for screen in ("settings", "appearance"):
             for key in ("tap_to_frame_ms", "post_tap_longest_ms", "janky_pct", "p90", "p99", "slow_ui"):
                 row[f"{screen}_{key}"] = med([x[screen].get(key) for x in rs])
@@ -577,7 +607,12 @@ def summarise(results: list[dict]) -> tuple[dict, str]:
             row["shared_res_missing"] = len(r["shared_resources"]["missing"])
         rows.append(row)
 
+    conclusive = not problems
     lines = ["## Android speed A/B (emulator, x86_64 FOSS profileable, medians)", ""]
+    if not conclusive:
+        lines.append("**INCONCLUSIVE: these numbers are not a comparison.**")
+        lines.extend(f"- {p}" for p in problems)
+        lines.append("")
     lines.append("| build | cold start | Settings tap→frame | post-tap longest | janky % | p90 | p99 | Appearance tap→frame | post-tap longest | janky % | p90 | p99 |")
     lines.append("|---|---|---|---|---|---|---|---|---|---|---|---|")
     for row in rows:
@@ -591,6 +626,13 @@ def summarise(results: list[dict]) -> tuple[dict, str]:
             f"| {row['label']} | {f('cold_start_ms')} | {f('settings_tap_to_frame_ms')} | {f('settings_post_tap_longest_ms')} | "
             f"{f('settings_janky_pct', '%')} | {f('settings_p90')} | {f('settings_p99')} | {f('appearance_tap_to_frame_ms')} | "
             f"{f('appearance_post_tap_longest_ms')} | {f('appearance_janky_pct', '%')} | {f('appearance_p90')} | {f('appearance_p99')} |")
+    lines.append("")
+    lines.append("| build | requested | accepted | rejected | valid Settings | valid Appearance |")
+    lines.append("|---|---|---|---|---|---|")
+    for row in rows:
+        if "error" not in row:
+            lines.append(f"| {row['label']} | {row['requested']} | {row['accepted']} | {row['rejected']} | "
+                         f"{row['settings_valid']} | {row['appearance_valid']} |")
     lines.append("")
     for r in results:
         if "error" in r:
@@ -613,7 +655,8 @@ def summarise(results: list[dict]) -> tuple[dict, str]:
                  "screen appears cannot pass for latency. A round is dropped when the destination's marker text "
                  "(Appearance) never appears, and a round with no input frame is reported as no data. Each round is a "
                  "fresh cold start, so every open is the first one in that process.")
-    return {"rows": rows}, "\n".join(lines) + "\n"
+    return {"rows": rows, "conclusive": conclusive, "problems": problems,
+            "min_valid_samples": MIN_VALID_SAMPLES}, "\n".join(lines) + "\n"
 
 
 def main() -> int:
@@ -638,11 +681,13 @@ def main() -> int:
             results.append({"label": label, "error": str(e)})
         (args.out / "results.json").write_text(json.dumps(results, indent=1))
 
-    summary, md = summarise(results)
+    summary, md = summarise(results, expected=order)
     (args.out / "summary.json").write_text(json.dumps(summary, indent=1))
     (args.out / "summary.md").write_text(md)
     print(md)
-    return 0 if all("error" not in r for r in results) else 1
+    # a green run means a comparison: every expected build, enough finite timings per screen. Otherwise the
+    # diagnostics above are kept and the run fails
+    return 0 if summary["conclusive"] else 1
 
 
 if __name__ == "__main__":
