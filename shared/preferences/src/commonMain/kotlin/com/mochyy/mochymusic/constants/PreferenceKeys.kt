@@ -687,6 +687,16 @@ enum class PlayerStyle(
     SIMP("Simp", "Simp", PlayerStyleTraits(showsHandle = false)),
     METROLIST("Metrolist", "Metrolist", PlayerStyleTraits(turnable = true)),
     METROLIST_VINTAGE("Metrolist Vintage", "Vintage", PlayerStyleTraits(turnable = true)),
+    // Natune's V10 editorial look: the field colour cut from the cover, the artwork die-cut and
+    // morphing, a serif italic title and the wide PLAY pill
+    EDITORIAL("Editorial", "Editorial", PlayerStyleTraits(turnable = true)),
+    // Flamingo's album page: the floating-light backdrop, the big sleeve and its bare transport
+    FLAMINGO("Flamingo", "Flamingo", PlayerStyleTraits(turnable = true)),
+    // BitChord's full-bleed sleeve hero, credits row and oversized play glyph
+    BITCHORD("BitChord", "BitChord"),
+    // SpatialFlow's full player: the NOW PLAYING header, the big sleeve, the pill chips, the wavy
+    // seek bar and the connected transport group
+    SPATIAL_FLOW("SpatialFlow", "SpatialFlow"),
     // a look module's own player, drawn from its layout; kept last so the others keep their places, and only offered while such a module is on
     MODULE("Module", "Module", PlayerStyleTraits(turnable = true));
 
@@ -729,6 +739,10 @@ enum class PlayerStyle(
             listOf(LOOPER),
             listOf(SIMP),
             listOf(METROLIST, METROLIST_VINTAGE),
+            listOf(EDITORIAL),
+            listOf(FLAMINGO),
+            listOf(BITCHORD),
+            listOf(SPATIAL_FLOW),
         )
     }
 }

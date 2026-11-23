@@ -181,22 +181,21 @@ internal fun MetrolistPlayerStyle(
 private fun MetrolistSeek(tones: StyleTones, track: StyleTrack, preview: Boolean) {
     val connection = LocalPlayerConnection.current ?: return
     val progress by connection.progressState.collectAsState()
-    var drag by remember(track) { mutableStateOf<Float?>(null) }
+    val scrub = rememberStyleScrub(connection)
     val duration = progress.duration.coerceAtLeast(0L)
     val interactive = LocalStyleInteractive.current
     Slider(
-        value = drag ?: progress.percentage.coerceIn(0f, 1f),
-        onValueChange = { if (interactive()) drag = it },
+        value = scrub.fraction ?: progress.percentage.coerceIn(0f, 1f),
+        onValueChange = { if (interactive()) scrub.update(it) },
         onValueChangeFinished = {
-            drag?.let { if (interactive()) connection.seekTo((duration * it).toLong()) }
-            drag = null
+            scrub.finish(duration, commit = interactive())
         },
         modifier = Modifier.fillMaxWidth(),
         enabled = !preview && duration > 0,
         colors = SliderDefaults.colors(thumbColor = tones.ink, activeTrackColor = tones.ink, inactiveTrackColor = tones.chip),
     )
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        val position = drag?.let { (duration * it).toLong() } ?: progress.position
+        val position = scrub.fraction?.let { (duration * it).toLong() } ?: progress.position
         Text(makeTimeString(position), color = tones.inkSoft, style = MaterialTheme.typography.labelMedium)
         Text(makeTimeString(duration), color = tones.inkSoft, style = MaterialTheme.typography.labelMedium)
     }
