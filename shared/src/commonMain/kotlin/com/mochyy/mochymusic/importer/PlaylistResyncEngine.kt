@@ -1,0 +1,173 @@
+// PlaylistResyncEngine.kt
+
+package com.mochyy.mochymusic.importer
+
+import com.mochyy.mochymusic.db.MochyDatabase
+import com.mochyy.mochymusic.db.entities.ImportedPlaylist
+import com.mochyy.mochymusic.importer.account.AccountService
+import com.mochyy.mochymusic.importer.account.YouTubeMusicLibrary
+import com.mochyy.mochymusic.importer.account.named
+import com.mochyy.mochymusic.ui.screens.settings.importsync.PlaylistResyncGateway
+import com.mochyy.mochymusic.utils.ioDispatcher
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
+
+/** the service an imported playlist re-syncs with, null for one made here, from a file or youtube's own (a playlist with a browseId follows youtube through sync, and so does one sync brought in) */
+fun resyncSourceOf(imported: ImportedPlaylist?, browseId: String?): ImportSource? {
+    if (imported == null) return null
+    val source = ImportSource.fromKey(imported.source)?.takeIf { it.isListed } ?: return null
+    val followsYouTube = source == ImportSource.YOUTUBE_MUSIC &&
+        (browseId != null || imported.sessionId == null && imported.remoteId == null)
+    return source.takeUnless { followsYouTube }
+}
+
+/** works out how to read an imported playlist again (its link or youtube id, or the service's sign-in page), old imports saved neither so they're found by name, deezer ones ask for a link */
+class PlaylistResyncEngine(
+    private val database: MochyDatabase,
+    private val importService: MusicImportEngine,
+    private val settings: ImportSettings,
+) : PlaylistResyncGateway {
+    suspend fun start(playlistId: String): ResyncStart = withContext(ioDispatcher) {
+        val found = lookUp(playlistId) ?: return@withContext ResyncStart.Failed(NOT_IMPORTED)
+        when (val route = routeOf(found)) {
+            is Route.Direct -> launch(listOf(route.request))
+            is Route.ThroughAccount -> ResyncStart.ThroughAccount(route.service)
+            Route.NeedsLink -> ResyncStart.NeedsLink
+        }
+    }
+
+    /** re-sync all as far as it goes without the user: playlists that can be read straight away start now, the rest (sign-in pages, old imports needing a link) are left for the caller */
+    suspend fun startAll(): ResyncAllStart = withContext(ioDispatcher) {
+        val direct = mutableListOf<ResyncRequest>()
+        val accounts = linkedSetOf<AccountService>()
+        var needLink = 0
+        for (imported in database.playlistDao.importedPlaylists().first()) {
+            val found = lookUp(imported.playlistId) ?: continue
+            when (val route = routeOf(found)) {
+                is Route.Direct -> direct += route.request
+                is Route.ThroughAccount -> accounts += route.service
+                Route.NeedsLink -> needLink++
+            }
+        }
+        val failed = direct.isNotEmpty() && launch(direct) is ResyncStart.Failed
+        ResyncAllStart(started = if (failed) 0 else direct.size, throughAccount = accounts.toList(), needLink = needLink, busy = failed)
+    }
+
+    /** with the playlist's link, pasted by the user for an import that didn't save one */
+    override suspend fun startFromLink(playlistId: String, link: String): ResyncStart = withContext(ioDispatcher) {
+        val found = lookUp(playlistId) ?: return@withContext ResyncStart.Failed(NOT_IMPORTED)
+        val linkSource = LinkImporter.detect(link)?.importSource()
+            ?: return@withContext ResyncStart.Failed("Paste a link to the playlist on ${found.source.label}.")
+        if (linkSource != found.source) {
+            return@withContext ResyncStart.Failed("That's a ${linkSource.label} link, but this playlist came from ${found.source.label}.")
+        }
+        launch(listOf(request(found) { readLink(link, found.source) }))
+    }
+
+    /** with songs the account page has already read, by the playlist they're for */
+    override suspend fun startWithReads(reads: Map<String, ResyncRead>): ResyncStart = withContext(ioDispatcher) {
+        val requests = reads.mapNotNull { (playlistId, read) -> lookUp(playlistId)?.let { request(it) { read } } }
+        if (requests.isEmpty()) ResyncStart.Failed(NOT_IMPORTED) else launch(requests)
+    }
+
+    /** what the account page looks for once the user is signed in */
+    override suspend fun target(playlistId: String): ResyncTarget? = withContext(ioDispatcher) {
+        lookUp(playlistId)?.target()
+    }
+
+    /** every imported playlist only service's signed-in account can read, for re-sync all */
+    override suspend fun accountTargets(service: AccountService): List<ResyncTarget> = withContext(ioDispatcher) {
+        database.playlistDao.importedPlaylists().first()
+            .mapNotNull { lookUp(it.playlistId) }
+            .filter { (routeOf(it) as? Route.ThroughAccount)?.service == service }
+            .map { it.target() }
+    }
+
+    private class Found(val imported: ImportedPlaylist, val source: ImportSource, val name: String) {
+        fun target() = ResyncTarget(imported.playlistId, name, imported.remoteId)
+    }
+
+    private sealed interface Route {
+        class Direct(val request: ResyncRequest) : Route
+        class ThroughAccount(val service: AccountService) : Route
+        data object NeedsLink : Route
+    }
+
+    /** how found can be read again: straight from its link or youtube id, or through an account */
+    private suspend fun routeOf(found: Found): Route {
+        val url = found.imported.remoteUrl
+        return when {
+            // a link only shows spotify's first 100 songs, so a playlist that long needs the account
+            found.source == ImportSource.SPOTIFY && url != null &&
+                database.suspendingDao.importedPlaylistTrackCount(found.imported.playlistId) >= LinkImporter.SPOTIFY_EMBED_LIMIT ->
+                Route.ThroughAccount(AccountService.SPOTIFY)
+
+            url != null -> Route.Direct(request(found) { readLink(url, found.source) })
+            found.source == ImportSource.YOUTUBE_MUSIC ->
+                Route.Direct(request(found) { readYouTube(found.imported.remoteId, found.name) })
+            else -> accountFor(found.source)?.let { Route.ThroughAccount(it) } ?: Route.NeedsLink
+        }
+    }
+
+    private suspend fun lookUp(playlistId: String): Found? {
+        val imported = database.playlistDao.importedPlaylist(playlistId).first() ?: return null
+        val playlist = database.playlistDao.playlist(playlistId).first()?.playlist ?: return null
+        val source = resyncSourceOf(imported, playlist.browseId) ?: return null
+        return Found(imported, source, playlist.name)
+    }
+
+    private fun request(found: Found, read: suspend () -> ResyncRead) =
+        ResyncRequest(found.imported.playlistId, found.name, found.source, read)
+
+    private fun launch(requests: List<ResyncRequest>): ResyncStart =
+        if (importService.startResync(requests)) ResyncStart.Started else ResyncStart.Failed(BUSY)
+
+    private suspend fun readLink(link: String, source: ImportSource): ResyncRead {
+        val parsed = LinkImporter.fetch(link)
+        val tracks = parsed.playlists.values.firstOrNull().orEmpty()
+        val note = if (source == ImportSource.SPOTIFY && tracks.size >= LinkImporter.SPOTIFY_EMBED_LIMIT) {
+            "Spotify only shares a playlist's first ${LinkImporter.SPOTIFY_EMBED_LIMIT} songs by link. Re-sync again to sign in and check the rest."
+        } else {
+            parsed.warnings.firstOrNull()
+        }
+        return ResyncRead(tracks, parsed.playlistOrigins.values.firstOrNull() ?: PlaylistOrigin(remoteUrl = link), note)
+    }
+
+    /** by its youtube id, or for an account import that saved none, by its name in the account */
+    private suspend fun readYouTube(remoteId: String?, name: String): ResyncRead {
+        if (remoteId != null) {
+            val parsed = if (remoteId.startsWith("MPREb_")) {
+                LinkImporter.fetch("https://music.youtube.com/browse/$remoteId")
+            } else {
+                LinkImporter.fetchYouTubePlaylist(remoteId)
+            }
+            val author = parsed.playlistOrigins.values.firstOrNull()?.author
+            return ResyncRead(parsed.playlists.values.firstOrNull().orEmpty(), PlaylistOrigin(remoteId = remoteId, author = author))
+        }
+        if (!settings.isUserLoggedIn()) throw LinkImportException("Sign in to YouTube first, then try again.")
+        val library = YouTubeMusicLibrary(accountName = settings.youTubeAccountName())
+        val remote = library.playlists().filterNot { it.isLiked }.named(name)
+            ?: throw LinkImportException("Couldn't find \"$name\" in your YouTube Music playlists.")
+        return ResyncRead(library.tracks(remote), PlaylistOrigin(remoteId = remote.id))
+    }
+
+    private fun accountFor(source: ImportSource): AccountService? = when (source) {
+        ImportSource.SPOTIFY -> AccountService.SPOTIFY
+        ImportSource.APPLE_MUSIC -> AccountService.APPLE_MUSIC
+        ImportSource.TIDAL -> AccountService.TIDAL
+        else -> null
+    }
+
+    private fun LinkSource.importSource(): ImportSource = when (this) {
+        LinkSource.SPOTIFY -> ImportSource.SPOTIFY
+        LinkSource.APPLE_MUSIC -> ImportSource.APPLE_MUSIC
+        LinkSource.DEEZER -> ImportSource.DEEZER
+        LinkSource.YOUTUBE -> ImportSource.YOUTUBE_MUSIC
+        LinkSource.SOUNDCLOUD -> ImportSource.SOUNDCLOUD
+    }
+
+    private companion object {
+        const val NOT_IMPORTED = "This playlist didn't come from a music service, so there's nothing to re-sync."
+        const val BUSY = "An import is still running. Try again once it's done."
+    }
+}

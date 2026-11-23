@@ -15,6 +15,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import com.mochyy.mochymusic.LocalDatabase
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.db.entities.PlaylistEntity
+import com.mochyy.mochymusic.importer.NoImportTransaction
 import com.mochyy.mochymusic.importer.PlaylistSourceRecord
 import com.mochyy.mochymusic.ui.component.TextFieldDialog
 import kotlinx.coroutines.Dispatchers
@@ -56,7 +57,7 @@ fun ImportPlaylistDialog(
                             val importedSongIds = onGetSong()
                             database.addSongToPlaylist(playlist, importedSongIds)
                             sourcePlaylistId?.let {
-                                PlaylistSourceRecord(database).rememberYouTubeCopy(newPlaylist.id, it, importedSongIds)
+                                PlaylistSourceRecord(database, NoImportTransaction).rememberYouTubeCopy(newPlaylist.id, it, importedSongIds)
                             }
                         }
 
