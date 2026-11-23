@@ -3,6 +3,7 @@
 package com.mochyy.mochymusic.ui.screens.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.asPaddingValues
@@ -94,7 +95,7 @@ object PlainMochySettingsChrome : MochySettingsChrome {
                 .padding(horizontal = 20.dp),
         ) {
             Spacer(Modifier.height(16.dp))
-            titleContent()
+            Box(modifier = Modifier.height(titleBlockHeight)) { titleContent() }
             Spacer(Modifier.height(14.dp))
             SubSettingsSearchBar(
                 query = query.text,

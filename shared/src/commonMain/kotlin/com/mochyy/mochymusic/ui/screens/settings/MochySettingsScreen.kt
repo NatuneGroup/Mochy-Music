@@ -538,14 +538,16 @@ fun MochySettingsScreen(
 
     val index = remember(platform) { SettingsIndex.filter { it.availableOn(platform) } }
     // rows keep their english ids; these are what's shown and what a search matches, in the app's language
-    val titleTexts = SettingsIndex.mapNotNull { entry ->
+    val titleTexts = mutableMapOf<String, String>()
+    for (entry in SettingsIndex) {
         val res = entry.titleRes ?: LocalizedSettingsTitles[entry.title]
-        res?.let { entry.title to stringResource(it) }
-    }.toMap()
-    val pageTexts = SettingsIndex.mapNotNull { entry ->
+        if (res != null) titleTexts[entry.title] = stringResource(res)
+    }
+    val pageTexts = mutableMapOf<String, String>()
+    for (entry in SettingsIndex) {
         val res = entry.pageRes ?: LocalizedSettingsPages[entry.page]
-        res?.let { entry.page to stringResource(it) }
-    }.toMap()
+        if (res != null) pageTexts[entry.page] = stringResource(res)
+    }
     val results = remember(query.text, index, titleTexts, pageTexts) {
         val q = query.text.trim()
         if (q.isBlank()) {
