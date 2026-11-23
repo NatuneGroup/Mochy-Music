@@ -2,36 +2,32 @@
 
 package com.mochyy.mochymusic.viewmodels
 
-import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mochyy.mochymusic.importer.ParsedImport
-import com.mochyy.mochymusic.importer.PlaylistResync
 import com.mochyy.mochymusic.importer.ResyncStart
-import com.mochyy.mochymusic.importer.account.AccountImportSession
 import com.mochyy.mochymusic.importer.account.AccountImportState
 import com.mochyy.mochymusic.importer.account.AccountService
+import com.mochyy.mochymusic.ui.screens.settings.importsync.AccountImportRunnerFactory
+import com.mochyy.mochymusic.ui.screens.settings.importsync.PlaylistResyncGateway
 import com.mochyy.mochymusic.ui.screens.settings.importsync.ResyncAllArg
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
- * The Import settings page's account import; all the work is in [AccountImportSession]. Opened by a
- * Re-sync instead, it signs in the same way and reads just the playlists being re-synced: one
- * playlist's, or with Re-sync all, every one this service has.
+ * The Import settings page's account import; all the work is in the platform's AccountImportSession,
+ * reached through [AccountImportRunnerFactory] because signing in needs the platform's web view.
+ * Opened by a Re-sync instead, it signs in the same way and reads just the playlists being re-synced:
+ * one playlist's, or with Re-sync all, every one this service has.
  */
-@HiltViewModel
-class AccountImportViewModel @Inject constructor(
-    @ApplicationContext context: Context,
+class AccountImportViewModel(
     savedStateHandle: SavedStateHandle,
-    private val playlistResync: PlaylistResync,
+    private val playlistResync: PlaylistResyncGateway,
+    factory: AccountImportRunnerFactory,
 ) : ViewModel() {
 
     val service: AccountService = AccountService.fromRoute(savedStateHandle.get<String>("service")) ?: AccountService.SPOTIFY
@@ -48,7 +44,7 @@ class AccountImportViewModel @Inject constructor(
     var missingFromAccount: List<String> = emptyList()
         private set
 
-    private val session = AccountImportSession(service, context, viewModelScope)
+    private val session = factory.create(service, viewModelScope)
 
     val state: StateFlow<AccountImportState> = session.state
     val ready: StateFlow<ParsedImport?> = session.ready

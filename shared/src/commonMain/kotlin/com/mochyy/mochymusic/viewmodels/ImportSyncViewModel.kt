@@ -2,45 +2,38 @@
 
 package com.mochyy.mochymusic.viewmodels
 
-import android.content.Context
-import android.net.Uri
-import android.provider.OpenableColumns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.mochyy.mochymusic.App
-import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.MochyDatabase
 import com.mochyy.mochymusic.importer.ImportOptions
 import com.mochyy.mochymusic.importer.ImportProgress
 import com.mochyy.mochymusic.importer.LinkImportException
-import com.mochyy.mochymusic.importer.LinkImporter
-import com.mochyy.mochymusic.importer.MusicImportService
 import com.mochyy.mochymusic.importer.MochyCsvExporter
 import com.mochyy.mochymusic.importer.ParsedImport
-import com.mochyy.mochymusic.importer.YouTubeSyncManager
 import com.mochyy.mochymusic.importer.YtSyncState
+import com.mochyy.mochymusic.importer.detectLinkSource
 import com.mochyy.mochymusic.importer.parseImportCsv
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
+import com.mochyy.mochymusic.ui.screens.settings.importsync.ImportPlatform
+import com.mochyy.mochymusic.utils.ioDispatcher
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import timber.log.Timber
-import javax.inject.Inject
 
-@HiltViewModel
-class ImportSyncViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
-    private val database: MusicDatabase,
-    private val importService: MusicImportService,
-    private val youTubeSync: YouTubeSyncManager,
+/**
+ * The Import settings page's file/link import and its export. The import service, the YouTube sync
+ * manager and the platform's file access come in through [ImportPlatform]; Koin builds it on Android
+ * (shared di/ImportSyncModule.kt plus the app's bindings), where those services live.
+ */
+class ImportSyncViewModel(
+    private val database: MochyDatabase,
+    private val platform: ImportPlatform,
 ) : ViewModel() {
 
-    val importProgress: StateFlow<ImportProgress> = importService.progress
-    val youTubeState: StateFlow<YtSyncState> = youTubeSync.state
+    val importProgress: StateFlow<ImportProgress> = platform.progress
+    val youTubeState: StateFlow<YtSyncState> = platform.youTubeState
 
     private val _pending = MutableStateFlow<PendingImport>(PendingImport.Idle)
     val pending: StateFlow<PendingImport> = _pending.asStateFlow()
@@ -51,36 +44,34 @@ class ImportSyncViewModel @Inject constructor(
     private var loadJob: Job? = null
 
     fun loadLink(link: String) {
-        val source = LinkImporter.detect(link)?.label ?: "link"
+        val source = detectLinkSource(link)?.label ?: "link"
         loadJob?.cancel()
         _pending.value = PendingImport.Loading("Reading the $source playlist…")
-        loadJob = viewModelScope.launch(Dispatchers.IO) {
+        loadJob = viewModelScope.launch(ioDispatcher) {
             _pending.value = try {
-                PendingImport.Ready(LinkImporter.fetch(link), source)
+                PendingImport.Ready(platform.fetchLink(link), source)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: LinkImportException) {
                 PendingImport.Failed(e.message ?: "Couldn't read that link.")
             } catch (e: Exception) {
-                Timber.e(e, "Link import failed")
                 PendingImport.Failed("Couldn't read that link.")
             }
         }
     }
 
     /** [sourceLabel] is only for the review dialog ("Mochy backup", "TuneMyMusic"). */
-    fun loadFile(uri: Uri, sourceLabel: String) {
+    fun loadFile(uri: String, sourceLabel: String) {
         loadJob?.cancel()
         _pending.value = PendingImport.Loading("Reading the file…")
-        loadJob = viewModelScope.launch(Dispatchers.IO) {
+        loadJob = viewModelScope.launch(ioDispatcher) {
             _pending.value = try {
-                val size = queryColumn(uri, OpenableColumns.SIZE)?.toLongOrNull()
-                if (size != null && size > MAX_CSV_BYTES) {
+                val file = platform.pickedFile(uri)
+                if (file?.sizeBytes != null && file.sizeBytes > MAX_CSV_BYTES) {
                     PendingImport.Failed("That file is too big to be a playlist export.")
                 } else {
-                    val text = context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
-                        ?: throw IllegalStateException("Couldn't open that file")
-                    val fileName = queryColumn(uri, OpenableColumns.DISPLAY_NAME)
+                    val text = platform.readText(uri) ?: throw IllegalStateException("Couldn't open that file")
+                    val fileName = file?.displayName
                         ?.substringBeforeLast('.')?.takeIf { it.isNotBlank() } ?: "Imported playlist"
                     val parsed = parseImportCsv(text, fallbackPlaylistName = fileName)
                     if (parsed.totalSongs == 0 && parsed.totalPlaylists == 0) {
@@ -92,7 +83,6 @@ class ImportSyncViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Timber.e(e, "File import failed")
                 PendingImport.Failed("Couldn't read that file. Make sure it's a .csv export.")
             }
         }
@@ -111,30 +101,27 @@ class ImportSyncViewModel @Inject constructor(
 
     /** False when another import is still running. */
     fun startImport(parsed: ParsedImport, mirrorToYouTube: Boolean): Boolean {
-        val started = importService.startImport(parsed, ImportOptions(mirrorToYouTube = mirrorToYouTube))
+        val started = platform.startImport(parsed, ImportOptions(mirrorToYouTube = mirrorToYouTube))
         if (started) _pending.value = PendingImport.Idle
         return started
     }
 
-    fun cancelImport() = importService.cancel()
+    fun cancelImport() = platform.cancelImport()
 
-    fun clearFinishedImport() = importService.clearFinished()
+    fun clearFinishedImport() = platform.clearFinishedImport()
 
-    fun export(uri: Uri) {
+    fun export(uri: String) {
         _exportMessage.value = "Exporting…"
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             _exportMessage.value = try {
                 val (csv, summary) = MochyCsvExporter.build(database)
-                context.contentResolver.openOutputStream(uri)?.use { out ->
-                    // the BOM makes Excel read names in any script correctly; our reader skips it
-                    out.write(byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte()))
-                    out.write(csv.toByteArray(Charsets.UTF_8))
-                } ?: throw IllegalStateException("Couldn't write the file")
+                // the BOM makes Excel read names in any script correctly; our reader skips it
+                val bom = byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte())
+                platform.writeFile(uri, bom + csv.toByteArray(Charsets.UTF_8))
                 "Exported ${summary.likedSongs} liked songs and ${summary.playlists} playlists (${summary.playlistSongs} songs)."
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Timber.e(e, "Export failed")
                 "Export failed: ${e.message ?: "unknown error"}"
             }
         }
@@ -144,24 +131,18 @@ class ImportSyncViewModel @Inject constructor(
         _exportMessage.value = null
     }
 
-    fun syncNow() = youTubeSync.syncNow()
-    fun pullHistoryNow() = youTubeSync.pullHistoryNow()
-    fun uploadLocalPlaylists() = youTubeSync.uploadLocalPlaylists()
-    fun undoLastSync(withYouTube: Boolean) = youTubeSync.undoLastSync(withYouTube)
-    suspend fun lostLikesCount() = youTubeSync.lostLikesCount()
-    fun bringBackLikes() = youTubeSync.bringBackLikes()
-    fun clearYouTubeMessage() = youTubeSync.clearMessage()
+    fun syncNow() = platform.syncNow()
+    fun pullHistoryNow() = platform.pullHistoryNow()
+    fun uploadLocalPlaylists() = platform.uploadLocalPlaylists()
+    fun undoLastSync(withYouTube: Boolean) = platform.undoLastSync(withYouTube)
+    suspend fun lostLikesCount() = platform.lostLikesCount()
+    fun bringBackLikes() = platform.bringBackLikes()
+    fun clearYouTubeMessage() = platform.clearYouTubeMessage()
 
     /** Signs out but keeps everything already synced in the library. */
     fun signOut() {
-        viewModelScope.launch(Dispatchers.IO) { App.forgetAccount(context) }
+        viewModelScope.launch(ioDispatcher) { platform.signOut() }
     }
-
-    private fun queryColumn(uri: Uri, column: String): String? = runCatching {
-        context.contentResolver.query(uri, arrayOf(column), null, null, null)?.use { cursor ->
-            if (cursor.moveToFirst() && !cursor.isNull(0)) cursor.getString(0) else null
-        }
-    }.getOrNull()
 
     private companion object {
         const val MAX_CSV_BYTES = 40L * 1024 * 1024

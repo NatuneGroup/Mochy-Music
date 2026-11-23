@@ -2,6 +2,7 @@
 
 package com.mochyy.mochymusic.importer
 
+import com.mochyy.mochymusic.importer.account.AccountService
 import com.music.innertube.models.SongItem
 
 /** one re-sync run: the playlist being read now, and what the run has done so far */
@@ -65,8 +66,44 @@ data class ImportProgress(
     val resync: ResyncSummary? = null,
 )
 
+/** how a re-sync gets going, for the menu that asked for it */
+sealed interface ResyncStart {
+    /** reading in the background now; a toast says what changed */
+    data object Started : ResyncStart
+
+    /** only the signed-in account can read it: open the service's sign-in page in re-sync mode */
+    data class ThroughAccount(val service: AccountService) : ResyncStart
+
+    /** nothing says where it lives, so the user pastes its link */
+    data object NeedsLink : ResyncStart
+
+    data class Failed(val message: String) : ResyncStart
+}
+
+/** how far re-sync all got on its own. busy: an import was running, so nothing started */
+data class ResyncAllStart(
+    val started: Int,
+    val throughAccount: List<AccountService>,
+    val needLink: Int,
+    val busy: Boolean = false,
+)
+
+/** the imported playlist a Re-sync reads again: its id here, its name, and its id on the service if saved. */
+data class ResyncTarget(val playlistId: String, val name: String, val remoteId: String?)
+
+/** what a Re-sync read after sign-in, by playlist id here, and the names it couldn't find. */
+data class ResyncReads(val reads: Map<String, ResyncRead>, val missing: List<String>)
+
+/** the manual youtube actions on the sync page; automatic library sync stays in SyncUtils */
+data class YtSyncState(
+    val running: Boolean = false,
+    val label: String = "",
+    val message: String? = null,
+    val canUndo: Boolean = false,
+)
+
 /** a youtube song needs no matching: the id is exact, and the full item is kept */
-internal fun SongItem.toImportedTrack() = ImportedTrack(
+fun SongItem.toImportedTrack() = ImportedTrack(
     title = title,
     artist = artists.joinToString(", ") { it.name },
     album = album?.name,

@@ -109,7 +109,7 @@ private fun LibraryImportFlow(onClose: () -> Unit) {
     var syncChoices by remember { mutableStateOf(YouTubeSyncChoices()) }
 
     // a pasted playlist link reads through the same loader the settings' link import uses
-    val linkVm: ImportSyncViewModel = hiltViewModel()
+    val linkVm: ImportSyncViewModel = koinViewModel()
     val linkPending by linkVm.pending.collectAsState()
     var link by remember { mutableStateOf("") }
     val stillRunning = stringResource(R.string.lib_import_still_running)
