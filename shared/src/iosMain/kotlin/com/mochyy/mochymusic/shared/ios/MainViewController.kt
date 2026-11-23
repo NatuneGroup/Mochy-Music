@@ -26,6 +26,8 @@ import platform.UIKit.UIViewController
 fun MainViewController(): UIViewController {
     // warm before the first frame, so rememberPreference starts on the saved value
     PreferencesCache.start(iosPlaybackPreferences.store)
+    // covers get the same crossfade, memory share and size setting as Android, with a disk cache
+    configureIosImageLoader()
     // shared ViewModels get the store above and iosDatabase; nothing opens either until one asks
     com.mochyy.mochymusic.di.startMochyKoin(database = { iosDatabase }, preferences = { iosPlaybackPreferences.store })
     return mainViewController()

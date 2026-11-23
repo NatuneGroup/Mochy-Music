@@ -56,14 +56,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.check
+import com.mochyy.mochymusic.shared.resources.close
+import com.mochyy.mochymusic.shared.resources.queue_music
+import com.mochyy.mochymusic.shared.resources.undo
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import com.mochyy.mochymusic.ui.utils.stableSystemBars
 import kotlinx.coroutines.delay
@@ -71,49 +74,88 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.util.concurrent.atomic.AtomicLong
-import kotlin.math.roundToInt
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
+import kotlin.random.Random
 
 @androidx.compose.runtime.Immutable
 data class TopToast(
     val id: Long,
     val text: String,
     val isError: Boolean,
-    /** A cover to show in the rounded square; without one the square carries [iconRes]. */
+    /** A cover to show in the rounded square; without one the square carries [iconRes] or [icon]. */
     val thumbnail: String?,
+    /** An Android drawable id from app callers, drawn through coil like the rest of the app's pictures. */
     val iconRes: Int,
+    /** A shared drawable for callers that have no Android resource id. */
+    val icon: DrawableResource?,
     val actionLabel: String?,
     val onAction: (() -> Unit)?,
     val durationMs: Long,
 )
 
 object TopToaster {
-    private val ids = AtomicLong(0)
     private val state = MutableStateFlow<TopToast?>(null)
     val current: StateFlow<TopToast?> = state.asStateFlow()
 
     /**
-     * Shows [text] with a cover (or [iconRes] when there is none). With an [actionLabel] the pill
+     * Shows [text] with a cover (or [icon] when there is none). With an [actionLabel] the pill
      * carries "-> label", which runs [onAction] and closes it; those stay up a little longer.
      */
     fun show(
         text: String,
         thumbnail: String? = null,
-        iconRes: Int = R.drawable.queue_music,
+        icon: DrawableResource = Res.drawable.queue_music,
         actionLabel: String? = null,
         onAction: (() -> Unit)? = null,
         durationMs: Long = if (actionLabel != null) 5000L else 2600L,
     ) {
-        state.value = TopToast(ids.incrementAndGet(), text, false, thumbnail, iconRes, actionLabel, onAction, durationMs)
+        state.value = newToast(text, false, thumbnail, 0, icon, actionLabel, onAction, durationMs)
+    }
+
+    /**
+     * The Android app's callers name their drawable by id; it keeps the synchronous vector painter
+     * it used before the move.
+     */
+    fun show(
+        text: String,
+        thumbnail: String? = null,
+        iconRes: Int,
+        actionLabel: String? = null,
+        onAction: (() -> Unit)? = null,
+        durationMs: Long = if (actionLabel != null) 5000L else 2600L,
+    ) {
+        state.value = newToast(text, false, thumbnail, iconRes, null, actionLabel, onAction, durationMs)
     }
 
     fun error(text: String, durationMs: Long = 4000L) {
-        state.value = TopToast(ids.incrementAndGet(), text, true, null, R.drawable.close, null, null, durationMs)
+        state.value = newToast(text, true, null, 0, Res.drawable.close, null, null, durationMs)
     }
 
     fun dismiss(id: Long) {
         state.value = state.value?.takeIf { it.id != id }
     }
+
+    private fun newToast(
+        text: String,
+        isError: Boolean,
+        thumbnail: String?,
+        iconRes: Int,
+        icon: DrawableResource?,
+        actionLabel: String?,
+        onAction: (() -> Unit)?,
+        durationMs: Long,
+    ) = TopToast(
+        id = Random.nextLong(),
+        text = text,
+        isError = isError,
+        thumbnail = thumbnail,
+        iconRes = iconRes,
+        icon = icon,
+        actionLabel = actionLabel,
+        onAction = onAction,
+        durationMs = durationMs,
+    )
 }
 
 private val ToastCard = Color(0xFF1E1E1E)
@@ -176,7 +218,7 @@ private fun ToastPill(toast: TopToast) {
         modifier = Modifier
             .fillMaxWidth()
             .graphicsLayer { translationY = lift.value }
-            .shadow(14.dp, RoundedCornerShape(30.dp), clip = false, ambientColor = Color.Black, spotColor = Color.Black)
+            .shadow(14.dp, RoundedCornerShape(30.dp), clip = false)
             .clip(RoundedCornerShape(30.dp))
             .background(ToastCard)
             .pointerInput(toast.id) {
@@ -202,7 +244,7 @@ private fun ToastPill(toast: TopToast) {
                 contentAlignment = Alignment.Center,
                 modifier = Modifier.padding(start = 4.dp).size(30.dp).clip(CircleShape).background(ToastError),
             ) {
-                Icon(painterResource(R.drawable.close), null, tint = Color.Black, modifier = Modifier.size(18.dp))
+                Icon(painterResource(Res.drawable.close), null, tint = Color.Black, modifier = Modifier.size(18.dp))
             }
         } else {
             Box(
@@ -216,8 +258,20 @@ private fun ToastPill(toast: TopToast) {
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
                     )
+                } else if (toast.iconRes != 0) {
+                    Icon(
+                        painter = rememberAppIconPainter(toast.iconRes),
+                        contentDescription = null,
+                        tint = Color(0xFF232323),
+                        modifier = Modifier.size(24.dp),
+                    )
                 } else {
-                    Icon(painterResource(toast.iconRes), null, tint = Color(0xFF232323), modifier = Modifier.size(24.dp))
+                    Icon(
+                        painter = painterResource(toast.icon ?: Res.drawable.queue_music),
+                        contentDescription = null,
+                        tint = Color(0xFF232323),
+                        modifier = Modifier.size(24.dp),
+                    )
                 }
             }
         }
@@ -245,7 +299,7 @@ private fun ToastPill(toast: TopToast) {
                     }
                     .padding(horizontal = 4.dp, vertical = 8.dp),
             ) {
-                Icon(painterResource(R.drawable.undo), null, tint = Color(0xFFE6E6E6), modifier = Modifier.size(18.dp))
+                Icon(painterResource(Res.drawable.undo), null, tint = Color(0xFFE6E6E6), modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(4.dp))
                 Text(
                     toast.actionLabel,
@@ -258,7 +312,7 @@ private fun ToastPill(toast: TopToast) {
                 contentAlignment = Alignment.Center,
                 modifier = Modifier.padding(start = 12.dp).size(26.dp).clip(CircleShape).background(ToastSquare),
             ) {
-                Icon(painterResource(R.drawable.check), null, tint = Color(0xFF232323), modifier = Modifier.size(16.dp))
+                Icon(painterResource(Res.drawable.check), null, tint = Color(0xFF232323), modifier = Modifier.size(16.dp))
             }
         }
     }
