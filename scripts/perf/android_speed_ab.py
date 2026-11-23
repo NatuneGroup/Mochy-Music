@@ -224,10 +224,25 @@ def screen_size() -> tuple[int, int]:
 
 
 def scroll_profile() -> None:
-    """The same fixed drag every time, so the rows land at the same place in every round."""
+    """One slow drag: at 1.2 s it barely flings, but where it stops still varies, so callers find rows
+    again afterwards (relocate) instead of trusting coordinates from the setup pass."""
     w, h = screen_size()
-    sh(f"input swipe {w // 2} {int(h * 0.75)} {w // 2} {int(h * 0.30)} 400")
+    sh(f"input swipe {w // 2} {int(h * 0.75)} {w // 2} {int(h * 0.30)} 1200")
     time.sleep(1.5)
+
+
+def relocate(label: str, fallback: tuple[int, int], tries: int = 2) -> tuple[int, int] | None:
+    """Where [label] is on screen right now, whole and above the bars; dragged for up to [tries] more
+    times if it isn't. Runs before gfx_reset, so its uiautomator dumps stay out of the measured window.
+    None when it never shows: the round is then rejected rather than tapping wherever it used to be."""
+    _, screen_h = screen_size()
+    for attempt in range(tries + 1):
+        xy = find_clear(ui_nodes(), label, screen_h)
+        if xy is not None:
+            return xy
+        if attempt < tries:
+            scroll_profile()
+    return None
 
 
 def wait_for_label(label: str, timeout: float = 5.0, save: Path | None = None) -> bool:
@@ -358,11 +373,11 @@ def traced_round(pkg: str, component: str, taps: dict, out: Path) -> Path | None
         time.sleep(SETTLE_AFTER_TAP)
         for _ in range(taps["profile_scrolls"]):
             scroll_profile()
-    tap(taps["settings"])
+    tap(relocate("Open settings", taps["settings"]) or taps["settings"])
     time.sleep(SETTLE_AFTER_TAP)
     if taps["scroll_list"]:
         scroll_profile()
-    tap(taps["appearance"])
+    tap(relocate("Appearance", taps["appearance"]) or taps["appearance"])
     time.sleep(SETTLE_AFTER_TAP)
     if pid.isdigit():
         sh(f"kill -TERM {pid}", check=False)
@@ -518,8 +533,14 @@ def measure(label: str, folder: Path, out_root: Path, runs: int) -> dict:
             time.sleep(SETTLE_AFTER_TAP)
             for _ in range(taps["profile_scrolls"]):
                 scroll_profile()
+        settings_xy = relocate("Open settings", taps["settings"]) if taps["settings"] != taps["tab"] else taps["settings"]
+        if settings_xy is None:
+            log(f"run {i - 1} rejected: Open settings not on screen after scrolling")
+            if i >= 2:
+                rejected += 1
+            continue
         gfx_reset(pkg)
-        tap(taps["settings"])
+        tap(settings_xy)
         # the frames have to be drawn before gfxinfo can report them; the marker check comes after, so its
         # uiautomator dumps don't land inside the measured window
         time.sleep(SETTLE_AFTER_TAP)
@@ -528,8 +549,14 @@ def measure(label: str, folder: Path, out_root: Path, runs: int) -> dict:
         s["screen_seen"] = wait_for_label("Audio Lab", timeout=SETTLE_AFTER_TAP + 2)
         if taps["scroll_list"]:
             scroll_profile()
+        appearance_xy = relocate("Appearance", taps["appearance"])
+        if appearance_xy is None:
+            log(f"run {i - 1} rejected: Appearance not on screen after scrolling")
+            if i >= 2:
+                rejected += 1
+            continue
         gfx_reset(pkg)
-        tap(taps["appearance"])
+        tap(appearance_xy)
         time.sleep(SETTLE_AFTER_TAP)
         a = gfx_read(pkg)
         a["screen_seen"] = wait_for_label("Accent colour", timeout=SETTLE_AFTER_TAP + 2, save=out / "5-appearance.xml")
