@@ -24,7 +24,8 @@ private class DefaultsLinkStore(private val name: String) : LinkKeyValueStore {
     }
 
     override fun putBoolean(key: String, value: Boolean) {
-        defaults.setBool(value, forKey = key(key))
+        // stored as "true"/"false" text, so an absent switch still falls back to its default
+        defaults.setObject(value.toString(), forKey = key(key))
     }
 
     override fun remove(key: String) {

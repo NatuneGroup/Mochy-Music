@@ -7,7 +7,6 @@ import com.mochyy.mochymusic.link.DeviceKind
 import com.mochyy.mochymusic.link.LinkKeySealer
 import com.mochyy.mochymusic.link.LinkKeyValueStore
 import com.mochyy.mochymusic.link.boolean
-import com.mochyy.mochymusic.link.int
 import com.mochyy.mochymusic.link.long
 import com.mochyy.mochymusic.link.string
 import kotlinx.serialization.json.Json
@@ -113,4 +112,3 @@ internal object PairedDeviceStore {
         return !saved.isNullOrBlank() && saved != "[]"
     }
 }
-

@@ -1,92 +1,33 @@
 package com.mochyy.mochymusic.core.updater
 
 import android.content.Context
+import com.mochyy.mochymusic.link.linkKeyValueStore
 
-// The update settings and helpers the version sheet and launch check share. The checking itself is
-// GithubUpdates.kt; the older full-screen updater that used to live here had no route left.
+// The update settings and helpers the version sheet and launch check share. The keys, defaults and
+// the "settings" preferences file live in :shared (UpdateSettings); this is the Android binding.
+// The checking itself is UpdateCatalog.kt in :shared; the older full-screen updater that used to live
+// here had no route left.
 
-const val PREFS_NAME = "settings"
-const val KEY_AUTO_UPDATE_CHECK = "auto_update_check"
-const val KEY_LAST_CHECKED_TIME = "last_checked_time"
-const val KEY_BETA_UPDATES = "beta_updates"
-const val KEY_UPDATE_AVAILABLE = "update_available"
+private fun settings(context: Context) = UpdateSettings(linkKeyValueStore(context, UpdateSettings.Prefs))
 
-fun getUpdateAvailableState(context: Context): Boolean {
-    val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    return sharedPrefs.getBoolean(KEY_UPDATE_AVAILABLE, false)
-}
+fun getUpdateAvailableState(context: Context): Boolean = settings(context).updateAvailable()
 
-fun saveUpdateAvailableState(context: Context, available: Boolean) {
-    val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    sharedPrefs.edit().putBoolean(KEY_UPDATE_AVAILABLE, available).apply()
-}
+fun saveUpdateAvailableState(context: Context, available: Boolean) = settings(context).saveUpdateAvailable(available)
 
-fun getAutoUpdateCheckSetting(context: Context): Boolean {
-    val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    return sharedPrefs.getBoolean(KEY_AUTO_UPDATE_CHECK, true)
-}
+fun getAutoUpdateCheckSetting(context: Context): Boolean = settings(context).autoUpdateCheck()
 
-fun saveAutoUpdateCheckSetting(context: Context, enabled: Boolean) {
-    val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    sharedPrefs.edit().putBoolean(KEY_AUTO_UPDATE_CHECK, enabled).apply()
-}
+fun saveAutoUpdateCheckSetting(context: Context, enabled: Boolean) = settings(context).saveAutoUpdateCheck(enabled)
 
-const val KEY_UPDATE_NOTIFICATIONS = "update_notifications"
+fun getUpdateNotificationsSetting(context: Context): Boolean = settings(context).updateNotifications()
 
-fun getUpdateNotificationsSetting(context: Context): Boolean {
-    val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    return sharedPrefs.getBoolean(KEY_UPDATE_NOTIFICATIONS, true)
-}
+fun saveUpdateNotificationsSetting(context: Context, enabled: Boolean) = settings(context).saveUpdateNotifications(enabled)
 
-fun saveUpdateNotificationsSetting(context: Context, enabled: Boolean) {
-    val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    sharedPrefs.edit().putBoolean(KEY_UPDATE_NOTIFICATIONS, enabled).apply()
-}
+fun saveLastCheckedTime(context: Context, timestamp: String) = settings(context).saveLastCheckedTime(timestamp)
 
-fun saveLastCheckedTime(context: Context, timestamp: String) {
-    val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    sharedPrefs.edit().putString(KEY_LAST_CHECKED_TIME, timestamp).apply()
-}
+fun getLastCheckedTime(context: Context): String = settings(context).lastCheckedTime()
 
-fun getLastCheckedTime(context: Context): String {
-    val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    return sharedPrefs.getString(KEY_LAST_CHECKED_TIME, "") ?: ""
-}
+fun getBetaUpdatesSetting(context: Context): Boolean = settings(context).betaUpdates()
 
-fun getBetaUpdatesSetting(context: Context): Boolean {
-    val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    return sharedPrefs.getBoolean(KEY_BETA_UPDATES, false)
-}
+fun saveBetaUpdatesSetting(context: Context, enabled: Boolean) = settings(context).saveBetaUpdates(enabled)
 
-fun saveBetaUpdatesSetting(context: Context, enabled: Boolean) {
-    val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    sharedPrefs.edit().putBoolean(KEY_BETA_UPDATES, enabled).apply()
-}
-
-fun isNewerVersion(latestVersion: String, currentVersion: String): Boolean {
-    val latestVersionClean = latestVersion.removePrefix("b").removePrefix("v")
-    val currentVersionClean = currentVersion.removePrefix("b").removePrefix("v")
-
-    val latestParts = latestVersionClean.split(".").map { it.toIntOrNull() ?: 0 }
-    val currentParts = currentVersionClean.split(".").map { it.toIntOrNull() ?: 0 }
-
-    for (i in 0 until maxOf(latestParts.size, currentParts.size)) {
-        val latest = latestParts.getOrElse(i) { 0 }
-        val current = currentParts.getOrElse(i) { 0 }
-        when {
-            latest > current -> return true
-            latest < current -> return false
-        }
-    }
-
-    if (latestVersionClean == currentVersionClean) {
-        val latestIsBeta = latestVersion.startsWith("b")
-        val currentIsBeta = currentVersion.startsWith("b")
-
-        if (currentIsBeta && !latestIsBeta) return true
-    }
-
-    return false
-}
-
-// extractUrls lives in :shared (core/updater/UrlDetection.kt), with the changelog screen that uses it.
+// isNewerVersion and extractUrls live in :shared (core/updater), with the screens that use them.

@@ -3,6 +3,7 @@
 package com.mochyy.mochymusic.core.platform
 
 import android.content.Context
+import android.os.Environment
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -26,3 +27,8 @@ actual fun releaseDateText(iso: String): String? = runCatching {
 actual fun commitDateText(iso: String): String? = runCatching {
     ZonedDateTime.parse(iso).format(DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.getDefault()))
 }.getOrNull()
+
+actual fun platformDownloadsDirectory(platformContext: Any): String {
+    val context = platformContext as Context
+    return (context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: context.filesDir).absolutePath
+}

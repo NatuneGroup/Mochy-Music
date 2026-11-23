@@ -11,3 +11,5 @@ actual fun platformVersionName(platformContext: Any): String =
         ?.takeIf { it.isNotBlank() } ?: "0.0.0"
 
 actual fun platformFilesDirectory(platformContext: Any): String = NSHomeDirectory() + "/Documents"
+
+actual fun platformDownloadsDirectory(platformContext: Any): String = NSHomeDirectory() + "/Documents/Downloads"

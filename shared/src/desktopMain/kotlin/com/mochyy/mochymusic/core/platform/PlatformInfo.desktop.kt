@@ -12,3 +12,8 @@ actual fun platformFilesDirectory(platformContext: Any): String {
     val home = System.getProperty("user.home") ?: "."
     return File(home, ".mochy/files").apply { mkdirs() }.absolutePath
 }
+
+actual fun platformDownloadsDirectory(platformContext: Any): String {
+    val home = System.getProperty("user.home") ?: "."
+    return File(home, ".mochy/downloads").apply { mkdirs() }.absolutePath
+}

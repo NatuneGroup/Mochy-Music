@@ -292,18 +292,14 @@ class PhoneLinkHost(
     // this phone's id and the key it shares with one device, for signing a call to it
     private fun credentials(key: String) = LinkCredentials(LinkIdentity.id(platformContext), key)
 
-    // sends one call to a device that's around: a get without a body, a post with one; null when it couldn't be reached or said no
-    suspend fun tell(device: LiveDevice, path: String, body: JsonObject? = null): JsonObject? = withContext(ioDispatcher) {
+    // sends one call to a device that's around: a get without a body, a post with one; the answer's body
+    // text, null when it couldn't be reached or said no. The android side parses it with org.json.
+    suspend fun tell(device: LiveDevice, path: String, body: String? = null): String? = withContext(ioDispatcher) {
         runCatching {
             val url = "${LinkWire.baseUrl(device.host, device.port)}$path"
-            val response = if (body == null) LinkWire.get(url, credentials(device.key)) else LinkWire.postJson(url, credentials(device.key), body.toString())
+            val response = if (body == null) LinkWire.get(url, credentials(device.key)) else LinkWire.postJson(url, credentials(device.key), body)
             try {
-                if (response.isSuccessful) {
-                    val text = response.text().ifBlank { "{}" }
-                    Json.parseToJsonElement(text) as? JsonObject
-                } else {
-                    null
-                }
+                if (response.isSuccessful) response.text().ifBlank { "{}" } else null
             } finally {
                 response.close()
             }

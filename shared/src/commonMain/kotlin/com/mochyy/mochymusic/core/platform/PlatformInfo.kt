@@ -16,3 +16,6 @@ expect fun releaseDateText(iso: String): String?
 
 // "Sep 5, 2026" for a commit's date, null when the text isn't a date
 expect fun commitDateText(iso: String): String?
+
+// the folder old update APKs are kept in; on android this is the app's own downloads folder
+expect fun platformDownloadsDirectory(platformContext: Any): String

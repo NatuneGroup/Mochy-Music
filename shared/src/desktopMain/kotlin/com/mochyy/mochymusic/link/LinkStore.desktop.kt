@@ -20,18 +20,22 @@ private class FileLinkStore(name: String) : LinkKeyValueStore {
     }
 
     @Synchronized
-    private fun read(key: String): String? = values.getProperty(key)
+    private fun read(key: String): String? = runCatching { values.getProperty(key) }.getOrNull()
 
     @Synchronized
     private fun write(key: String, value: String) {
-        values.setProperty(key, value)
-        file.outputStream().use { values.store(it, "Mochy link") }
+        runCatching {
+            values.setProperty(key, value)
+            file.outputStream().use { values.store(it, "Mochy link") }
+        }
     }
 
     @Synchronized
     private fun delete(key: String) {
-        values.remove(key)
-        file.outputStream().use { values.store(it, "Mochy link") }
+        runCatching {
+            values.remove(key)
+            file.outputStream().use { values.store(it, "Mochy link") }
+        }
     }
 
     override fun getString(key: String): String? = read(key)
