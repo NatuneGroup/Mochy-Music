@@ -95,7 +95,12 @@ class App : Application(), SingletonImageLoader.Factory {
 
         PreferencesCache.start(dataStore, applicationScope)
         // shared ViewModels: Hilt's database and the sealed store, never a second of either
-        com.mochyy.mochymusic.di.startMochyKoin(database = { internalDatabase }, preferences = { dataStore })
+        com.mochyy.mochymusic.di.startMochyKoin(
+            database = { internalDatabase },
+            preferences = { dataStore },
+            // the dev spaces numbers stay on this module's HTTP stack (HttpURLConnection, org.json)
+            devSpace = { com.mochyy.mochymusic.ui.screens.settings.devspace.AppDevSpaceRepository },
+        )
         if (BuildConfig.COMPACT_APK) {
             JapaneseLanguagePackManager.initialize(this)
             ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {

@@ -1,7 +1,6 @@
-// repo numbers for dev spaces straight from github, if github refuses (rate limit, offline) the last good numbers stay
-
 package com.mochyy.mochymusic.ui.screens.settings.devspace
 
+import com.mochyy.mochymusic.BuildConfig
 import com.mochyy.mochymusic.core.updater.GithubOwner
 import com.mochyy.mochymusic.core.updater.GithubRepo
 import kotlinx.coroutines.Dispatchers
@@ -20,51 +19,31 @@ import java.net.URLEncoder
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 
-data class DevIssue(
-    val number: Int,
-    val title: String,
-    val open: Boolean,
-    val labels: List<String>,
-    val url: String,
-    val createdAt: Instant,
-) {
-    /** a "bug" label, or the word in the title, reporters don't always label */
-    val isBug: Boolean = labels.any { it.contains("bug", true) } || title.contains("bug", true)
-
-    val isFeature: Boolean = !isBug && (
-        labels.any { it.contains("enhancement", true) || it.contains("feature", true) } ||
-            title.contains("feature", true) || title.contains("request", true)
-        )
-}
-
-data class DevSpaceStats(
-    val openTotal: Int = 0,
-    val closedTotal: Int = 0,
-    val newIssues: Int? = null,
-    val newResolved: Int? = null,
-    val commits: Int? = null,
-    val releases: Int? = null,
-    val issues: List<DevIssue> = emptyList(),
-    val fetchedAt: Long = 0L,
-) {
-    val reportedTotal: Int get() = openTotal + closedTotal
-}
-
-object DevSpaceRepository {
+/**
+ * Dev spaces' repo numbers straight from github; if github refuses (rate limit, offline) the last
+ * good numbers stay and the page says why. It stays in :app because [HttpURLConnection] and org.json
+ * are JVM APIs, and it runs on the HTTP and JSON stack the app has always used; the shared pages
+ * only know [DevSpaceRepository]. Koin hands them this one object (see the app module in App.kt), so
+ * the dev spaces page and the playground page still share one set of numbers, as the object they
+ * used to call did.
+ */
+object AppDevSpaceRepository : DevSpaceRepository {
     private val stats = MutableStateFlow<DevSpaceStats?>(null)
     private val loadingFlag = MutableStateFlow(false)
     private val errorFlag = MutableStateFlow<String?>(null)
     private val mutex = Mutex()
 
-    val current: StateFlow<DevSpaceStats?> = stats.asStateFlow()
-    val loading: StateFlow<Boolean> = loadingFlag.asStateFlow()
-    val error: StateFlow<String?> = errorFlag.asStateFlow()
+    /** the app's build time (its commit, not the clock); the page counts what happened since then */
+    private val sinceMillis: Long = BuildConfig.BUILD_TIME_MILLIS
+
+    override val current: StateFlow<DevSpaceStats?> = stats.asStateFlow()
+    override val loading: StateFlow<Boolean> = loadingFlag.asStateFlow()
+    override val error: StateFlow<String?> = errorFlag.asStateFlow()
 
     private const val Api = "https://api.github.com"
     private const val Repo = "$GithubOwner/$GithubRepo"
 
-    /** fetches everything again, unless force is false and the copy is newer than maxAgeMs */
-    suspend fun refresh(sinceMillis: Long, force: Boolean, maxAgeMs: Long = 60_000L) {
+    override suspend fun refresh(force: Boolean, maxAgeMs: Long) {
         val known = stats.value
         if (!force && known != null && System.currentTimeMillis() - known.fetchedAt < maxAgeMs) return
         // two openers at once (the page and its card): a forced one waits its turn, a lazy one leaves it
@@ -168,7 +147,7 @@ object DevSpaceRepository {
                         open = o.getString("state") == "open",
                         labels = labels,
                         url = o.getString("html_url"),
-                        createdAt = Instant.parse(o.getString("created_at")),
+                        createdAtMillis = Instant.parse(o.getString("created_at")).toEpochMilli(),
                     ),
                 )
             }
