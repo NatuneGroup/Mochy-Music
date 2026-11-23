@@ -67,7 +67,6 @@ private const val DOWNLOAD_CACHE = "downloadCache"
 fun libraryAndroidModule(app: Application): Module {
     val hilt = EntryPointAccessors.fromApplication(app, LibraryEntryPoint::class.java)
     return module {
-        single<Context> { app }
         single<MusicDatabase> { hilt.musicDatabase() }
         single<SyncUtils> { hilt.syncUtils() }
         single<CachedSongs> { hilt.cachedSongs() }

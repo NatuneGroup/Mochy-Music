@@ -1,8 +1,10 @@
 package com.mochyy.mochymusic.di
 
 import android.app.Application
+import android.content.Context
 import com.mochyy.mochymusic.di.koin.onboardingModule
 import com.mochyy.mochymusic.di.koin.onlineAndroidModule
+import com.mochyy.mochymusic.di.koin.playerTvModule
 import com.mochyy.mochymusic.ui.screens.settings.devspace.AppDevSpaceRepository
 import com.mochyy.mochymusic.ui.screens.settings.devspace.DevSpaceRepository
 import com.mochyy.mochymusic.utils.AndroidArtistPageSource
@@ -18,11 +20,16 @@ import org.koin.dsl.module
  * page reads its numbers through AppDevSpaceRepository (HttpURLConnection, org.json, BuildConfig).
  * Every Android-only binding goes here, so the shared appModule keeps one shape on every platform.
  * Loaded right after startMochyKoin in App.onCreate, before any composition asks for the view model.
- * The Library's (di/LibraryKoin.kt) and onboarding's (di/koin/OnboardingKoin.kt) Android view models need the Application.
+ * The Library's (di/LibraryKoin.kt), onboarding's (di/koin/OnboardingKoin.kt) and the player/TV
+ * (di/koin/PlayerTvKoin.kt) Android view models need the Application.
+ *
+ * The Application is registered as the Context, which is what koin-android's androidContext() looks
+ * up; the shared graph cannot hold it because commonMain has no android.content.
  */
 fun loadAndroidKoin(app: Application) {
     loadKoinModules(
         module {
+            single<Context> { app }
             single<ArtistPageSource> { AndroidArtistPageSource }
             single<DevSpaceRepository> { AppDevSpaceRepository }
             viewModelOf(::ArtistSimilarViewModel)
@@ -32,4 +39,5 @@ fun loadAndroidKoin(app: Application) {
     loadKoinModules(libraryAndroidModule(app))
     // onboarding's view model needs the application Context, so it is passed in rather than looked up
     loadKoinModules(onboardingModule(app))
+    loadKoinModules(playerTvModule)
 }

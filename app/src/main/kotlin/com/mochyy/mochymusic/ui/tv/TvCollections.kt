@@ -45,13 +45,12 @@ import com.mochyy.mochymusic.viewmodels.AlbumViewModel
 import com.mochyy.mochymusic.viewmodels.LibraryHomeViewModel
 import com.mochyy.mochymusic.viewmodels.LocalPlaylistViewModel
 import com.mochyy.mochymusic.viewmodels.OnlinePlaylistViewModel
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import javax.inject.Inject
+import org.koin.compose.viewmodel.koinViewModel
 
 private fun Song.tvTrack() = TvTrack(
     id = id,
@@ -147,8 +146,8 @@ internal enum class TvSongsKind(val key: String, val title: Int) {
     }
 }
 
-@HiltViewModel
-internal class TvSongsViewModel @Inject constructor(
+// Koin builds it (di/koin/PlayerTvKoin.kt); the tv screens take it with koinViewModel
+internal class TvSongsViewModel(
     database: MusicDatabase,
     cachedSongs: CachedSongs,
     savedStateHandle: SavedStateHandle,
@@ -177,7 +176,7 @@ internal class TvSongsViewModel @Inject constructor(
 }
 
 @Composable
-internal fun TvSongsScreen(viewModel: TvSongsViewModel = hiltViewModel()) {
+internal fun TvSongsScreen(viewModel: TvSongsViewModel = koinViewModel()) {
     val songs by viewModel.songs.collectAsState()
     val actions = LocalTvActions.current
     val list = songs.orEmpty()

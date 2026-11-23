@@ -88,7 +88,7 @@ import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.offset
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.palette.graphics.Palette
 import coil3.imageLoader
 import coil3.request.ImageRequest
@@ -246,7 +246,7 @@ fun LyricsScreen(
     modifier: Modifier = Modifier,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
-    val viewModel: LyricsScreenViewModel = hiltViewModel()
+    val viewModel: LyricsScreenViewModel = koinViewModel()
     val density = LocalDensity.current
 
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()

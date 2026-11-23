@@ -55,7 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import com.mochyy.mochymusic.LocalPlayerConnection
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.TranslateLanguageKey
@@ -99,7 +99,7 @@ import com.mochyy.mochymusic.ui.component.sheetHandleRoom
 @Composable
 fun LyricsEditorSheet(onDismiss: () -> Unit) {
     val playerConnection = LocalPlayerConnection.current ?: return
-    val viewModel: LyricsMenuViewModel = hiltViewModel()
+    val viewModel: LyricsMenuViewModel = koinViewModel()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val lyricsEntity by playerConnection.currentLyrics.collectAsState(initial = null)
 
@@ -243,7 +243,7 @@ internal fun buildLrc(times: List<Long>, texts: List<String>): String = buildStr
 @Composable
 fun LyricsProviderSheet(onDismiss: () -> Unit) {
     val playerConnection = LocalPlayerConnection.current ?: return
-    val viewModel: LyricsMenuViewModel = hiltViewModel()
+    val viewModel: LyricsMenuViewModel = koinViewModel()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val lyricsEntity by playerConnection.currentLyrics.collectAsState(initial = null)
     val sources by viewModel.sources.collectAsState()

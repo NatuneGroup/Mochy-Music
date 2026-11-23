@@ -63,7 +63,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import com.mochyy.mochymusic.LocalDatabase
 import com.mochyy.mochymusic.LocalPlayerConnection
 import com.mochyy.mochymusic.R
@@ -162,7 +162,7 @@ internal fun rememberVideoLyrics(): VideoLyrics {
     val metadata by connection.mediaMetadata.collectAsState()
     val entity by connection.currentLyrics.collectAsState(initial = null)
     // the flagship's card is what usually asks for a song's lyrics; here nothing else does
-    val loader: LyricsScreenViewModel = hiltViewModel()
+    val loader: LyricsScreenViewModel = koinViewModel()
     LaunchedEffect(metadata?.id) { metadata?.let(loader::ensureLyricsLoaded) }
     val parsed = remember(entity?.lyrics) {
         val raw = entity?.lyrics

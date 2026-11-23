@@ -54,7 +54,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import coil3.compose.AsyncImage
@@ -148,9 +148,9 @@ fun PlayerActionMenu(
     var songForVideo by remember { mutableStateOf<com.mochyy.mochymusic.models.MediaMetadata?>(null) }
     val videoBackgroundOn by rememberPreference(PlayVideoBackgroundKey, defaultValue = false)
 
-    // Only touched by the lyrics section. hiltViewModel() itself is cheap, but the flows are
+    // Only touched by the lyrics section. koinViewModel() itself is cheap, but the flows are
     // collected lazily so a menu opened from the player does no lyrics work at all.
-    val lyricsMenuViewModel: com.mochyy.mochymusic.viewmodels.LyricsMenuViewModel = hiltViewModel()
+    val lyricsMenuViewModel: com.mochyy.mochymusic.viewmodels.LyricsMenuViewModel = koinViewModel()
     val lyricsMetadata by playerConnection.mediaMetadata.collectAsState()
     val lyricsEntity by playerConnection.currentLyrics.collectAsState(initial = null)
 
