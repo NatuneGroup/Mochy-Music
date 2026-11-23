@@ -26,6 +26,8 @@ import com.mochyy.mochymusic.constants.IpodTheme
 import com.mochyy.mochymusic.constants.IpodThemeKey
 import com.mochyy.mochymusic.constants.IpodWheelColor
 import com.mochyy.mochymusic.constants.IpodWheelColorKey
+import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.contrast
 import com.mochyy.mochymusic.ui.player.customize.CoverOption
 import com.mochyy.mochymusic.ui.player.ipod.IpodLook
 import com.mochyy.mochymusic.ui.player.ipod.lookOf
@@ -69,7 +71,7 @@ internal fun ColumnScope.IpodOptions() {
             CoverOption.Switch(
                 title = stringResource(R.string.ps_ipod_shadow),
                 description = stringResource(R.string.ps_ipod_shadow_desc),
-                icon = R.drawable.contrast,
+                icon = Res.drawable.contrast,
                 key = IpodShadowKey,
                 default = true,
             ),
