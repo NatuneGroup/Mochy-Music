@@ -196,7 +196,7 @@ suspend fun pictureTones(context: Context, url: String): List<Color>? {
 }
 
 // four tones and the glare from a frame's pixels, inside any black bars ([insetX] and [insetY] are the share cut off each side)
-internal fun ambientTones(pixels: IntArray, width: Int, height: Int, insetX: Float = 0f, insetY: Float = 0f): List<Color> {
+fun ambientTones(pixels: IntArray, width: Int, height: Int, insetX: Float = 0f, insetY: Float = 0f): List<Color> {
     val left = (insetX * width).toInt().coerceIn(0, width / 2 - 1)
     val right = width - left
     val top = (insetY * height).toInt().coerceIn(0, height / 2 - 1)
