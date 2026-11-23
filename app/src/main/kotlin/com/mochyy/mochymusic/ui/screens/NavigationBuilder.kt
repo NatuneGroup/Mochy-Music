@@ -393,7 +393,7 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable("stats") {
-        com.mochyy.mochymusic.ui.screens.recap.StatsScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.recap.AndroidStatsScreen(navController = navController)
     }
 
     composable("cipher_settings") {

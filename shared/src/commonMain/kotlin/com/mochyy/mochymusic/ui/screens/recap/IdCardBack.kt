@@ -60,22 +60,26 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.random.Random
 
-internal enum class ScanVerdict { Valid, Invalid }
+enum class ScanVerdict { Valid, Invalid }
 
 internal val ScanGreen = Color(0xFF52FF7A)
 internal val ScanRed = Color(0xFFFF4D4D)
 
 /** What the barcode on the back of the card says. Short, so the bars stay wide enough to scan. */
-internal fun recapBarcodePayload(range: StatsRange?): String =
-    if (range == null) "MFY-NOTYET" else "MFY%04d-%02d".format(range.year, range.month)
+fun recapBarcodePayload(range: StatsRange?): String =
+    if (range == null) {
+        "MFY-NOTYET"
+    } else {
+        "MFY" + range.year.toString().padStart(4, '0') + "-" + range.month.toString().padStart(2, '0')
+    }
 
 /** The human-readable line under the bars, spaced out like the mock's. */
-internal fun recapBarcodeCaption(payload: String, cardNumber: String): String =
+fun recapBarcodeCaption(payload: String, cardNumber: String): String =
     payload.toList().joinToString(" ") + "  " + cardNumber.takeLast(8).chunked(4).joinToString(" ")
 
 /** Scratch-off state: the path scratched so far and how much of the strip it has cleared. */
 @Stable
-internal class ScratchState {
+class ScratchState {
     val path = Path()
     var version by mutableIntStateOf(0)
         private set
@@ -163,12 +167,12 @@ internal class ScratchState {
  * coating left. [scan] runs 0..1 for the scanner sweep; [verdict] colours its ending.
  */
 @Composable
-internal fun IdCardBack(
+fun IdCardBack(
     username: String,
     payload: String,
     caption: String,
     scratch: ScratchState?,
-    time: RecapTime,
+    time: RecapTimeSource,
     modifier: Modifier = Modifier,
     scan: () -> Float = { 0f },
     verdict: () -> ScanVerdict? = { null },
@@ -252,7 +256,7 @@ internal fun IdCardBack(
 @Composable
 private fun ScratchCoating(
     state: ScratchState,
-    time: RecapTime,
+    time: RecapTimeSource,
     onProgress: (Float) -> Unit,
     onTick: () -> Unit,
 ) {

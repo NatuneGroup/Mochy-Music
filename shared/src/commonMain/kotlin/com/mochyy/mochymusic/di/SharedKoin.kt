@@ -33,5 +33,5 @@ fun startMochyKoin(
     preferences: () -> DataStore<Preferences>,
 ) {
     if (KoinPlatformTools.defaultContext().getOrNull() != null) return
-    startKoin { modules(appModule(database, preferences), libraryModule, onlineModule, storageModule, importSyncModule) }
+    startKoin { modules(appModule(database, preferences), libraryModule, onlineModule, storageModule, importSyncModule, profileModule) }
 }

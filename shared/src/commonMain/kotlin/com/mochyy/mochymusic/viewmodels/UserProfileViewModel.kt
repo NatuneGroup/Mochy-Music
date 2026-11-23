@@ -8,13 +8,13 @@ package com.mochyy.mochymusic.viewmodels
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.MochyDatabase
 import com.mochyy.mochymusic.db.entities.Artist
 import com.mochyy.mochymusic.db.entities.Playlist
 import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.db.nowLocal
 import com.mochyy.mochymusic.ui.screens.recap.toStoredMillis
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
+import com.mochyy.mochymusic.utils.ioDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -24,9 +24,11 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
-import java.time.DayOfWeek
-import java.time.LocalDate
-import javax.inject.Inject
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.isoDayNumber
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 
 /** One "Total listens" card: how many different songs, and for how long, over [label]'s span. */
 @Immutable
@@ -38,30 +40,29 @@ data class ListenTotal(val label: String, val songs: Int, val playTimeMs: Long) 
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
-@HiltViewModel
-class UserProfileViewModel @Inject constructor(
-    private val database: MusicDatabase,
+class UserProfileViewModel(
+    private val database: MochyDatabase,
 ) : ViewModel() {
 
-    val recentSongs: StateFlow<List<Song>?> = database.recentlyPlayedSongs(limit = 20)
+    val recentSongs: StateFlow<List<Song>?> = database.historyDao.recentlyPlayedSongs(limit = 20)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** Bookmarked playlists, the most recently changed first. */
-    val playlists: StateFlow<List<Playlist>?> = database.playlistsByUpdatedDateAsc()
+    val playlists: StateFlow<List<Playlist>?> = database.playlistDao.playlistsByUpdatedDateAsc()
         .map { it.asReversed() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    val likedCount: StateFlow<Int> = database.likedSongsCount()
+    val likedCount: StateFlow<Int> = database.songDao.likedSongsCount()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
-    val topArtists: StateFlow<List<Artist>?> = database.mostPlayedArtists(fromTimeStamp = 0L, limit = 12)
+    val topArtists: StateFlow<List<Artist>?> = database.historyDao.mostPlayedArtists(fromTimeStamp = 0L, limit = 12)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     // the total play time changes with every logged play, which is exactly when these go stale
-    val listens: StateFlow<List<ListenTotal>?> = database.totalListeningTimeMs()
+    val listens: StateFlow<List<ListenTotal>?> = database.historyDao.totalListeningTimeMs()
         .distinctUntilChanged()
         .mapLatest { countListens() }
-        .flowOn(Dispatchers.IO)
+        .flowOn(ioDispatcher)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /**
@@ -73,11 +74,11 @@ class UserProfileViewModel @Inject constructor(
     }
 
     private suspend fun countListens(): List<ListenTotal> {
-        val today = LocalDate.now()
-        val monthStart = today.withDayOfMonth(1).toStoredMillis()
-        val weekStart = today.with(DayOfWeek.MONDAY).toStoredMillis()
+        val today = nowLocal().date
+        val monthStart = LocalDate(today.year, today.month.ordinal + 1, 1).toStoredMillis()
+        val weekStart = today.minus(today.dayOfWeek.isoDayNumber - 1, DateTimeUnit.DAY).toStoredMillis()
         // one read of the whole history; the month and the week are slices of it
-        val events = database.recapEvents(0L, today.plusDays(1).toStoredMillis())
+        val events = database.historyDao.recapEvents(0L, today.plus(1, DateTimeUnit.DAY).toStoredMillis())
 
         fun total(label: String, from: Long): ListenTotal {
             val songs = HashSet<String>()
