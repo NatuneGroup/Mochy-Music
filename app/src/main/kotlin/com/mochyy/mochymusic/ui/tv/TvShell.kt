@@ -153,6 +153,7 @@ internal fun TvShell(
             LocalPlayerConnection provides player,
             LocalGlassState provides glassState,
             LocalPlayerAwareWindowInsets provides WindowInsets(0, 0, 0, 0),
+            com.mochyy.mochymusic.ui.component.LocalSubSettingsChrome provides com.mochyy.mochymusic.ui.component.AppSubSettingsChrome,
             LocalDownloadUtil provides downloadUtil,
             LocalSyncUtils provides syncUtils,
             LocalShimmerTheme provides ShimmerTheme,

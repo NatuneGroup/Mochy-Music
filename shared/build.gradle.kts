@@ -82,6 +82,8 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
+            // BackPressHandler: the activity's own back handling, as the app has always used
+            implementation(libs.activity)
         }
         getByName("desktopMain").dependencies {
             implementation(compose.desktop.common)
