@@ -10,10 +10,7 @@ import androidx.room.Transaction
 import androidx.room.Update
 import androidx.room.Upsert
 import androidx.sqlite.db.SupportSQLiteQuery
-import com.mochyy.mochymusic.constants.AlbumSortType
 import com.mochyy.mochymusic.constants.ArtistSongSortType
-import com.mochyy.mochymusic.constants.PlaylistSortType
-import com.mochyy.mochymusic.constants.SongSortType
 import com.mochyy.mochymusic.db.entities.AlbumArtistMap
 import com.mochyy.mochymusic.db.entities.AlbumEntity
 import com.mochyy.mochymusic.db.entities.ArtistEntity
@@ -50,9 +47,7 @@ import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
 import com.music.innertube.pages.AlbumPage
 import com.music.innertube.pages.ArtistPage
-import java.text.Collator
 import java.time.ZoneOffset
-import java.util.Locale
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -61,111 +56,10 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.toJavaLocalDateTime
 
 // The queries that can't run on every platform yet: blocking ones, the raw query, and the ones that need
-// java or app-only code (MediaMetadata, Collator, the playlist cover store). The rest are in shared/.
+// java or app-only code (MediaMetadata, the playlist cover store). The rest are in shared/; suspend
+// versions of most blocking ones are in shared SuspendingDao.
 @Dao
 interface DatabaseDao : SongDao, PlaylistDao, HistoryDao {
-    fun songs(
-        sortType: SongSortType,
-        descending: Boolean,
-    ) = when (sortType) {
-        SongSortType.CREATE_DATE -> songsByCreateDateAsc()
-        SongSortType.NAME ->
-            songsByNameAsc().map { songs ->
-                val collator = Collator.getInstance(Locale.getDefault())
-                collator.strength = Collator.PRIMARY
-                songs.sortedWith(compareBy(collator) { it.song.title })
-            }
-
-        SongSortType.ARTIST ->
-            songsByRowIdAsc().map { songs ->
-                val collator = Collator.getInstance(Locale.getDefault())
-                collator.strength = Collator.PRIMARY
-                songs
-                    .sortedWith(
-                        compareBy(collator) { song ->
-                            song.artists.joinToString("") { it.name }
-                        },
-                    ).groupBy { it.album?.title }
-                    .flatMap { (_, songsByAlbum) ->
-                        songsByAlbum.sortedBy { album ->
-                            album.artists.joinToString(
-                                "",
-                            ) { it.name }
-                        }
-                    }
-            }
-
-        SongSortType.PLAY_TIME -> songsByPlayTimeAsc()
-    }.map { it.reversed(descending) }
-
-    fun localSongs(
-        sortType: SongSortType,
-        descending: Boolean,
-    ) = when (sortType) {
-        SongSortType.CREATE_DATE -> localSongsByCreateDateAsc()
-        SongSortType.NAME ->
-            localSongsByNameAsc().map { songs ->
-                val collator = Collator.getInstance(Locale.getDefault())
-                collator.strength = Collator.PRIMARY
-                songs.sortedWith(compareBy(collator) { it.song.title })
-            }
-
-        SongSortType.ARTIST ->
-            localSongsByRowIdAsc().map { songs ->
-                val collator = Collator.getInstance(Locale.getDefault())
-                collator.strength = Collator.PRIMARY
-                songs
-                    .sortedWith(
-                        compareBy(collator) { song ->
-                            song.artists.joinToString("") { it.name }
-                        },
-                    ).groupBy { it.album?.title }
-                    .flatMap { (_, songsByAlbum) ->
-                        songsByAlbum.sortedBy { album ->
-                            album.artists.joinToString(
-                                "",
-                            ) { it.name }
-                        }
-                    }
-            }
-
-        SongSortType.PLAY_TIME -> localSongsByPlayTimeAsc()
-    }.map { it.reversed(descending) }
-
-    fun likedSongs(
-        sortType: SongSortType,
-        descending: Boolean,
-    ) = when (sortType) {
-        SongSortType.CREATE_DATE -> likedSongsByCreateDateAsc()
-        SongSortType.NAME ->
-            likedSongsByNameAsc().map { songs ->
-                val collator = Collator.getInstance(Locale.getDefault())
-                collator.strength = Collator.PRIMARY
-                songs.sortedWith(compareBy(collator) { it.song.title })
-            }
-
-        SongSortType.ARTIST ->
-            likedSongsByRowIdAsc().map { songs ->
-                val collator = Collator.getInstance(Locale.getDefault())
-                collator.strength = Collator.PRIMARY
-                songs
-                    .sortedWith(
-                        compareBy(collator) { song ->
-                            song.artists.joinToString("") { it.name }
-                        },
-                    ).groupBy { it.album?.title }
-                    .flatMap { (_, songsByAlbum) ->
-                        songsByAlbum.sortedBy { album ->
-                            album.artists.joinToString(
-                                "",
-                            ) { it.name }
-                        }
-                    }
-            }
-
-        SongSortType.PLAY_TIME -> likedSongsByPlayTimeAsc()
-    }.map { it.reversed(descending) }
-
     fun artistSongs(
         artistId: String,
         sortType: ArtistSongSortType,
@@ -177,11 +71,7 @@ interface DatabaseDao : SongDao, PlaylistDao, HistoryDao {
         val songsFlow = when (sortType) {
             ArtistSongSortType.CREATE_DATE -> artistSongsByCreateDateAsc(artistId)
             ArtistSongSortType.NAME ->
-                artistSongsByNameAsc(artistId).map { artistSongs ->
-                    val collator = Collator.getInstance(Locale.getDefault())
-                    collator.strength = Collator.PRIMARY
-                    artistSongs.sortedWith(compareBy(collator) { it.song.title })
-                }
+                artistSongsByNameAsc(artistId).map { artistSongs -> artistSongs.sortedBySongTitle() }
 
             ArtistSongSortType.PLAY_TIME -> {
                 if (fromTimeStamp != null && toTimeStamp != null) {
@@ -209,81 +99,6 @@ interface DatabaseDao : SongDao, PlaylistDao, HistoryDao {
     @Transaction
     @Query("SELECT * FROM song_artist_map WHERE songId = :songId")
     fun songArtistMap(songId: String): List<SongArtistMap>
-
-    fun albums(
-        sortType: AlbumSortType,
-        descending: Boolean,
-    ) = when (sortType) {
-        AlbumSortType.CREATE_DATE -> albumsByCreateDateAsc()
-        AlbumSortType.NAME ->
-            albumsByNameAsc().map { albums ->
-                val collator = Collator.getInstance(Locale.getDefault())
-                collator.strength = Collator.PRIMARY
-                albums.sortedWith(compareBy(collator) { it.album.title })
-            }
-
-        AlbumSortType.ARTIST ->
-            albumsByCreateDateAsc().map { albums ->
-                val collator = Collator.getInstance(Locale.getDefault())
-                collator.strength = Collator.PRIMARY
-                albums.sortedWith(compareBy(collator) { album -> album.artists.joinToString("") { it.name } })
-            }
-
-        AlbumSortType.YEAR -> albumsByYearAsc()
-        AlbumSortType.SONG_COUNT -> albumsBySongCountAsc()
-        AlbumSortType.LENGTH -> albumsByLengthAsc()
-        AlbumSortType.PLAY_TIME -> albumsByPlayTimeAsc()
-    }.map { it.reversed(descending) }
-
-    fun albumsLiked(
-        sortType: AlbumSortType,
-        descending: Boolean,
-    ) = when (sortType) {
-        AlbumSortType.CREATE_DATE -> albumsLikedByCreateDateAsc()
-        AlbumSortType.NAME ->
-            albumsLikedByNameAsc().map { albums ->
-                val collator = Collator.getInstance(Locale.getDefault())
-                collator.strength = Collator.PRIMARY
-                albums.sortedWith(compareBy(collator) { it.album.title })
-            }
-
-        AlbumSortType.ARTIST ->
-            albumsLikedByCreateDateAsc().map { albums ->
-                val collator = Collator.getInstance(Locale.getDefault())
-                collator.strength = Collator.PRIMARY
-                albums.sortedWith(compareBy(collator) { album -> album.artists.joinToString("") { it.name } })
-            }
-
-        AlbumSortType.YEAR -> albumsLikedByYearAsc()
-        AlbumSortType.SONG_COUNT -> albumsLikedBySongCountAsc()
-        AlbumSortType.LENGTH -> albumsLikedByLengthAsc()
-        AlbumSortType.PLAY_TIME -> albumsLikedByPlayTimeAsc()
-    }.map { it.reversed(descending) }
-
-    fun albumsUploaded(
-        sortType: AlbumSortType,
-        descending: Boolean,
-    ) = when (sortType) {
-        AlbumSortType.CREATE_DATE -> albumsUploadedByCreateDateAsc()
-        AlbumSortType.NAME ->
-            albumsUploadedByNameAsc().map { albums ->
-                val collator = Collator.getInstance(Locale.getDefault())
-                collator.strength = Collator.PRIMARY
-                albums.sortedWith(compareBy(collator) { it.album.title })
-            }
-
-        AlbumSortType.ARTIST ->
-            albumsUploadedByCreateDateAsc().map { albums ->
-                val collator = Collator.getInstance(Locale.getDefault())
-                collator.strength = Collator.PRIMARY
-                albums.sortedWith(compareBy(collator) { album -> album.artists.joinToString("") { it.name } })
-            }
-
-        AlbumSortType.YEAR -> albumsUploadedByYearAsc()
-        AlbumSortType.SONG_COUNT -> albumsUploadedBySongCountAsc()
-        AlbumSortType.LENGTH -> albumsUploadedByLengthAsc()
-        AlbumSortType.PLAY_TIME -> albumsUploadedByPlayTimeAsc()
-    }.map { it.reversed(descending) }
 
     @Transaction
     @Query("SELECT * FROM album_artist_map WHERE albumId = :albumId")
@@ -332,22 +147,6 @@ interface DatabaseDao : SongDao, PlaylistDao, HistoryDao {
 
     @Query("UPDATE song SET genre = :genre WHERE id = :songId")
     fun setSongGenre(songId: String, genre: String)
-
-    fun playlists(
-        sortType: PlaylistSortType,
-        descending: Boolean,
-    ) = when (sortType) {
-        PlaylistSortType.CREATE_DATE -> playlistsByCreateDateAsc()
-        PlaylistSortType.NAME ->
-            playlistsByNameAsc().map { playlists ->
-                val collator = Collator.getInstance(Locale.getDefault())
-                collator.strength = Collator.PRIMARY
-                playlists.sortedWith(compareBy(collator) { it.playlist.name })
-            }
-
-        PlaylistSortType.SONG_COUNT -> playlistsBySongCountAsc()
-        PlaylistSortType.LAST_UPDATED -> playlistsByUpdatedDateAsc()
-    }.map { it.reversed(descending) }
 
     @Query("SELECT * FROM playlist WHERE id = :playlistId")
     fun playlistEntity(playlistId: String): PlaylistEntity?
@@ -403,64 +202,8 @@ interface DatabaseDao : SongDao, PlaylistDao, HistoryDao {
         }
     }
 
-    fun downloadedSongs(
-        sortType: SongSortType,
-        descending: Boolean
-    ): Flow<List<Song>> = when (sortType) {
-        SongSortType.CREATE_DATE -> downloadedSongsByCreateDateAsc()
-        SongSortType.NAME -> downloadedSongsByNameAsc().map { songs ->
-            val collator = Collator.getInstance(Locale.getDefault())
-            collator.strength = Collator.PRIMARY
-            songs.sortedWith(compareBy(collator) { it.song.title })
-        }
-
-        SongSortType.ARTIST -> downloadedSongsByNameAsc().map { songs ->
-            val collator = Collator.getInstance(Locale.getDefault())
-            collator.strength = Collator.PRIMARY
-            songs.sortedWith(compareBy(collator) { song ->
-                song.artists.joinToString("") { it.name }
-            })
-        }
-
-        SongSortType.PLAY_TIME -> downloadedSongsByPlayTimeAsc()
-    }.map { it.reversed(descending) }
-
     @Query("UPDATE song SET isDownloaded = :downloaded, dateDownload = :date WHERE id = :songId")
     fun updateDownloadedInfo(songId: String, downloaded: Boolean, date: LocalDateTime?)
-
-    fun uploadedSongs(
-        sortType: SongSortType,
-        descending: Boolean,
-    ) = when (sortType) {
-        SongSortType.CREATE_DATE -> uploadedSongsByCreateDateAsc()
-        SongSortType.NAME ->
-            uploadedSongsByNameAsc().map { songs ->
-                val collator = Collator.getInstance(Locale.getDefault())
-                collator.strength = Collator.PRIMARY
-                songs.sortedWith(compareBy(collator) { it.song.title })
-            }
-
-        SongSortType.ARTIST ->
-            uploadedSongsByRowIdAsc().map { songs ->
-                val collator = Collator.getInstance(Locale.getDefault())
-                collator.strength = Collator.PRIMARY
-                songs
-                    .sortedWith(
-                        compareBy(collator) { song ->
-                            song.artists.joinToString("") { it.name }
-                        },
-                    ).groupBy { it.album?.title }
-                    .flatMap { (_, songsByAlbum) ->
-                        songsByAlbum.sortedBy { album ->
-                            album.artists.joinToString(
-                                "",
-                            ) { it.name }
-                        }
-                    }
-            }
-
-        SongSortType.PLAY_TIME -> uploadedSongsByPlayTimeAsc()
-    }.map { it.reversed(descending) }
 
     @Transaction
     @Query("DELETE FROM event")

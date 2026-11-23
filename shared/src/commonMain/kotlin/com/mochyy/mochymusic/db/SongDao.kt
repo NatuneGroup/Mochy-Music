@@ -4,7 +4,9 @@ import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.RoomWarnings
 import androidx.room.Transaction
+import com.mochyy.mochymusic.constants.AlbumSortType
 import com.mochyy.mochymusic.constants.ArtistSortType
+import com.mochyy.mochymusic.constants.SongSortType
 import com.mochyy.mochymusic.db.entities.Album
 import com.mochyy.mochymusic.db.entities.AlbumSongRow
 import com.mochyy.mochymusic.db.entities.AlbumWithSongs
@@ -503,4 +505,96 @@ interface SongDao {
     /** The covers of the songs liked last, which Liked songs' own cover is coloured from. */
     @Query("SELECT thumbnailUrl FROM song WHERE liked AND thumbnailUrl IS NOT NULL ORDER BY likedDate DESC LIMIT 4")
     fun likedCovers(): Flow<List<String>>
+
+    // ---- sorted lists: the Name and Artist sorts compare in the device language (LibrarySort.kt) ----
+
+    fun songs(
+        sortType: SongSortType,
+        descending: Boolean,
+    ) = when (sortType) {
+        SongSortType.CREATE_DATE -> songsByCreateDateAsc()
+        SongSortType.NAME -> songsByNameAsc().map { songs -> songs.sortedBySongTitle() }
+        SongSortType.ARTIST -> songsByRowIdAsc().map { songs -> songs.sortedBySongArtistsThenAlbum() }
+        SongSortType.PLAY_TIME -> songsByPlayTimeAsc()
+    }.map { it.reversed(descending) }
+
+    fun localSongs(
+        sortType: SongSortType,
+        descending: Boolean,
+    ) = when (sortType) {
+        SongSortType.CREATE_DATE -> localSongsByCreateDateAsc()
+        SongSortType.NAME -> localSongsByNameAsc().map { songs -> songs.sortedBySongTitle() }
+        SongSortType.ARTIST -> localSongsByRowIdAsc().map { songs -> songs.sortedBySongArtistsThenAlbum() }
+        SongSortType.PLAY_TIME -> localSongsByPlayTimeAsc()
+    }.map { it.reversed(descending) }
+
+    fun likedSongs(
+        sortType: SongSortType,
+        descending: Boolean,
+    ) = when (sortType) {
+        SongSortType.CREATE_DATE -> likedSongsByCreateDateAsc()
+        SongSortType.NAME -> likedSongsByNameAsc().map { songs -> songs.sortedBySongTitle() }
+        SongSortType.ARTIST -> likedSongsByRowIdAsc().map { songs -> songs.sortedBySongArtistsThenAlbum() }
+        SongSortType.PLAY_TIME -> likedSongsByPlayTimeAsc()
+    }.map { it.reversed(descending) }
+
+    fun downloadedSongs(
+        sortType: SongSortType,
+        descending: Boolean
+    ): Flow<List<Song>> = when (sortType) {
+        SongSortType.CREATE_DATE -> downloadedSongsByCreateDateAsc()
+        SongSortType.NAME -> downloadedSongsByNameAsc().map { songs -> songs.sortedBySongTitle() }
+        // artist order only, no album grouping, as it always was here
+        SongSortType.ARTIST -> downloadedSongsByNameAsc().map { songs -> songs.sortedBySongArtists() }
+        SongSortType.PLAY_TIME -> downloadedSongsByPlayTimeAsc()
+    }.map { it.reversed(descending) }
+
+    fun uploadedSongs(
+        sortType: SongSortType,
+        descending: Boolean,
+    ) = when (sortType) {
+        SongSortType.CREATE_DATE -> uploadedSongsByCreateDateAsc()
+        SongSortType.NAME -> uploadedSongsByNameAsc().map { songs -> songs.sortedBySongTitle() }
+        SongSortType.ARTIST -> uploadedSongsByRowIdAsc().map { songs -> songs.sortedBySongArtistsThenAlbum() }
+        SongSortType.PLAY_TIME -> uploadedSongsByPlayTimeAsc()
+    }.map { it.reversed(descending) }
+
+    fun albums(
+        sortType: AlbumSortType,
+        descending: Boolean,
+    ) = when (sortType) {
+        AlbumSortType.CREATE_DATE -> albumsByCreateDateAsc()
+        AlbumSortType.NAME -> albumsByNameAsc().map { albums -> albums.sortedByAlbumTitle() }
+        AlbumSortType.ARTIST -> albumsByCreateDateAsc().map { albums -> albums.sortedByAlbumArtists() }
+        AlbumSortType.YEAR -> albumsByYearAsc()
+        AlbumSortType.SONG_COUNT -> albumsBySongCountAsc()
+        AlbumSortType.LENGTH -> albumsByLengthAsc()
+        AlbumSortType.PLAY_TIME -> albumsByPlayTimeAsc()
+    }.map { it.reversed(descending) }
+
+    fun albumsLiked(
+        sortType: AlbumSortType,
+        descending: Boolean,
+    ) = when (sortType) {
+        AlbumSortType.CREATE_DATE -> albumsLikedByCreateDateAsc()
+        AlbumSortType.NAME -> albumsLikedByNameAsc().map { albums -> albums.sortedByAlbumTitle() }
+        AlbumSortType.ARTIST -> albumsLikedByCreateDateAsc().map { albums -> albums.sortedByAlbumArtists() }
+        AlbumSortType.YEAR -> albumsLikedByYearAsc()
+        AlbumSortType.SONG_COUNT -> albumsLikedBySongCountAsc()
+        AlbumSortType.LENGTH -> albumsLikedByLengthAsc()
+        AlbumSortType.PLAY_TIME -> albumsLikedByPlayTimeAsc()
+    }.map { it.reversed(descending) }
+
+    fun albumsUploaded(
+        sortType: AlbumSortType,
+        descending: Boolean,
+    ) = when (sortType) {
+        AlbumSortType.CREATE_DATE -> albumsUploadedByCreateDateAsc()
+        AlbumSortType.NAME -> albumsUploadedByNameAsc().map { albums -> albums.sortedByAlbumTitle() }
+        AlbumSortType.ARTIST -> albumsUploadedByCreateDateAsc().map { albums -> albums.sortedByAlbumArtists() }
+        AlbumSortType.YEAR -> albumsUploadedByYearAsc()
+        AlbumSortType.SONG_COUNT -> albumsUploadedBySongCountAsc()
+        AlbumSortType.LENGTH -> albumsUploadedByLengthAsc()
+        AlbumSortType.PLAY_TIME -> albumsUploadedByPlayTimeAsc()
+    }.map { it.reversed(descending) }
 }

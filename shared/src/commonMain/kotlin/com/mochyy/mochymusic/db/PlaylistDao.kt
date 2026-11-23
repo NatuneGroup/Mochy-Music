@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.RoomWarnings
 import androidx.room.Transaction
+import com.mochyy.mochymusic.constants.PlaylistSortType
 import com.mochyy.mochymusic.db.entities.Album
 import com.mochyy.mochymusic.db.entities.ImportedAlbumRow
 import com.mochyy.mochymusic.db.entities.ImportedPlaylist
@@ -12,8 +13,10 @@ import com.mochyy.mochymusic.db.entities.ImportedSourceCount
 import com.mochyy.mochymusic.db.entities.Playlist
 import com.mochyy.mochymusic.db.entities.PlaylistSong
 import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.extensions.reversed
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 
 // The playlist and imported-music queries every platform can run: each one returns a Flow or suspends.
 // The blocking ones stay in the app's DatabaseDao.
@@ -133,4 +136,14 @@ interface PlaylistDao {
     /** Where each liked song was imported from, for Liked songs' import order. A song from two services has two rows. */
     @Query("SELECT imported_song.* FROM imported_song JOIN song ON song.id = imported_song.songId WHERE song.liked")
     fun likedImportSources(): Flow<List<ImportedSong>>
+
+    fun playlists(
+        sortType: PlaylistSortType,
+        descending: Boolean,
+    ) = when (sortType) {
+        PlaylistSortType.CREATE_DATE -> playlistsByCreateDateAsc()
+        PlaylistSortType.NAME -> playlistsByNameAsc().map { playlists -> playlists.sortedByPlaylistName() }
+        PlaylistSortType.SONG_COUNT -> playlistsBySongCountAsc()
+        PlaylistSortType.LAST_UPDATED -> playlistsByUpdatedDateAsc()
+    }.map { it.reversed(descending) }
 }
