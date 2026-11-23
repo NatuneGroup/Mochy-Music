@@ -13,19 +13,19 @@ import androidx.compose.ui.unit.IntSize
 import kotlin.math.roundToInt
 
 /** 0..1 eased in and out more softly than [ease], with no jolt at either end */
-internal fun smoother(x: Float): Float {
+fun smoother(x: Float): Float {
     val t = x.coerceIn(0f, 1f)
     return t * t * t * (t * (t * 6f - 15f) + 10f)
 }
 
-internal fun lerpF(a: Float, b: Float, t: Float) = a + (b - a) * t
-internal fun lerpO(a: Offset, b: Offset, t: Float) = Offset(lerpF(a.x, b.x, t), lerpF(a.y, b.y, t))
+fun lerpF(a: Float, b: Float, t: Float) = a + (b - a) * t
+fun lerpO(a: Offset, b: Offset, t: Float) = Offset(lerpF(a.x, b.x, t), lerpF(a.y, b.y, t))
 
 /**
  * A camera move over the still of the player: it closes in [zoom] times on [anchor] (a point on
  * the player) and brings that point to [target]. `cz` is how far in it is, 0 to 1.
  */
-internal class StudioCamera(val zoom: Float, val anchor: Offset, val target: Offset) {
+class StudioCamera(val zoom: Float, val anchor: Offset, val target: Offset) {
     fun zoomAt(cz: Float) = 1f + (zoom - 1f) * cz
 
     /** where the camera puts point [p] of the player */
@@ -56,7 +56,7 @@ internal class StudioCamera(val zoom: Float, val anchor: Offset, val target: Off
 }
 
 /** the still of the player, under the camera, at [alpha] */
-internal fun DrawScope.drawStill(image: ImageBitmap?, camera: StudioCamera, cz: Float, alpha: Float) {
+fun DrawScope.drawStill(image: ImageBitmap?, camera: StudioCamera, cz: Float, alpha: Float) {
     if (image == null || alpha <= 0.003f) return
     val zoom = camera.zoomAt(cz)
     val origin = camera.stillOrigin(cz, size.width, size.height)
@@ -72,7 +72,7 @@ internal fun DrawScope.drawStill(image: ImageBitmap?, camera: StudioCamera, cz: 
 }
 
 /** one lifted piece, drawn from its own recording with its centre at [center] */
-internal fun DrawScope.drawPiece(layer: GraphicsLayer, rect: Rect, center: Offset, scale: Float, alpha: Float, rotation: Float = 0f) {
+fun DrawScope.drawPiece(layer: GraphicsLayer, rect: Rect, center: Offset, scale: Float, alpha: Float, rotation: Float = 0f) {
     if (alpha <= 0.003f || rect.width <= 0f) return
     layer.alpha = alpha.coerceIn(0f, 1f)
     withTransform({

@@ -11,7 +11,7 @@ import com.mochyy.mochymusic.ui.theme.InterFontFamily
  * The studio's type: Inter at the app's own tracking, in a handful of sizes, so the selector, the
  * editor's header and its sheets read like the rest of the app rather than a poster.
  */
-internal object StudioType {
+object StudioType {
     /** the app's letter spacing (theme/Type.kt), on every studio text */
     val Tracking = (-0.05).em
 
@@ -31,7 +31,7 @@ internal object StudioType {
     val Name = 20.sp
 }
 
-internal fun studioText(size: TextUnit, weight: FontWeight = FontWeight.SemiBold) = TextStyle(
+fun studioText(size: TextUnit, weight: FontWeight = FontWeight.SemiBold) = TextStyle(
     fontFamily = InterFontFamily,
     fontSize = size,
     fontWeight = weight,
