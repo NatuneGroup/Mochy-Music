@@ -7,9 +7,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
-import com.mochyy.mochymusic.ui.theme.LocalChromeAccent
+import com.mochyy.mochymusic.shared.ui.theme.LocalMochyAccent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -17,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 /** A settings slider that uses the player's default rounded seek-bar treatment. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DefaultPlayerSeekBarSlider(
     value: Float,
@@ -30,7 +32,7 @@ fun DefaultPlayerSeekBarSlider(
     val isDragged by interactionSource.collectIsDraggedAsState()
     val isPressed by interactionSource.collectIsPressedAsState()
     // the accent only when one is picked, so the default grey stays as it was
-    val activeBase = LocalChromeAccent.current ?: MaterialTheme.colorScheme.onSurface
+    val activeBase = LocalMochyAccent.current ?: MaterialTheme.colorScheme.onSurface
     val activeColor = if (enabled) activeBase else activeBase.copy(alpha = 0.38f)
     val inactiveColor = if (enabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.20f) else
         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)

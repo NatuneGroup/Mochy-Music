@@ -72,8 +72,10 @@ kotlin {
             api(libs.cmp.foundation)
             api(libs.cmp.ui)
             api(libs.cmp.material3)
+            implementation(libs.cmp.material.icons.core)
             implementation(libs.room.runtime)
-            implementation(libs.cmp.components.resources)
+            // api: the app reads shared StringResource values (SeekBarStyle.labelRes) with stringResource
+            api(libs.cmp.components.resources)
             // the YouTube Music models (songs, albums, artists) every platform's screens show
             api(project(":providers:innertube"))
             implementation(libs.coil)

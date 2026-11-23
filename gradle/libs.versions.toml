@@ -8,6 +8,8 @@ kotlin = "2.4.21"
 # so the Android app resolves the same compose it already uses.
 composeMultiplatform = "1.10.3"
 composeMultiplatformMaterial3 = "1.10.0-alpha05"
+# JetBrains stopped publishing icons after 1.7.3; its Android variant is androidx material-icons-core, the artifact the app uses
+composeMultiplatformIcons = "1.7.3"
 compose = "1.10.2"
 lifecycle = "2.10.0"
 material3 = "1.5.0-alpha18"
@@ -159,6 +161,7 @@ kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-
 cmp-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "composeMultiplatform" }
 cmp-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "composeMultiplatform" }
 cmp-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMultiplatform" }
+cmp-material-icons-core = { module = "org.jetbrains.compose.material:material-icons-core", version.ref = "composeMultiplatformIcons" }
 cmp-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "composeMultiplatformMaterial3" }
 cmp-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
 okhttp-dnsoverhttps = { module = "com.squareup.okhttp3:okhttp-dnsoverhttps", version = "5.3.2" }
