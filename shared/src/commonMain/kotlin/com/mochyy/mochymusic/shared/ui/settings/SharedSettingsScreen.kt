@@ -24,10 +24,24 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.datastore.preferences.core.emptyPreferences
 import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.graphic_eq
+import com.mochyy.mochymusic.shared.resources.integration_listenbrainz_desc
+import com.mochyy.mochymusic.shared.resources.music_history
+import com.mochyy.mochymusic.shared.resources.proxy
+import com.mochyy.mochymusic.shared.resources.proxy_settings_desc
 import com.mochyy.mochymusic.shared.resources.settings
+import com.mochyy.mochymusic.shared.resources.settings_ai_translator
+import com.mochyy.mochymusic.shared.resources.settings_page_ai_translator_desc
+import com.mochyy.mochymusic.shared.resources.settings_page_playback_desc
 import com.mochyy.mochymusic.shared.resources.settings_player_display
 import com.mochyy.mochymusic.shared.resources.settings_playback_category
+import com.mochyy.mochymusic.shared.resources.translate
+import com.mochyy.mochymusic.shared.resources.wifi_proxy
 import com.mochyy.mochymusic.shared.settings.PlaybackPreferences
+import com.mochyy.mochymusic.ui.component.SettingsGroup
+import com.mochyy.mochymusic.ui.component.SettingsGroupStyle
+import com.mochyy.mochymusic.ui.screens.settings.linkItem
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -35,8 +49,52 @@ internal fun SharedSettingsScreen(
     settings: PlaybackPreferences,
     codecBadge: CodecBadgeWriter,
     modifier: Modifier = Modifier,
+    // the shared settings pages need a platform that can navigate to them; desktop passes these, iOS
+    // leaves them null and keeps the single page it had
+    onOpenPlayback: (() -> Unit)? = null,
+    onOpenAiTranslator: (() -> Unit)? = null,
+    onOpenListenBrainz: (() -> Unit)? = null,
+    onOpenProxy: (() -> Unit)? = null,
 ) {
     val preferences by settings.values.collectAsState(initial = emptyPreferences())
+    val pages = listOfNotNull(
+        onOpenPlayback?.let {
+            linkItem(
+                key = "Playback",
+                title = stringResource(Res.string.settings_playback_category),
+                description = stringResource(Res.string.settings_page_playback_desc),
+                icon = painterResource(Res.drawable.graphic_eq),
+                onClick = it,
+            )
+        },
+        onOpenAiTranslator?.let {
+            linkItem(
+                key = "AI translator",
+                title = stringResource(Res.string.settings_ai_translator),
+                description = stringResource(Res.string.settings_page_ai_translator_desc),
+                icon = painterResource(Res.drawable.translate),
+                onClick = it,
+            )
+        },
+        onOpenListenBrainz?.let {
+            linkItem(
+                key = "ListenBrainz",
+                title = "ListenBrainz",
+                description = stringResource(Res.string.integration_listenbrainz_desc),
+                icon = painterResource(Res.drawable.music_history),
+                onClick = it,
+            )
+        },
+        onOpenProxy?.let {
+            linkItem(
+                key = "Proxy",
+                title = stringResource(Res.string.proxy),
+                description = stringResource(Res.string.proxy_settings_desc),
+                icon = painterResource(Res.drawable.wifi_proxy),
+                onClick = it,
+            )
+        },
+    )
 
     Column(
         modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp),
@@ -47,6 +105,9 @@ internal fun SharedSettingsScreen(
             style = MaterialTheme.typography.displaySmall,
             modifier = Modifier.padding(top = 24.dp, bottom = 4.dp),
         )
+        if (pages.isNotEmpty()) {
+            SettingsGroup(style = SettingsGroupStyle.Grouped, items = pages)
+        }
         SettingsSection(stringResource(Res.string.settings_playback_category)) {
             Text(
                 stringResource(Res.string.settings_player_display),
