@@ -583,7 +583,25 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable("nav_bar_settings") {
-        com.mochyy.mochymusic.ui.screens.settings.NavBarSettingsScreen(navController = navController)
+        // Screens and the saved order live in :app, so the page is handed its tabs and saves the same
+        // "route,-route" string the bar reads
+        val (savedTabs, setSavedTabs) = com.mochyy.mochymusic.utils.rememberPreference(
+            com.mochyy.mochymusic.constants.NavTabsKey,
+            defaultValue = "",
+        )
+        com.mochyy.mochymusic.ui.screens.settings.NavBarSettingsScreen(
+            navController = navController,
+            saved = savedTabs,
+            onSave = setSavedTabs,
+            tabs = com.mochyy.mochymusic.ui.screens.Screens.MainScreens.map { screen ->
+                com.mochyy.mochymusic.ui.screens.settings.NavTab(
+                    route = screen.route,
+                    title = stringResource(screen.titleId),
+                    icon = painterResource(com.mochyy.mochymusic.R.drawable.nav_bar),
+                    locked = screen == com.mochyy.mochymusic.ui.screens.Screens.Settings,
+                )
+            },
+        )
     }
 
     composable("appearance_settings") {
