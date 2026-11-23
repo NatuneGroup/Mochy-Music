@@ -5,12 +5,12 @@ package com.mochyy.mochymusic.link
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import java.net.URLEncoder
+import kotlin.time.Clock
 
 // a song the linked phone keeps a file of: one of its downloads, or a song file from its own storage
 data class PhoneFile(val id: String, val bytes: Long, val mime: String, val isLocalFile: Boolean)
 
-// on a tv, the songs the linked phone can hand over, read by the player and the downloads without either knowing about profiles
+// on the receiving side, the songs the linked phone can hand over, read by the player and the downloads without either knowing about profiles
 object PhoneFiles {
     // the player caches a phone's stream under this, so it never mixes with youtube's copy of the same song
     const val CacheKeyPrefix = "phone|"
@@ -54,8 +54,8 @@ object PhoneFiles {
     fun streamUrl(songId: String): String? {
         if (!_reachable.value || !has(songId)) return null
         val at = remote ?: return null
-        val signed = LinkAuth.signedQuery(at.auth, "/file/$songId", System.currentTimeMillis() + LinkAuth.LinkGoodForMs)
-        return "${at.baseUrl}/file/${URLEncoder.encode(songId, "UTF-8")}?$signed"
+        val signed = LinkAuth.signedQuery(at.auth, "/file/$songId", Clock.System.now().toEpochMilliseconds() + LinkAuth.LinkGoodForMs)
+        return "${at.baseUrl}/file/${urlEncode(songId)}?$signed"
     }
 
     fun cacheKeyOf(songId: String) = "$CacheKeyPrefix$songId"
