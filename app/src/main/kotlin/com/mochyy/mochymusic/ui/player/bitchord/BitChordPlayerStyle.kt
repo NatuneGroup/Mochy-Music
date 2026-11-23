@@ -108,13 +108,14 @@ internal fun BitChordPlayerStyle(
             Column(
                 Modifier
                     .fillMaxSize()
+                    // no side padding here: the hero is full-bleed, and the rows under it keep
+                    // their own inset
                     .padding(
-                        start = insets.start + 20.dp,
+                        start = insets.start,
                         top = insets.top + 4.dp,
-                        end = insets.end + 20.dp,
+                        end = insets.end,
                         bottom = insets.bottom + 10.dp,
                     ),
-                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 BitChordHeader(actions, preview, onMore = { setMenuOpen(true) })
                 // the hero owns what the credits, scrub line and transport leave, so the sleeve
@@ -122,14 +123,19 @@ internal fun BitChordPlayerStyle(
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     BitChordHero(track, transport.isPlaying, backdrop, Modifier.fillMaxSize())
                 }
-                Spacer(Modifier.height(14.dp))
-                BitChordCredits(track, trackInfo.liked, connection, preview)
-                Spacer(Modifier.height(14.dp))
-                BitChordSeek(connection, transport.isPlaying, preview)
-                Spacer(Modifier.height(8.dp))
-                BitChordTransport(connection, transport, backdrop, preview)
-                Spacer(Modifier.height(12.dp))
-                BitChordBottomRow(actions, transport, connection, preview)
+                Column(
+                    Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Spacer(Modifier.height(14.dp))
+                    BitChordCredits(track, trackInfo.liked, connection, preview)
+                    Spacer(Modifier.height(14.dp))
+                    BitChordSeek(connection, transport.isPlaying, preview)
+                    Spacer(Modifier.height(8.dp))
+                    BitChordTransport(connection, transport, preview)
+                    Spacer(Modifier.height(12.dp))
+                    BitChordBottomRow(actions, transport, connection, preview)
+                }
             }
         }
         StyleMenu(
@@ -147,7 +153,7 @@ internal fun BitChordPlayerStyle(
 
 @Composable
 private fun BitChordHeader(actions: StyleActions, preview: Boolean, onMore: () -> Unit) {
-    Row(Modifier.fillMaxWidth().height(40.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(40.dp), verticalAlignment = Alignment.CenterVertically) {
         BitChordIcon(R.drawable.expand_more, R.string.close, Color.White.copy(alpha = 0.85f), 40.dp, !preview, actions.onClose)
         Spacer(Modifier.weight(1f))
         BitChordIcon(R.drawable.more_vert, R.string.more_options, Color.White.copy(alpha = 0.75f), 40.dp, !preview, onMore)
@@ -275,7 +281,6 @@ private fun BitChordSeek(
 private fun BitChordTransport(
     connection: com.mochyy.mochymusic.playback.PlayerConnection,
     transport: TransportState,
-    backdrop: Color,
     preview: Boolean,
 ) {
     val interactive = LocalStyleInteractive.current
