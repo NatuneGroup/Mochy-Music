@@ -2,12 +2,8 @@ package com.mochyy.mochymusic.eq
 
 import android.content.Context
 import androidx.core.content.edit
-import com.mochyy.mochymusic.eq.audio.Biquad
-import com.mochyy.mochymusic.eq.audio.PeakLimiter
-import com.mochyy.mochymusic.eq.audio.ResponseCurve
 import com.mochyy.mochymusic.eq.data.EQProfileRepository
 import com.mochyy.mochymusic.eq.data.ParametricEQ
-import com.mochyy.mochymusic.eq.data.ParametricEQBand
 import com.mochyy.mochymusic.eq.stage.StageNative
 import com.mochyy.mochymusic.eq.stage.StageOutput
 import com.mochyy.mochymusic.eq.stage.StageSettings
@@ -29,7 +25,6 @@ import kotlinx.serialization.json.Json
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.math.max
 
 /** everything audio lab sets (equalizer and audio fx), each change goes to the players live and is saved a moment later, so a slider can be dragged freely */
 @Singleton
@@ -46,8 +41,6 @@ class AudioLabStore @Inject constructor(
     }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var saveJob: Job? = null
-    private val headroomCurve = ResponseCurve(ResponseCurve.logSpaced(160))
-    private val boostRoom = headroomCurve.frequencies.map(PeakLimiter::boostRoomDb).toDoubleArray()
 
     private val _eq = MutableStateFlow(load("eq") ?: EqSettings())
     val eq: StateFlow<EqSettings> = _eq.asStateFlow()
@@ -291,34 +284,11 @@ class AudioLabStore @Inject constructor(
         if (_eq.value.presetId == id) updateEq { it.copy(presetId = null) } else scheduleSave()
     }
 
-    /** the db the auto preamp takes off for settings (0 or less): only the boost the limiter can't catch, taking off all of it left a bass boost no louder than no eq */
-    fun autoHeadroom(settings: EqSettings = _eq.value): Double = synchronized(headroomCurve) {
-        val response = headroomCurve.response(audibleBands(settings))
-        var over = 0.0
-        for (i in response.indices) over = max(over, response[i] - boostRoom[i])
-        -over
-    }
+    /** the db the auto preamp takes off for settings (0 or less), worked out in shared EqDesign */
+    fun autoHeadroom(settings: EqSettings = _eq.value): Double = EqDesign.autoHeadroom(settings)
 
     /** what the processors play for settings; null is a straight wire */
-    fun design(settings: EqSettings): ParametricEQ? {
-        if (!settings.enabled) return null
-        val bands = audibleBands(settings)
-        val correctionOn = settings.correctionEnabled && settings.correction != null
-        val headroom = when {
-            settings.autoPreamp -> autoHeadroom(settings)
-            correctionOn -> settings.correction!!.preamp
-            else -> 0.0
-        }
-        val preamp = settings.preamp + headroom
-        if (bands.isEmpty() && preamp == 0.0) return null
-        return ParametricEQ(preamp = preamp, bands = bands)
-    }
-
-    private fun audibleBands(settings: EqSettings): List<ParametricEQBand> {
-        val own = settings.nodes.filter(Biquad::isAudible)
-        val correction = if (settings.correctionEnabled) settings.correction?.filters.orEmpty() else emptyList()
-        return own + correction.filter(Biquad::isAudible)
-    }
+    fun design(settings: EqSettings): ParametricEQ? = EqDesign.design(settings)
 
     private fun pushEq() {
         val song = _songPreset.value
