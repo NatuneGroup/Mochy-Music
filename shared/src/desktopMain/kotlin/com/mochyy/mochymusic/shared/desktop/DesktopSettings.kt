@@ -33,14 +33,5 @@ internal val desktopDatabase by lazy {
         .build()
 }
 
-private fun appDataDirectory(): File {
-    val home = File(System.getProperty("user.home"))
-    val os = System.getProperty("os.name").lowercase()
-    val appData = when {
-        os.startsWith("mac") -> home.resolve("Library/Application Support")
-        os.startsWith("windows") ->
-            System.getenv("APPDATA")?.takeUnless(String::isBlank)?.let(::File) ?: home.resolve("AppData/Roaming")
-        else -> System.getenv("XDG_CONFIG_HOME")?.let(::File)?.takeIf(File::isAbsolute) ?: home.resolve(".config")
-    }
-    return appData.resolve("Mochy")
-}
+// one folder for settings and the databases, the desktop twin of Android's filesDir
+private fun appDataDirectory(): File = DesktopPaths.appData.apply { mkdirs() }

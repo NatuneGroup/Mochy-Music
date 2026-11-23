@@ -52,6 +52,8 @@ import com.mochyy.mochymusic.shared.playback.SharedQueue
 import com.mochyy.mochymusic.shared.resources.Res
 import com.mochyy.mochymusic.shared.resources.arrow_back
 import com.mochyy.mochymusic.shared.resources.back_button_desc
+import com.mochyy.mochymusic.shared.resources.desktop_window_settings
+import com.mochyy.mochymusic.shared.resources.desktop_window_settings_desc
 import com.mochyy.mochymusic.shared.resources.library_empty
 import com.mochyy.mochymusic.shared.resources.library_remove
 import com.mochyy.mochymusic.shared.resources.library_save
@@ -99,10 +101,14 @@ internal fun DesktopSettingsHome(navController: NavHostController) {
             val target = if (route in DesktopRoutes.settingsRoutes) route else DesktopRoutes.unavailable(route)
             navController.navigate(target) { launchSingleTop = true }
         },
-        // the app's tips card has no desktop twin; this one card opens the stats page the profile
-        // header opens on a phone, so recap/stats is reachable from settings as well as the rail
+        // the app's tips card has no desktop twin; this pair opens the two pages a window needs that a
+        // phone doesn't: where Mochy keeps its files, and the window itself (tray, close button, place).
+        // The stats card opens the page the profile header opens on a phone, so recap is reachable here too
         recommendations = { open ->
-            DesktopStatsCard(onClick = { open(DesktopRoutes.Stats) })
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                DesktopWindowCard(onClick = { open(DesktopRoutes.DesktopWindow) })
+                DesktopStatsCard(onClick = { open(DesktopRoutes.Stats) })
+            }
         },
         onProfileClick = {
             // already on the settings list: the avatar is not a second copy of it
@@ -125,6 +131,26 @@ private fun DesktopStatsCard(onClick: () -> Unit) {
                 Text(stringResource(Res.string.rc_stats_title), style = MaterialTheme.typography.titleMedium)
                 Text(
                     stringResource(Res.string.profile_view_stats),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/** The desktop window's own settings: tray, close button and where the window opens. */
+@Composable
+private fun DesktopWindowCard(onClick: () -> Unit) {
+    SettingsCard {
+        Row(
+            modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(Res.string.desktop_window_settings), style = MaterialTheme.typography.titleMedium)
+                Text(
+                    stringResource(Res.string.desktop_window_settings_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

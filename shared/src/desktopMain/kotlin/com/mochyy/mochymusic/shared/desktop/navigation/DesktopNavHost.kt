@@ -25,6 +25,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.mochyy.mochymusic.constants.NavTabsKey
+import com.mochyy.mochymusic.shared.desktop.window.DesktopWindowSettingsPage
 import com.mochyy.mochymusic.shared.library.LocalLibrary
 import com.mochyy.mochymusic.shared.lyrics.LyricsProvider
 import com.mochyy.mochymusic.shared.lyrics.translationTargetIds
@@ -96,6 +97,7 @@ internal fun DesktopNavHost(
         composable(DesktopRoutes.Library) { DesktopLibraryPage(library, queue) }
         composable(DesktopRoutes.Settings) { DesktopSettingsHome(navController) }
         composable(DesktopRoutes.Stats) { StatsScreen(navController) }
+        composable(DesktopRoutes.DesktopWindow) { DesktopWindowSettingsPage(navController) }
         composable(DesktopRoutes.NowPlaying) { DesktopNowPlayingPage(navController, queue, providers) }
         desktopSettingsGraph(navController)
     }
