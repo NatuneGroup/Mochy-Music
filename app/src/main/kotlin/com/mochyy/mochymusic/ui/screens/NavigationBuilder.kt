@@ -105,6 +105,7 @@ import com.mochyy.mochymusic.ui.screens.search.SearchScreen
 import com.mochyy.mochymusic.utils.rememberEnumPreference
 import com.mochyy.mochymusic.utils.rememberPreference
 import com.mochyy.mochymusic.ui.screens.settings.ProfileScreen
+import com.mochyy.mochymusic.ui.screens.settings.showVideoQualitySheet
 import com.mochyy.mochymusic.ui.screens.library.LibraryAlbumsScreen
 import com.mochyy.mochymusic.ui.screens.SectionDetailScreen
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -421,11 +422,48 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.NowPlayingSettingsRoute) {
-        com.mochyy.mochymusic.ui.screens.settings.NowPlayingSettingsScreen(navController = navController)
+        // the video size sheet, the canvas order control and the floating lyrics switch are the app's own
+        // widgets and permissions, so the shared page takes them from here
+        val overlay = com.mochyy.mochymusic.ui.component.LocalZoomOutOverlayState.current
+        com.mochyy.mochymusic.ui.screens.settings.NowPlayingSettingsScreen(
+            navController = navController,
+            videoQualitySheet = { selected, onSelect -> overlay.showVideoQualitySheet(selected = selected, onSelect = onSelect) },
+            canvasOrderSelect = { options, selectedIndex, onSelect, contentDescription ->
+                com.mochyy.mochymusic.ui.screens.audiolab.LabSelect(
+                    options = options,
+                    selectedIndex = selectedIndex,
+                    onSelect = onSelect,
+                    contentDescription = contentDescription,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            },
+            floatingLyrics = com.mochyy.mochymusic.floating.rememberFloatingLyricsSwitch(),
+            softLightSupported = com.mochyy.mochymusic.ui.player.SoftLightSupported,
+        )
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.integrations.IntegrationsRoute) {
-        com.mochyy.mochymusic.ui.screens.settings.integrations.IntegrationsScreen(navController = navController)
+        // ScrobbleSite holds the app's API clients and every integration page's route belongs to the app's
+        // graph, so the shared page is handed the service rows and the routes it opens
+        com.mochyy.mochymusic.ui.screens.settings.integrations.IntegrationsScreen(
+            navController = navController,
+            scrobbleSites = com.mochyy.mochymusic.scrobble.ScrobbleSite.entries.map { site ->
+                com.mochyy.mochymusic.ui.screens.settings.integrations.ScrobbleSiteRow(
+                    brand = when (site) {
+                        com.mochyy.mochymusic.scrobble.ScrobbleSite.LASTFM -> com.mochyy.mochymusic.ui.screens.settings.integrations.ScrobbleBrand.LAST_FM
+                        com.mochyy.mochymusic.scrobble.ScrobbleSite.LIBREFM -> com.mochyy.mochymusic.ui.screens.settings.integrations.ScrobbleBrand.LIBRE_FM
+                    },
+                    label = site.label,
+                    route = com.mochyy.mochymusic.ui.screens.settings.integrations.scrobbleServiceRoute(site),
+                )
+            },
+            routes = com.mochyy.mochymusic.ui.screens.settings.integrations.IntegrationRoutes(
+                androidAuto = com.mochyy.mochymusic.ui.screens.settings.integrations.AndroidAutoSettingsRoute,
+                discord = com.mochyy.mochymusic.ui.screens.settings.integrations.discord.DiscordRoute,
+                youtubeSync = com.mochyy.mochymusic.ui.screens.settings.importsync.YouTubeSyncRoute,
+                backup = com.mochyy.mochymusic.ui.screens.settings.integrations.backup.BackupRoute,
+            ),
+        )
     }
 
     composable(com.mochyy.mochymusic.ui.screens.settings.integrations.AndroidAutoSettingsRoute) {
@@ -565,11 +603,46 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable("nav_bar_settings") {
-        com.mochyy.mochymusic.ui.screens.settings.NavBarSettingsScreen(navController = navController)
+        // Screens and the saved order live in :app, so the page is handed its tabs and saves the same
+        // "route,-route" string the bar reads
+        val (savedTabs, setSavedTabs) = com.mochyy.mochymusic.utils.rememberPreference(
+            com.mochyy.mochymusic.constants.NavTabsKey,
+            defaultValue = "",
+        )
+        com.mochyy.mochymusic.ui.screens.settings.NavBarSettingsScreen(
+            navController = navController,
+            saved = savedTabs,
+            onSave = setSavedTabs,
+            tabs = com.mochyy.mochymusic.ui.screens.Screens.MainScreens.map { screen ->
+                com.mochyy.mochymusic.ui.screens.settings.NavTab(
+                    route = screen.route,
+                    title = stringResource(screen.titleId),
+                    icon = painterResource(com.mochyy.mochymusic.R.drawable.nav_bar),
+                    locked = screen == com.mochyy.mochymusic.ui.screens.Screens.Settings,
+                )
+            },
+        )
     }
 
     composable("appearance_settings") {
-        com.mochyy.mochymusic.ui.screens.settings.AppearanceSettingsScreen(navController = navController)
+        // NavigationTab, the font picker and the theme editor are the app's own, so they are handed in
+        com.mochyy.mochymusic.ui.screens.settings.AppearanceSettingsScreen(
+            navController = navController,
+            startTabs = com.mochyy.mochymusic.ui.screens.NavigationTab.entries.map { tab ->
+                com.mochyy.mochymusic.ui.screens.settings.StartTabChoice(
+                    value = tab.name,
+                    label = stringResource(
+                        when (tab) {
+                            com.mochyy.mochymusic.ui.screens.NavigationTab.HOME -> com.mochyy.mochymusic.R.string.home
+                            com.mochyy.mochymusic.ui.screens.NavigationTab.SEARCH -> com.mochyy.mochymusic.R.string.search
+                            com.mochyy.mochymusic.ui.screens.NavigationTab.LIBRARY -> com.mochyy.mochymusic.R.string.your_library
+                        },
+                    ),
+                )
+            },
+            customFonts = com.mochyy.mochymusic.ui.screens.settings.rememberCustomFontActions(),
+            customThemeRows = com.mochyy.mochymusic.ui.screens.settings.customThemeItems(),
+        )
     }
 
     composable("customisation_settings") {
