@@ -23,7 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import com.mochyy.mochymusic.LocalDatabase
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.db.MusicDatabase
@@ -180,7 +180,7 @@ private fun SaveButton(state: SongEditState, tuning: SongTuning, onLock: (Boolea
     val context = LocalContext.current
     val database = LocalDatabase.current
     val scope = rememberCoroutineScope()
-    val lyricsViewModel: LyricsMenuViewModel = hiltViewModel()
+    val lyricsViewModel: LyricsMenuViewModel = koinViewModel()
     SheetPillButton(
         text = if (state.busy) stringResource(R.string.song_edit_saving) else stringResource(android.R.string.ok),
         enabled = !state.busy && state.title.isNotBlank(),

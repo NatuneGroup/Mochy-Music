@@ -1,5 +1,6 @@
 package com.mochyy.mochymusic.di
 
+import com.mochyy.mochymusic.di.koin.playerTvModule
 import com.mochyy.mochymusic.ui.screens.settings.devspace.AppDevSpaceRepository
 import com.mochyy.mochymusic.ui.screens.settings.devspace.DevSpaceRepository
 import com.mochyy.mochymusic.utils.AndroidArtistPageSource
@@ -17,6 +18,7 @@ import org.koin.dsl.module
  * Loaded right after startMochyKoin in App.onCreate, before any composition asks for the view model.
  */
 fun loadAndroidKoin() {
+    loadKoinModules(playerTvModule)
     loadKoinModules(
         module {
             single<ArtistPageSource> { AndroidArtistPageSource }

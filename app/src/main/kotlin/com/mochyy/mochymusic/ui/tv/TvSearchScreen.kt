@@ -61,7 +61,6 @@ import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.db.MusicDatabase
 import com.mochyy.mochymusic.db.entities.SearchHistory
 import com.mochyy.mochymusic.viewmodels.MoodAndGenresViewModel
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -70,10 +69,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import javax.inject.Inject
+import org.koin.compose.viewmodel.koinViewModel
 
-@HiltViewModel
-internal class TvSearchViewModel @Inject constructor(
+// Koin builds it (di/koin/PlayerTvKoin.kt); the tv screen takes it with koinViewModel
+internal class TvSearchViewModel(
     private val database: MusicDatabase,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
@@ -114,7 +113,7 @@ internal class TvSearchViewModel @Inject constructor(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun TvSearchScreen(
-    viewModel: TvSearchViewModel = hiltViewModel(),
+    viewModel: TvSearchViewModel = koinViewModel(),
     moods: MoodAndGenresViewModel = hiltViewModel(),
 ) {
     val actions = LocalTvActions.current
