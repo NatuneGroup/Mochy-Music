@@ -17,7 +17,7 @@ private const val StaggerMaxRows = 9
 
 // style 1's follow-through on an auto scroll: rows below the active line trail the scroll, the further down the later, then catch up on their own
 @Stable
-internal class LyricsStagger(rowCount: Int) {
+class LyricsStagger(rowCount: Int) {
     private val lags = FloatArray(rowCount)
     private val velocities = FloatArray(rowCount)
 
