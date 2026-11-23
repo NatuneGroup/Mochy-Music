@@ -625,7 +625,24 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable("appearance_settings") {
-        com.mochyy.mochymusic.ui.screens.settings.AppearanceSettingsScreen(navController = navController)
+        // NavigationTab, the font picker and the theme editor are the app's own, so they are handed in
+        com.mochyy.mochymusic.ui.screens.settings.AppearanceSettingsScreen(
+            navController = navController,
+            startTabs = com.mochyy.mochymusic.ui.screens.NavigationTab.entries.map { tab ->
+                com.mochyy.mochymusic.ui.screens.settings.StartTabChoice(
+                    value = tab.name,
+                    label = stringResource(
+                        when (tab) {
+                            com.mochyy.mochymusic.ui.screens.NavigationTab.HOME -> com.mochyy.mochymusic.R.string.home
+                            com.mochyy.mochymusic.ui.screens.NavigationTab.SEARCH -> com.mochyy.mochymusic.R.string.search
+                            com.mochyy.mochymusic.ui.screens.NavigationTab.LIBRARY -> com.mochyy.mochymusic.R.string.your_library
+                        },
+                    ),
+                )
+            },
+            customFonts = com.mochyy.mochymusic.ui.screens.settings.rememberCustomFontActions(),
+            customThemeRows = com.mochyy.mochymusic.ui.screens.settings.customThemeItems(),
+        )
     }
 
     composable("customisation_settings") {
