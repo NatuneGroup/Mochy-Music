@@ -209,6 +209,14 @@ def tap(xy: tuple[int, int]) -> None:
     sh(f"input tap {xy[0]} {xy[1]}")
 
 
+def scroll_profile() -> None:
+    """The same fixed drag every time, so the rows land at the same place in every round."""
+    size = re.search(r"(\d+)x(\d+)", sh("wm size"))
+    w, h = (int(size.group(1)), int(size.group(2))) if size else (1080, 2400)
+    sh(f"input swipe {w // 2} {int(h * 0.75)} {w // 2} {int(h * 0.30)} 400")
+    time.sleep(1.5)
+
+
 def wait_for_label(label: str, timeout: float = 5.0, save: Path | None = None) -> bool:
     """True once a node with this exact text/description is on screen; False if it never appears.
 
@@ -335,6 +343,7 @@ def traced_round(pkg: str, component: str, taps: dict, out: Path) -> Path | None
     if taps["settings"] != taps["tab"]:
         tap(taps["tab"])
         time.sleep(SETTLE_AFTER_TAP)
+        scroll_profile()
     tap(taps["settings"])
     time.sleep(SETTLE_AFTER_TAP)
     tap(taps["appearance"])
@@ -442,9 +451,11 @@ def measure(label: str, folder: Path, out_root: Path, runs: int) -> dict:
         raise RuntimeError(f"{label}: no Settings tab on screen ({reason}), see {out}/1-home.png and app.log")
     tap(settings)
     time.sleep(SETTLE_AFTER_TAP + 1)
-    nodes = ui_nodes(out / "2-settings-tab.xml")
     # the Settings tab opens on the profile page; the settings list itself is behind its "Open settings"
-    # row, so that row is the tap measured as "Settings" and the tab itself is only the way there
+    # row, so that row is the tap measured as "Settings" and the tab itself is only the way there. The row
+    # starts at the screen's bottom edge, under the gesture area, so the page is scrolled up first
+    scroll_profile()
+    nodes = ui_nodes(out / "2-settings-tab.xml")
     open_settings = find(nodes, "Open settings")
     if open_settings is not None:
         tap(open_settings)
@@ -474,6 +485,7 @@ def measure(label: str, folder: Path, out_root: Path, runs: int) -> dict:
             # onto the profile page first, unmeasured: the open being timed is the settings list's
             tap(taps["tab"])
             time.sleep(SETTLE_AFTER_TAP)
+            scroll_profile()
         gfx_reset(pkg)
         tap(taps["settings"])
         # the frames have to be drawn before gfxinfo can report them; the marker check comes after, so its
