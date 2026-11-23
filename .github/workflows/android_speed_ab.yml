@@ -1,0 +1,228 @@
+name: Android speed A/B
+
+# Builds the same release-like variant (x86_64 FOSS profileable: R8, resource shrinking, no source
+# information, not debuggable) for several commits, installs each on one emulator and measures, on
+# the same device in the same run:
+#   - cold start: `am start -W` TotalTime after `am force-stop`
+#   - the first open of Settings and of a settings sub-page (Appearance) after that cold start:
+#     tap-to-frame, longest frame and `dumpsys gfxinfo` janky frames / percentiles
+# plus one Perfetto trace of the same walk per commit. Numbers are in the run summary and in the
+# speed-ab artifact (results.json, traces, screenshots).
+#
+# A push to a perf/** branch compares batch5 (831817f2), batch7 (96c331b7), dev and the pushed
+# commit. A manual run compares the refs it is given (the workflow has to be on the default branch
+# for that).
+on:
+  push:
+    branches: ['perf/**']
+  workflow_dispatch:
+    inputs:
+      refs:
+        description: "Space-separated commits, branches or tags to compare, first one is the baseline"
+        type: string
+        default: "831817f2 dev"
+      runs:
+        description: "Measured runs per commit"
+        type: string
+        default: "10"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-speed-ab-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  refs:
+    name: Resolve commits
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    outputs:
+      matrix: ${{ steps.resolve.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - id: resolve
+        env:
+          REFS: ${{ github.event_name == 'workflow_dispatch' && inputs.refs || format('831817f2 96c331b7 origin/dev {0}', github.sha) }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, subprocess
+          out = []
+          for ref in os.environ["REFS"].split():
+              candidates = [ref, f"origin/{ref}"]
+              sha = None
+              for c in candidates:
+                  r = subprocess.run(["git", "rev-parse", "--verify", "--quiet", f"{c}^{{commit}}"], capture_output=True, text=True)
+                  if r.returncode == 0:
+                      sha = r.stdout.strip()
+                      break
+              if sha is None:
+                  raise SystemExit(f"unknown ref {ref}")
+              name = ref.removeprefix("origin/")
+              label = f"{name}-{sha[:8]}" if not name.startswith(sha[:8]) else sha[:8]
+              if any(o["sha"] == sha for o in out):
+                  continue
+              out.append({"label": label.replace("/", "_"), "sha": sha})
+          print(json.dumps(out, indent=1))
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write("matrix=" + json.dumps(out) + "\n")
+          PY
+
+  build:
+    name: Build ${{ matrix.label }}
+    needs: refs
+    runs-on: blacksmith-8vcpu-ubuntu-2404
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.refs.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ matrix.sha }}
+          submodules: recursive
+          fetch-depth: 0
+
+      # the code that goes into the APK, without this workflow and its scripts, so changing only the
+      # measurement doesn't build every commit again
+      - name: Source key
+        id: key
+        run: echo "tree=$(git ls-tree -r HEAD | grep -v -P '\t(\.github/|scripts/perf/)' | sha256sum | cut -c1-24)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore a build of the same source
+        id: cache
+        uses: actions/cache/restore@v4
+        with:
+          path: out/
+          key: speed-ab-apk-v1-${{ steps.key.outputs.tree }}
+
+      - uses: actions/setup-java@v5
+        if: steps.cache.outputs.cache-hit != 'true'
+        with:
+          java-version: 21
+          distribution: temurin
+
+      - uses: gradle/actions/setup-gradle@v5
+        if: steps.cache.outputs.cache-hit != 'true'
+        with:
+          cache-read-only: true
+
+      - name: Debug keystore (profileable is signed with it)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/.android
+          keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey \
+            -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Build x86_64 FOSS profileable
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew --console=plain :app:assembleX86_64FossProfileable --warning-mode summary
+          mkdir -p out
+          cp app/build/outputs/apk/x86_64Foss/profileable/*.apk out/app.apk
+          # the shared code's Android resource names, when this commit lists them
+          find app/build shared/build -name 'shared-android-resources.txt' -exec cp {} out/ \; 2>/dev/null || true
+          ls -l out
+
+      - name: Save the build
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: out/
+          key: speed-ab-apk-v1-${{ steps.key.outputs.tree }}
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: apk-${{ matrix.label }}
+          path: out/
+          retention-days: 7
+
+  measure:
+    name: Measure on the emulator
+    needs: [refs, build]
+    runs-on: blacksmith-8vcpu-ubuntu-2404
+    timeout-minutes: 120
+    env:
+      ANDROID_AVD_HOME: /home/runner/.android/avd
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: apk-*
+          path: apks/
+
+      - name: Probe KVM
+        run: |
+          sudo chmod 0666 /dev/kvm
+          ls -l /dev/kvm
+          test -w /dev/kvm
+
+      - name: Install the system image
+        run: |
+          set -euo pipefail
+          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" --licenses >/dev/null || true
+          "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" \
+            "system-images;android-36;google_apis;x86_64" "emulator" "platform-tools" | tail -3
+          mkdir -p "$ANDROID_AVD_HOME"
+          for dev in pixel_6 pixel_5 medium_phone; do
+            if echo "no" | "$SDK/cmdline-tools/latest/bin/avdmanager" create avd \
+                -n ab -k "system-images;android-36;google_apis;x86_64" -d "$dev" --force; then
+              break
+            fi
+          done
+          # the same fixed hardware for every commit
+          printf 'hw.cpu.ncore=4\nhw.ramSize=4096\n' >> "$ANDROID_AVD_HOME/ab.avd/config.ini"
+
+      - name: Boot the emulator
+        run: |
+          set -euo pipefail
+          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          "$SDK/emulator/emulator" -avd ab -no-window -gpu swiftshader_indirect -no-snapshot \
+            -no-boot-anim -no-audio -accel on > emulator.log 2>&1 &
+          "$SDK/platform-tools/adb" wait-for-device
+          deadline=$((SECONDS + 600))
+          until [ "$("$SDK/platform-tools/adb" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do
+            [ $SECONDS -lt $deadline ] || { tail -60 emulator.log; exit 1; }
+            sleep 5
+          done
+          "$SDK/platform-tools/adb" root
+          sleep 3
+          "$SDK/platform-tools/adb" wait-for-device
+          # let the first-boot work (dexopt of the system, package scans) finish before measuring
+          sleep 60
+          "$SDK/platform-tools/adb" shell settings put global package_verifier_enable 0 || true
+          "$SDK/platform-tools/adb" shell settings put system screen_off_timeout 1800000
+          "$SDK/platform-tools/adb" shell svc power stayon true
+
+      - name: Measure
+        env:
+          REFS: ${{ needs.refs.outputs.matrix }}
+          RUNS: ${{ github.event_name == 'workflow_dispatch' && inputs.runs || '10' }}
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/tp && /tmp/tp/bin/pip install -q perfetto || true
+          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          export ADB="$SDK/platform-tools/adb"
+          export AAPT2="$(find "$SDK/build-tools" -name aapt2 -type f | sort -V | tail -n 1)"
+          export TP_PYTHON=/tmp/tp/bin/python
+          status=0
+          python3 scripts/perf/android_speed_ab.py --apks apks --out speed-ab --runs "$RUNS" || status=$?
+          cat speed-ab/summary.md >> "$GITHUB_STEP_SUMMARY" || true
+          exit $status
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: speed-ab-${{ github.run_id }}
+          path: |
+            speed-ab/
+            emulator.log
+          retention-days: 14
