@@ -197,6 +197,7 @@ val prepareIosFonts = tasks.register<Sync>("prepareIosFonts") {
  * \\), so each value is decoded the way aapt2 reads it and written back in Compose's form.
  */
 object ResourceBridge {
+    private val SharedDrawableRef = Regex("""Res\.drawable\.(\w+)""")
     private val localeDir = Regex("values(-([a-z]{2,3})(-r([A-Z]{2}))?)?")
     // android's BCP 47 form, e.g. values-b+sr+Latn: compose has no script qualifier, so it becomes
     // values-sr (plus -rREGION when given), unless a plain folder already holds that name
@@ -205,7 +206,7 @@ object ResourceBridge {
     // compose matches the platform locale's language, and ios and desktop say "he" and "id"
     private val legacyLanguages = mapOf("iw" to "he", "in" to "id")
 
-    fun run(res: File, sharedResources: File, out: File) {
+    fun run(res: File, sharedResources: File, out: File, sharedSources: Collection<File>) {
         out.deleteRecursively()
         sharedResources.copyRecursively(out)
 
@@ -233,9 +234,13 @@ object ResourceBridge {
 
         val drawables = File(out, "drawable").apply { mkdirs() }
         // plain vectors from drawable/ and the density-independent rasters from drawable-nodpi/ (the
-        // integration brand marks are webp files); density and version folders are left out
+        // integration brand marks are webp files); density and version folders are left out. A nodpi
+        // raster is copied only when shared code names it: those are large pictures (onboarding art,
+        // mascots), and every copy ships a second time inside the APK next to the Android one
+        val usedInShared = sharedSources.flatMap { file -> SharedDrawableRef.findAll(file.readText()).map { it.groupValues[1] } }.toSet()
         listOf(res.resolve("drawable"), res.resolve("drawable-nodpi")).forEach { source ->
             source.listFiles().orEmpty().forEach { file ->
+                if (source.name == "drawable-nodpi" && file.nameWithoutExtension !in usedInShared) return@forEach
                 // Android also reads "24.0dip"; Compose resources only read dp or px and throw at runtime on
                 // anything else (a crash the first time a shared screen draws that icon), so sizes are rewritten
                 // here, and a vector still sized some other way is left out: asking for it fails the build instead
@@ -376,9 +381,12 @@ val bridgeAppResources = tasks.register("bridgeAppResources") {
     val out = bridgedResources
     inputs.dir(appRes).withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir(sharedRes).withPathSensitivity(PathSensitivity.RELATIVE)
+    // the shared Kotlin sources decide which nodpi pictures are copied (see ResourceBridge.run)
+    val sharedKotlin = fileTree(layout.projectDirectory.dir("src")) { include("**/*.kt") }
+    inputs.files(sharedKotlin).withPathSensitivity(PathSensitivity.RELATIVE)
     outputs.dir(out)
     outputs.cacheIf { true }
-    doLast { ResourceBridge.run(appRes.asFile, sharedRes.asFile, out.get().asFile) }
+    doLast { ResourceBridge.run(appRes.asFile, sharedRes.asFile, out.get().asFile, sharedKotlin.files) }
 }
 
 compose.resources {
