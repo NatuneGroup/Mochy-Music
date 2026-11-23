@@ -268,12 +268,7 @@ fun NavGraphBuilder.navigationBuilder(
         ),
     ) { backStackEntry ->
         val sectionTitle = backStackEntry.arguments?.getString("sectionTitle") ?: return@composable
-        ComingSoonScreen(
-            navController = navController,
-            sectionTitle = sectionTitle,
-            backIcon = painterResource(R.drawable.arrow_back),
-            historyIcon = painterResource(R.drawable.history),
-        )
+        ComingSoonScreen(navController = navController, sectionTitle = sectionTitle)
     }
 
     coverSourceComposable(Screens.Search.route) {

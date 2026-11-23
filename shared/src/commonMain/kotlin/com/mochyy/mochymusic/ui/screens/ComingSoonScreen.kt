@@ -32,11 +32,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import androidx.compose.ui.graphics.painter.Painter
 import com.mochyy.mochymusic.shared.resources.Res
+import com.mochyy.mochymusic.shared.resources.arrow_back
 import com.mochyy.mochymusic.shared.resources.back_button_desc
+import com.mochyy.mochymusic.shared.resources.history
 import com.mochyy.mochymusic.shared.resources.supplemental_coming_soon
 import com.mochyy.mochymusic.shared.resources.supplemental_coming_soon_detail
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,9 +46,6 @@ import org.jetbrains.compose.resources.stringResource
 fun ComingSoonScreen(
     navController: NavController,
     sectionTitle: String,
-    // passed in by the platform: arrow_back and history are not copied into Compose resources
-    backIcon: Painter,
-    historyIcon: Painter,
 ) {
     Column(
         modifier = Modifier
@@ -65,7 +64,7 @@ fun ComingSoonScreen(
         ) {
             IconButton(onClick = { navController.navigateUp() }) {
                 Icon(
-                    painter = backIcon,
+                    painter = painterResource(Res.drawable.arrow_back),
                     contentDescription = stringResource(Res.string.back_button_desc),
                     tint = MaterialTheme.colorScheme.onBackground
                 )
@@ -94,7 +93,7 @@ fun ComingSoonScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        painter = historyIcon,
+                        painter = painterResource(Res.drawable.history),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(40.dp)
