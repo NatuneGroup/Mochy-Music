@@ -35,12 +35,14 @@ import com.mochyy.mochymusic.module.natune.NatuneSource
 import com.mochyy.mochymusic.modules.code.CodeModules
 import com.mochyy.mochymusic.modules.local.LocalModule
 import com.mochyy.mochymusic.modules.skin.ActiveSkin
+import com.mochyy.mochymusic.modules.skin.AndroidSkinPlatform
 import com.mochyy.mochymusic.modules.skin.LookValues
 import com.mochyy.mochymusic.modules.skin.ModuleMenu
 import com.mochyy.mochymusic.modules.skin.ModuleSkin
 import com.mochyy.mochymusic.modules.skin.SkinFiles
 import com.mochyy.mochymusic.modules.skin.SkinGlass
 import com.mochyy.mochymusic.modules.skin.SkinParts
+import com.mochyy.mochymusic.modules.skin.SkinPlatforms
 import com.mochyy.mochymusic.modules.skin.SkinSource
 import com.mochyy.mochymusic.modules.web.FieldRange
 import com.mochyy.mochymusic.modules.web.FieldRanges
@@ -152,6 +154,8 @@ class ModuleRegistry @Inject constructor(
     val entries: StateFlow<List<ModuleEntry>> = _entries.asStateFlow()
 
     init {
+        // how this phone compiles a look's shaders and loads its fonts, in place before the first refresh publishes one
+        SkinPlatforms.install(AndroidSkinPlatform())
         // the module player picked last time, kept here beside the switches
         ActiveSkin.restorePick(prefs.getString(PlayerPickKey, null).orEmpty())
         ActiveSkin.onPick = { key -> prefs.edit { putString(PlayerPickKey, key) } }
