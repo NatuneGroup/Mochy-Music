@@ -8,6 +8,9 @@
 package com.mochyy.mochymusic.di
 
 import android.content.Context
+import com.mochyy.mochymusic.BuildConfig
+import com.mochyy.mochymusic.discord.AndroidDiscordTokens
+import com.mochyy.mochymusic.discord.DiscordAuth
 import com.mochyy.mochymusic.scrobble.AndroidScrobbleQueueStore
 import com.mochyy.mochymusic.scrobble.ScrobbleSite
 import com.mochyy.mochymusic.scrobble.Scrobbler
@@ -35,5 +38,13 @@ object W12ServicesModule {
         isOffline = { OfflineMode.isOn },
         retry = WorkManagerScrobbleRetry(context),
         notices = ToastScrobbleNotices(context),
+    )
+
+    @Provides
+    @Singleton
+    fun discordAuth(@ApplicationContext context: Context): DiscordAuth = DiscordAuth(
+        preferences = context.dataStore,
+        tokens = AndroidDiscordTokens(context.dataStore),
+        clientId = BuildConfig.DISCORD_CLIENT_ID,
     )
 }

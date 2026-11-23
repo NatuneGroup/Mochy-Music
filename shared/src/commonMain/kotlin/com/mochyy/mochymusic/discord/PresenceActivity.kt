@@ -2,7 +2,6 @@
 
 package com.mochyy.mochymusic.discord
 
-import android.net.Uri
 import com.mochyy.mochymusic.core.updater.GithubRepoUrl
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -118,7 +117,7 @@ data class PresenceActivity(
 
 /** The page a button opens for [track]: the song itself where Mochy knows it, a search otherwise. */
 fun PresenceButtonTarget.linkFor(track: NowPlaying): String {
-    val query = Uri.encode("${track.title} ${track.artist}".trim())
+    val query = urlEncode("${track.title} ${track.artist}".trim())
     return when (this) {
         PresenceButtonTarget.YOUTUBE_MUSIC ->
             if (track.isYouTube) "https://music.youtube.com/watch?v=${track.mediaId}"
@@ -129,3 +128,24 @@ fun PresenceButtonTarget.linkFor(track: NowPlaying): String {
         PresenceButtonTarget.MOCHY -> GithubRepoUrl
     }
 }
+
+/**
+ * The same escaping `android.net.Uri.encode` gave the search query: every byte but letters,
+ * digits and `_-!.~'()*` becomes %XX, which is what YouTube Music, Spotify, Apple Music and Tidal
+ * have always been sent.
+ */
+private fun urlEncode(value: String): String {
+    val out = StringBuilder(value.length)
+    for (byte in value.encodeToByteArray()) {
+        val code = byte.toInt() and 0xff
+        val char = code.toChar()
+        if (code < 0x80 && (char.isLetterOrDigit() || char in "-_.!~*'()")) {
+            out.append(char)
+        } else {
+            out.append('%').append(Hex[code shr 4]).append(Hex[code and 0x0f])
+        }
+    }
+    return out.toString()
+}
+
+private const val Hex = "0123456789ABCDEF"

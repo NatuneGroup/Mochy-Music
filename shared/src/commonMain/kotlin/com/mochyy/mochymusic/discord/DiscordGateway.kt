@@ -1,10 +1,22 @@
 // DiscordGateway.kt
+//
+// One live connection to Discord's gateway, signed in with the OAuth token, the way Discord's
+// own Social SDK does it. A status sent over it lasts only as long as the connection: when
+// Mochy is closed or killed, Discord drops it by itself rather than leaving an old song up.
+//
+// It doesn't reconnect on its own. When it closes it calls [onClosed] once, and the owner opens
+// a new one when there's something to show again. The socket comes from Ktor's WebSockets plugin
+// on the same client the web calls use, so every platform can keep the connection.
 
 package com.mochyy.mochymusic.discord
 
+import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
+import io.ktor.client.plugins.websocket.webSocketSession
+import io.ktor.client.request.url
+import io.ktor.websocket.Frame
+import io.ktor.websocket.readText
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -12,56 +24,52 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import kotlinx.serialization.json.put
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.contentOrNull
-import okhttp3.Request
-import okhttp3.Response
-import okhttp3.WebSocket
-import okhttp3.WebSocketListener
-import timber.log.Timber
-import java.io.IOException
-import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.concurrent.Volatile
 import kotlin.random.Random
+import com.mochyy.mochymusic.utils.ioDispatcher
+import okio.IOException
 
-/**
- * One live connection to Discord's gateway, signed in with the OAuth token, the way Discord's
- * own Social SDK does it. A status sent over it lasts only as long as the connection: when
- * Mochy is closed or killed, Discord drops it by itself rather than leaving an old song up.
- *
- * It doesn't reconnect on its own. When it closes it calls [onClosed] once, and the owner opens
- * a new one when there's something to show again.
- */
-internal class DiscordGateway(
+class DiscordGateway(
     private val token: String,
     private val onClosed: (code: Int) -> Unit,
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + ioDispatcher)
     private val json = Json { ignoreUnknownKeys = true }
     private val ready = CompletableDeferred<Unit>()
 
-    @Volatile private var socket: WebSocket? = null
+    @Volatile private var session: DefaultClientWebSocketSession? = null
     @Volatile private var sequence: Long? = null
     @Volatile private var heartbeatAcked = true
-    private val closed = AtomicBoolean(false)
+    @Volatile private var closed = false
+    private var reader: Job? = null
     private var heartbeat: Job? = null
 
-    val isReady: Boolean get() = ready.isCompleted && !closed.get()
+    val isReady: Boolean get() = ready.isCompleted && !closed
 
     /** Opens the connection and waits for Discord to say it's ready. False if it never does. */
     suspend fun connect(): Boolean {
-        val request = Request.Builder().url(GatewayUrl).build()
-        socket = DiscordHttp.client.newWebSocket(request, Listener())
+        val opened = try {
+            DiscordHttp.client.webSocketSession { url(GatewayUrl) }
+        } catch (e: IOException) {
+            return false
+        } catch (e: Exception) {
+            return false
+        }
+        session = opened
+        reader = scope.launch { read(opened) }
         // a connection that fails on the way ends the wait at once, rather than at the timeout
         val connected = try {
             withTimeoutOrNull(ReadyTimeoutMs) { ready.await() } != null
@@ -73,7 +81,7 @@ internal class DiscordGateway(
     }
 
     /** Shows [activity] on the profile, or nothing at all when it's null. */
-    fun sendPresence(activity: JsonObject?): Boolean {
+    suspend fun sendPresence(activity: JsonObject?): Boolean {
         if (!isReady) return false
         return send(
             op = OpPresenceUpdate,
@@ -87,21 +95,42 @@ internal class DiscordGateway(
     }
 
     fun close(code: Int = 1000) {
-        if (!closed.compareAndSet(false, true)) return
+        if (closed) return
+        closed = true
         ready.completeExceptionally(IOException("Discord gateway closed with $code"))
         heartbeat?.cancel()
-        socket?.close(1000, null)
-        socket = null
+        reader?.cancel()
+        session?.coroutineContext?.cancel()
+        session = null
         scope.cancel()
         onClosed(code)
     }
 
-    private fun send(op: Int, data: JsonElement): Boolean {
+    private suspend fun send(op: Int, data: JsonElement): Boolean {
         val frame = buildJsonObject {
             put("op", op)
             put("d", data)
         }
-        return socket?.send(frame.toString()) == true
+        val current = session ?: return false
+        return try {
+            current.send(Frame.Text(frame.toString()))
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /** Reads frames until the socket ends, then reports the close code Discord gave it. */
+    private suspend fun read(opened: DefaultClientWebSocketSession) {
+        try {
+            for (frame in opened.incoming) {
+                if (frame is Frame.Text) onMessage(frame.readText())
+            }
+        } catch (e: Exception) {
+            // a dropped connection is a closed one
+        }
+        val reason = runCatching { opened.closeReason.await() }.getOrNull()
+        close(code = reason?.code?.toInt() ?: 4000)
     }
 
     private fun onMessage(text: String) {
@@ -122,19 +151,21 @@ internal class DiscordGateway(
     }
 
     private fun identify() {
-        send(
-            op = OpIdentify,
-            data = buildJsonObject {
-                put("token", "Bearer $token")
-                put("capabilities", Capabilities)
-                put("intents", Intents)
-                put("properties", buildJsonObject {
-                    put("os", "Android")
-                    put("browser", "Mochy")
-                    put("device", "Android")
-                })
-            },
-        )
+        scope.launch {
+            send(
+                op = OpIdentify,
+                data = buildJsonObject {
+                    put("token", "Bearer $token")
+                    put("capabilities", Capabilities)
+                    put("intents", Intents)
+                    put("properties", buildJsonObject {
+                        put("os", "Android")
+                        put("browser", "Mochy")
+                        put("device", "Android")
+                    })
+                },
+            )
+        }
     }
 
     private fun startHeartbeat(intervalMs: Long) {
@@ -156,26 +187,12 @@ internal class DiscordGateway(
 
     private fun sendHeartbeat() {
         heartbeatAcked = false
-        send(OpHeartbeat, sequence?.let { JsonPrimitive(it) } ?: JsonNull)
-    }
-
-    private inner class Listener : WebSocketListener() {
-        override fun onMessage(webSocket: WebSocket, text: String) = this@DiscordGateway.onMessage(text)
-
-        override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-            Timber.tag(LogTag).d("gateway closing: $code $reason")
-            close(code)
-        }
-
-        override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-            Timber.tag(LogTag).d(t, "gateway failed")
-            response?.close()
-            close(code = response?.code ?: 4000)
+        scope.launch {
+            send(OpHeartbeat, sequence?.let { JsonPrimitive(it) } ?: JsonNull)
         }
     }
 
     companion object {
-        private const val LogTag = "DiscordGateway"
         private const val GatewayUrl = "wss://gateway.discord.gg/?v=9&encoding=json"
         private const val ReadyTimeoutMs = 20_000L
 

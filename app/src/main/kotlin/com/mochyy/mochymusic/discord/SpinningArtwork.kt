@@ -67,7 +67,7 @@ internal class SpinningArtwork(
     private suspend fun download(url: String): Bitmap = withContext(Dispatchers.IO) {
         if (!PresenceImages.isWebImage(url)) return@withContext loadLocal(url, SourceSize) ?: error("artwork on the phone couldn't be read")
         val request = Request.Builder().url(url.resize(SourceSize, SourceSize)).build()
-        val bytes = DiscordHttp.client.newCall(request).execute().use { response ->
+        val bytes = DiscordDownloads.client.newCall(request).execute().use { response ->
             check(response.isSuccessful) { "artwork download failed: HTTP ${response.code}" }
             response.body!!.bytes()
         }

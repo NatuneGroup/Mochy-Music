@@ -28,7 +28,7 @@ class DiscordLoginActivity : Activity() {
         intent?.data?.let { redirect ->
             EntryPointAccessors.fromApplication(applicationContext, DiscordEntryPoint::class.java)
                 .discordAuth()
-                .handleRedirect(redirect)
+                .handleRedirect(redirect.toString())
         }
         startActivity(
             Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),

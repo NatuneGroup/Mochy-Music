@@ -522,7 +522,7 @@ internal fun DiscordButtonCard(
                 }
             },
             onSelect = { onChange(button.copy(target = it)) },
-            optionIcon = { it.icon },
+            optionIcon = { it.iconRes() },
         )
     }
 }
