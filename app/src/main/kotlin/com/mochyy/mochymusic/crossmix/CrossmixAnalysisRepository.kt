@@ -40,7 +40,6 @@ class CrossmixAnalysisRepository(
     private val dataSourceFactory: () -> DataSource.Factory,
 ) {
     private val memory = ConcurrentHashMap<String, TrackAnalysis>()
-    private val inFlight = ConcurrentHashMap<String, Deferred<TrackAnalysis?>>()
     private val failures = ConcurrentHashMap<String, String>()
     private val cacheDir = File(context.cacheDir, "crossmix-analysis-v2").also { it.mkdirs() }
 
@@ -57,6 +56,21 @@ class CrossmixAnalysisRepository(
         ).apply { isDaemon = true }
     }.asCoroutineDispatcher()
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
+    private val queue = AnalysisQueue<TrackAnalysis?>(scope)
+
+    /**
+     * Calls off analyses still waiting or running for songs other than [items] (the playing song and
+     * the next one). Skipped songs would otherwise stay queued on the one analysis thread, ahead of the
+     * pair that's actually about to mix. Finished results stay cached; an empty list stops everything.
+     */
+    fun keepOnly(items: Collection<MediaItem>) {
+        queue.keepOnly(items.mapNotNullTo(HashSet()) { keyOf(it) })
+    }
+
+    private fun keyOf(item: MediaItem): String? {
+        val uri = item.localConfiguration?.uri ?: return null
+        return item.mediaId.ifBlank { uri.toString() }
+    }
 
     /**
      * wholeTrack: the song that's playing, whose ending we mix out of, needs a complete analysis;
@@ -66,7 +80,7 @@ class CrossmixAnalysisRepository(
      */
     suspend fun analyze(item: MediaItem, wholeTrack: Boolean): TrackAnalysis? {
         val uri = item.localConfiguration?.uri ?: return null
-        val mediaId = item.mediaId.ifBlank { uri.toString() }
+        val mediaId = keyOf(item) ?: return null
         val cacheKey = item.localConfiguration?.customCacheKey?.takeIf { it.isNotBlank() } ?: mediaId
         usable(memory[mediaId], wholeTrack)?.let { return it }
         // the disk is read off the analysis thread, which may be busy decoding another song
@@ -74,9 +88,7 @@ class CrossmixAnalysisRepository(
         stored?.let { remember(mediaId, it) }
         usable(memory[mediaId], wholeTrack)?.let { return it }
 
-        // start only once it's in the map, so a quick finish can't remove itself first and leave a stale result for later callers
-        val job = inFlight.getOrPut(mediaId) {
-            scope.async(start = CoroutineStart.LAZY) {
+        val job = queue.submit(mediaId) {
                 val progress = Progress()
                 try {
                     withTimeoutOrNull(MaxDecodeMs) { decodeAndAnalyze(uri, cacheKey, progress) }
@@ -99,12 +111,8 @@ class CrossmixAnalysisRepository(
                 } catch (error: Throwable) {
                     failures[mediaId] = error.message ?: error.javaClass.simpleName
                     null
-                } finally {
-                    inFlight.remove(mediaId)
                 }
-            }
         }
-        job.start()
         val result = withTimeoutOrNull(WaitMs) { job.await() }
         when {
             result == null && job.isActive ->
@@ -251,6 +259,36 @@ class CrossmixAnalysisRepository(
         /** a decode that hasn't finished by then is stuck (a stalled stream): the thread is freed for the next song */
         const val MaxDecodeMs = 4 * 60_000L
     }
+}
+
+/**
+ * Work on the one analysis thread, one job per song: asking again for a song already queued or running
+ * joins that job, and [keepOnly] calls off the rest. A job called off before it started never runs its
+ * own cleanup, so the queue drops it itself and a later request starts afresh.
+ */
+internal class AnalysisQueue<V>(private val scope: CoroutineScope) {
+    private val jobs = ConcurrentHashMap<String, Deferred<V>>()
+
+    fun submit(key: String, block: suspend () -> V): Deferred<V> {
+        // in the map before it starts, so a quick finish can't remove itself first and leave a stale entry
+        val job = jobs.compute(key) { _, existing ->
+            existing?.takeIf { !it.isCancelled } ?: scope.async(start = CoroutineStart.LAZY) { block() }
+        }!!
+        job.invokeOnCompletion { jobs.remove(key, job) }
+        job.start()
+        return job
+    }
+
+    fun keepOnly(keys: Set<String>) {
+        for ((key, job) in jobs) {
+            if (key !in keys) {
+                job.cancel()
+                jobs.remove(key, job)
+            }
+        }
+    }
+
+    fun pending(): Set<String> = jobs.keys.toSet()
 }
 
 /** a complete analysis answers every request, a partial one only the next song's */
