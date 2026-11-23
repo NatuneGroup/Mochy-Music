@@ -163,7 +163,7 @@ class DiscordPresence @Inject constructor(
         val live = connect() ?: return
         val token = auth.accessToken() ?: return
         val (large, small) = assetsFor(activity, token)
-        val payload = activity.toJson(DiscordAuth.ClientId, large, small)
+        val payload = activity.toJson(auth.clientId, large, small)
         if (live.sendPresence(payload)) {
             lastSent = Sent(activity, large, small)
             recentSends.addLast(System.currentTimeMillis())
@@ -315,7 +315,7 @@ class DiscordPresence @Inject constructor(
     private suspend fun register(urls: List<String>, token: String, renewed: Boolean = false) {
         val body = buildJsonObject { put("urls", buildJsonArray { urls.forEach { add(JsonPrimitive(it)) } }) }
         val reply = try {
-            DiscordHttp.postJson("/applications/${DiscordAuth.ClientId}/external-assets", token, body.toString())
+            DiscordHttp.postJson("/applications/${auth.clientId}/external-assets", token, body.toString())
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

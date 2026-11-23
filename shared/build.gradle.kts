@@ -85,6 +85,8 @@ kotlin {
             api(libs.kotlinx.datetime)
             // Providers take an injected HttpClient; each platform picks the engine, timeouts and proxy.
             implementation(libs.ktor.client.core)
+            // the Discord status keeps its connection to Discord's gateway open; engines below carry it
+            implementation(libs.ktor.client.websockets)
             implementation(libs.kotlinx.serialization.json)
             // shared ViewModels and what they're given, the way Metrolist does it; api so the app and the
             // launchers start Koin and call koinViewModel without naming Koin again

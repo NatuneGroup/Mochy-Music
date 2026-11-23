@@ -70,7 +70,7 @@ class DiscordViewModel @Inject constructor(
         return true
     }
 
-    suspend fun loginUri(): Uri = auth.loginUri()
+    suspend fun loginUri(): Uri = Uri.parse(auth.loginUri())
 
     fun cancelWaiting() = auth.cancelWaiting()
 

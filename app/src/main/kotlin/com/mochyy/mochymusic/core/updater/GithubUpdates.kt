@@ -12,11 +12,10 @@ import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 
-// GithubOwner, GithubRepo, InstagramUrl, ThreadsUrl and DiscordUrl live in :shared
+// GithubOwner, GithubRepo, GithubRepoUrl, InstagramUrl, ThreadsUrl and DiscordUrl live in :shared
 // (core/updater/ProjectLinks.kt), with the dev space pages that read them.
 
 const val GithubProfileUrl = "https://github.com/$GithubOwner"
-const val GithubRepoUrl = "https://github.com/$GithubOwner/$GithubRepo"
 
 // Where updates come from: this build's own signed releases. The Github* names stay the
 // credit to Mochy by realidkroo (About, support, Discord, Developer space); an APK from there is

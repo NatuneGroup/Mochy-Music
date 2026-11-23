@@ -5,6 +5,7 @@ package com.mochyy.mochymusic.core.updater
 // updater's own Update* names stay in :app with the rest of the update code.
 const val GithubOwner = "realidkroo"
 const val GithubRepo = "Mochy-Music"
+const val GithubRepoUrl = "https://github.com/$GithubOwner/$GithubRepo"
 
 const val InstagramUrl = "https://www.instagram.com/furfurrfoxx/"
 // Threads names follow the Instagram one

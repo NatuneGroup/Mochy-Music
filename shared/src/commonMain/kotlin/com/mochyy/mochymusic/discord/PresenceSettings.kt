@@ -2,10 +2,8 @@
 
 package com.mochyy.mochymusic.discord
 
-import androidx.annotation.DrawableRes
 import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
-import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.DiscordActivityNameKey
 import com.mochyy.mochymusic.constants.DiscordActivityTypeKey
 import com.mochyy.mochymusic.constants.DiscordButton1TargetKey
@@ -63,13 +61,16 @@ enum class PresenceImage(val label: String, val forLargeImage: Boolean) {
     }
 }
 
-/** Where a status button takes whoever presses it. */
-enum class PresenceButtonTarget(val label: String, @DrawableRes val icon: Int) {
-    YOUTUBE_MUSIC("YouTube Music", R.drawable.provider_youtube_music),
-    SPOTIFY("Spotify", R.drawable.provider_spotify),
-    APPLE_MUSIC("Apple Music", R.drawable.provider_apple_music),
-    TIDAL("Tidal", R.drawable.provider_tidal),
-    MOCHY("Mochy on GitHub", R.drawable.github),
+/**
+ * Where a status button takes whoever presses it. The icon each one shows stays in the app
+ * (`PresenceButtonTarget.iconRes()`), since a drawable id only exists there.
+ */
+enum class PresenceButtonTarget(val label: String) {
+    YOUTUBE_MUSIC("YouTube Music"),
+    SPOTIFY("Spotify"),
+    APPLE_MUSIC("Apple Music"),
+    TIDAL("Tidal"),
+    MOCHY("Mochy on GitHub"),
 }
 
 data class PresenceButton(val text: String, val target: PresenceButtonTarget)

@@ -71,7 +71,7 @@ internal object PictureHosts {
             addFormDataPart(fileField, fileName, bytes.toRequestBody(mime.toMediaType()))
         }.build()
         val request = Request.Builder().url(url).post(body).build()
-        return DiscordHttp.client.newCall(request).execute().use { response ->
+        return DiscordDownloads.client.newCall(request).execute().use { response ->
             val text = response.body?.string().orEmpty().trim()
             check(response.isSuccessful) { "HTTP ${response.code}" }
             text
