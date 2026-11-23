@@ -791,8 +791,10 @@ class MusicService :
             if (songUrlCache.size > 64) {
                 songUrlCache.keys.retainAll(keepIds)
             }
+            // googlevideo rejects a replayed url without the headers it was issued with, so a url and its
+            // headers leave together: trim the headers to the urls that are still cached, not to the queue
+            songStreamHeaders.keys.retainAll(songUrlCache.keys)
         }
-        songStreamHeaders.keys.retainAll(keepIds)
         moduleStreamHeaders.keys.removeIf { key -> keepIds.none { key.endsWith("|$it") || key == it } }
         resolvedStreamSources.keys.retainAll(keepIds)
         resolvedSourceIds.keys.retainAll(keepIds)
