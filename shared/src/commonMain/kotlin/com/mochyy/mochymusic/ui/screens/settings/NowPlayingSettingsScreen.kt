@@ -80,6 +80,7 @@ import com.mochyy.mochymusic.shared.resources.canvas_source_apple
 import com.mochyy.mochymusic.shared.resources.canvas_source_spotify
 import com.mochyy.mochymusic.shared.resources.canvas_source_tidal
 import com.mochyy.mochymusic.shared.resources.graphic_eq
+import com.mochyy.mochymusic.shared.resources.material_rounded_high_quality
 import com.mochyy.mochymusic.shared.resources.hide_image
 import com.mochyy.mochymusic.shared.resources.lyrics
 import com.mochyy.mochymusic.shared.resources.lyrics_auto_scroll
@@ -416,8 +417,8 @@ private fun videoQualityItem(videoQualitySheet: ((VideoQuality, (VideoQuality) -
         descriptionText = videoQualityName(quality),
         detail = stringResource(Res.string.video_quality_settings_desc),
         searchText = title,
-        // the app's HD mark is material-icons-extended, which the shared module doesn't carry
-        icon = painterResource(Res.drawable.graphic_eq),
+        // Icons.Rounded.HighQuality, kept as the exact Material vector (the shared module has no icons-extended)
+        icon = painterResource(Res.drawable.material_rounded_high_quality),
         iconShape = CircleShape,
         isVisible = videoQualitySheet != null,
         onClick = { videoQualitySheet?.invoke(quality, onQuality) },
@@ -490,7 +491,7 @@ private fun canvasItems(
             key = "Sharpest animated covers",
             title = stringResource(Res.string.canvas_best_quality),
             description = stringResource(Res.string.canvas_best_quality_desc),
-            icon = painterResource(Res.drawable.sparks),
+            icon = painterResource(Res.drawable.material_rounded_high_quality),
             checked = canvasBest,
             onCheckedChange = onCanvasBestChange,
             subOptionOf = canvasEnabled,
